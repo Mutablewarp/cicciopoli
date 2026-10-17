@@ -5,7 +5,7 @@
  * paper-ticket door; the big top block carries the printed logo.
  */
 import { ctxOf, hexToRgb, makeCanvas, rng } from '../pixel';
-import { COLS, MAZE, MAZE_H, MAZE_W, ROWS, TILE, TUNNEL_ROW } from '../../game/maze/layout';
+import { COLS, MAZE, MAZE_H, MAZE_W, ROWS, TILE, TUNNEL_ROWS } from '../../game/maze/layout';
 import { MZ } from './palette';
 import { PRINT, drawText, textWidth } from './font';
 
@@ -38,7 +38,7 @@ function inHouse(c: number, r: number): boolean {
 
 /** Cell counts as floor for the tray computation (corridors, tunnel mouths, the hand-drawn house). */
 function floorCell(c: number, r: number): boolean {
-  if (r === TUNNEL_ROW && (c < 0 || c >= COLS)) return true;
+  if (TUNNEL_ROWS.includes(r) && (c < 0 || c >= COLS)) return true;
   if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return false;
   return MAZE.cell(c, r) !== 'wall' || inHouse(c, r);
 }
@@ -72,7 +72,7 @@ function trayMask(): Uint8Array {
 function depthMap(mask: Uint8Array): Uint8Array {
   const d = new Uint8Array(MAZE_W * MAZE_H);
   const isTray = (x: number, y: number): boolean => {
-    if (x < 0 || x >= MAZE_W) return !(y >= TUNNEL_ROW * TILE && y < (TUNNEL_ROW + 1) * TILE);
+    if (x < 0 || x >= MAZE_W) return !TUNNEL_ROWS.includes(Math.floor(y / TILE));
     if (y < 0 || y >= MAZE_H) return true;
     return mask[y * MAZE_W + x] === 1;
   };

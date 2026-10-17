@@ -3,7 +3,8 @@
  * camera, wall / ledge sensing, and the shared defeat animations.
  */
 import type Phaser from 'phaser';
-import { ENEMY, MOVE } from '../../config/tuning';
+import { TILE } from '../../art/keys';
+import { ENEMY, KILL_FX, MOVE } from '../../config/tuning';
 import type { GameAudio } from '../../contracts';
 import { DEPTH } from '../depths';
 import type { Fx } from '../fx';
@@ -30,6 +31,18 @@ export interface BodyBox {
   h: number;
   ox: number;
   oy: number;
+}
+
+/**
+ * Px from `bottom` down to the first solid tile top under `x`, searched up to `maxPx` below;
+ * 0 when already standing or when nothing is found (over a pit the body stays put).
+ * shortcut: terrain only, ? blocks / crates are not seen; check them too if walkers ever hop over them.
+ */
+export function dropToGround(world: Pick<World, 'isSolidAt'>, x: number, bottom: number, maxPx: number): number {
+  for (let top = Math.floor(bottom / TILE) * TILE; top <= bottom + maxPx; top += TILE) {
+    if (world.isSolidAt(x, top + 1)) return Math.max(0, top - bottom);
+  }
+  return 0;
 }
 
 export abstract class Enemy {
@@ -154,6 +167,15 @@ export abstract class Enemy {
     return Math.abs(host.heroX() - this.sprite.x) < rangeX && Math.abs(host.heroY() - this.body.center.y) < rangeY;
   }
 
+  /** A walker killed mid-hop first drops onto the ground under it, so no defeat effect floats. */
+  private settle(host: EnemyHost, then: () => void): void {
+    // the sprite's feet, not the body: the body may already be a step ahead of the drawn sprite
+    const fall = this.body.allowGravity ? dropToGround(host.world, this.sprite.x, this.sprite.y, KILL_FX.dropMaxPx) : 0;
+    if (fall < 1) return then();
+    const ms = Math.sqrt((2 * fall) / MOVE.gravity) * 1000; // free-fall time
+    this.scene.tweens.add({ targets: this.sprite, y: this.sprite.y + fall, duration: ms, ease: 'Quad.easeIn', onComplete: then });
+  }
+
   kill(method: KillMethod, host: EnemyHost): void {
     if (!this.alive) return;
     this.alive = false;
@@ -162,9 +184,11 @@ export abstract class Enemy {
     const frame = method === 'stomp' ? this.squashFrame() : null;
     if (frame !== null) {
       this.show(frame);
-      host.fx.dust(this.sprite.x - 6, this.sprite.y, -1);
-      host.fx.dust(this.sprite.x + 6, this.sprite.y, 1);
-      this.scene.tweens.add({ targets: this.sprite, alpha: 0, delay: 380, duration: 220, onComplete: () => this.sprite.destroy() });
+      this.settle(host, () => {
+        host.fx.dust(this.sprite.x - 6, this.sprite.y, -1);
+        host.fx.dust(this.sprite.x + 6, this.sprite.y, 1);
+        this.scene.tweens.add({ targets: this.sprite, alpha: 0, delay: 380, duration: 220, onComplete: () => this.sprite.destroy() });
+      });
       return;
     }
     if (method === 'cheese' || method === 'club') {
@@ -173,8 +197,10 @@ export abstract class Enemy {
         this.scene.tweens.killTweensOf(this.sprite);
         this.sprite.destroy();
       };
-      if (method === 'cheese') cheeseEngulf(this.scene, host.fx, this.sprite, done);
-      else catchFire(this.scene, host.fx, this.sprite, done);
+      this.settle(host, () => {
+        if (method === 'cheese') cheeseEngulf(this.scene, host.fx, this.sprite, done);
+        else catchFire(this.scene, host.fx, this.sprite, done);
+      });
       return;
     }
     host.fx.hitStar(this.sprite.x, this.body.center.y);

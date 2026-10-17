@@ -309,3 +309,23 @@
     height: 24px;
   }
 }
+
+/* FULMINE charges on the bolt chip (level 3) */
+.cc-chip[data-count]:not([data-count=''])::after {
+  content: attr(data-count);
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  min-width: 14px;
+  padding: 1px 2px 0;
+  font-family: var(--f-pixel);
+  font-size: 9px;
+  line-height: 12px;
+  text-align: center;
+  color: var(--ink);
+  background: var(--yellow, #fcd400);
+  box-shadow: 0 0 0 2px var(--ink);
+}
+.cc-chip {
+  position: relative;
+}

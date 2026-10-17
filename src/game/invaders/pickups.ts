@@ -38,6 +38,8 @@ export class Pickups {
 
   update(dt: number, catcher: Rect | null, onCapsule: (x: number, y: number) => void, onFood: (x: number, y: number, frame: number) => void): void {
     const sec = dt / 1000;
+    // cull once off the visible view, which can reach below the field (tall portrait screens)
+    const cullY = Math.max(FIELD.h, this.scene.cameras.main.worldView.bottom) + 12;
     for (const c of this.capsules) c.y += DROP.capsuleFall * sec;
     for (const f of this.foods) {
       f.t += sec * 2.4;
@@ -50,7 +52,7 @@ export class Pickups {
         c.destroy();
         return false;
       }
-      return c.y < FIELD.h + 10 ? true : (c.destroy(), false);
+      return c.y < cullY ? true : (c.destroy(), false);
     });
     this.foods = this.foods.filter((f) => {
       const s = f.sprite;
@@ -60,7 +62,7 @@ export class Pickups {
         s.destroy();
         return false;
       }
-      return s.y < FIELD.h + 10 ? true : (s.destroy(), false);
+      return s.y < cullY ? true : (s.destroy(), false);
     });
   }
 

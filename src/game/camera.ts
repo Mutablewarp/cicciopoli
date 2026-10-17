@@ -56,6 +56,10 @@ export class CameraRig {
   private feetAt: number = CAMERA.feetAt;
   /** World px at the top of the view covered by the overlaid HUD bar. */
   private topBand = 0;
+  /** World px below the HUD a banner covers, while one is up (eased in / out). */
+  private bannerPx = 0;
+  private bannerBand = 0;
+  private bannerLeftMs = 0;
 
   constructor(
     private readonly cam: Phaser.Cameras.Scene2D.Camera,
@@ -76,7 +80,14 @@ export class CameraRig {
     this.feetAt = Math.min(CAMERA.feetAt, 1 - covered / Math.max(1, this.viewH));
     this.extraBottom = Math.max(0, Math.min(CAMERA.maxExtraBottom, covered - this.groundDepth + CAMERA.insetMargin));
     this.topBand = (viewport.insetTop * viewport.dpr) / this.zoom;
+    const bannerCss = viewport.portrait ? CAMERA.bannerCss.portrait : CAMERA.bannerCss.landscape;
+    this.bannerPx = (bannerCss * viewport.dpr) / this.zoom;
     this.clampAndApply();
+  }
+
+  /** A banner is up for `ms` under the HUD: keep the head below it too. */
+  coverTop(ms: number): void {
+    this.bannerLeftMs = Math.max(this.bannerLeftMs, ms + CAMERA.bannerOutMs);
   }
 
   get viewW(): number {
@@ -122,6 +133,9 @@ export class CameraRig {
   }
 
   update(t: FollowTarget, dt: number): void {
+    this.bannerLeftMs = Math.max(0, this.bannerLeftMs - dt * 1000);
+    const band = this.bannerLeftMs > 0 ? this.bannerPx : 0;
+    this.bannerBand += (band - this.bannerBand) * smooth(CAMERA.bannerRate, dt);
     this.look += (t.facing * this.lookAhead(t.flying ?? false) - this.look) * smooth(CAMERA.lookAheadRate, dt);
     if (t.onGround) this.focusY = t.bottom;
     else if (t.bottom < this.focusY - CAMERA.deadUp) this.focusY = t.bottom + CAMERA.deadUp;
@@ -133,7 +147,7 @@ export class CameraRig {
     this.clampAndApply(t);
   }
 
-  /** Clamps to the level (plus the inset bands) and keeps the head below the HUD bar. */
+  /** Clamps to the level (plus the inset bands) and keeps the head below the HUD bar and banner. */
   private clampAndApply(t?: FollowTarget): void {
     const w = this.viewW;
     const h = this.viewH;
@@ -142,7 +156,7 @@ export class CameraRig {
     this.viewY = h >= this.levelH ? bottom - h : Math.max(-this.topBand, Math.min(bottom - h, this.viewY));
     if (t) {
       // a high jump pushes the view up into the sky rather than under the HUD
-      const headLimit = t.top - this.topBand - CAMERA.headMargin;
+      const headLimit = t.top - this.topBand - this.bannerBand - CAMERA.headMargin;
       this.viewY = Math.max(Math.min(this.viewY, headLimit), -this.topBand - CAMERA.maxExtraTop);
     }
     // snap to whole device pixels so every art pixel keeps the same size on screen

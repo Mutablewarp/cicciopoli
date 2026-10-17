@@ -13,9 +13,14 @@ export const COLS = 28;
 export const ROWS = 31;
 export const MAZE_W = COLS * TILE;
 export const MAZE_H = ROWS * TILE;
-export const TUNNEL_ROW = 14;
+/** Two side tunnels that wrap around, just above and just below the ghost house. */
+export const TUNNEL_ROWS: readonly number[] = [11, 17];
 
-/** Left half; the right half is its mirror image. */
+/**
+ * Left half; the right half is its mirror image. Ciccio's own board (not the arcade one):
+ * the printed logo tray on top, two wrap-around tunnels hugging the ghost house and a
+ * side tray between them, stacked flat trays above, a lone side lane below.
+ */
 const LEFT: readonly string[] = [
   '##############',
   '#.............',
@@ -23,20 +28,20 @@ const LEFT: readonly string[] = [
   '#o###.######.#',
   '#.###.######.#',
   '#.............',
-  '#.###.###.####',
-  '#.###.###.####',
+  '#.#######.####',
+  '#.#######.####',
   '#.........####',
-  '#####.### ####',
-  '#####.### ####',
-  '#####.        ',
-  '#####.### ###-',
-  '#####.### #___',
-  '     .### #___',
-  '#####.### #___',
-  '#####.### ####',
-  '#####.        ',
-  '#####.### ####',
-  '#####.### ####',
+  '#.####### ####',
+  '#.####### ####',
+  '              ',
+  '###.#####.###-',
+  '###.#####.#___',
+  '###.#####.#___',
+  '###.#####.#___',
+  '###.#####.####',
+  '              ',
+  '###.##### ####',
+  '###.##### ####',
   '#.............',
   '#.###.######.#',
   '#.###.######.#',
@@ -64,7 +69,7 @@ export interface TilePos {
 export interface MazeGrid {
   readonly cols: number;
   readonly rows: number;
-  /** Out-of-board cells are walls, except along the tunnel row which wraps around. */
+  /** Out-of-board cells are walls, except along the tunnel rows which wrap around. */
   cell(c: number, r: number): Cell;
   /** Corridor cell (player and roaming ghosts). The door and the house are not corridors. */
   open(c: number, r: number): boolean;
@@ -91,7 +96,7 @@ export function parseMaze(rows: readonly string[]): MazeGrid {
   const cell = (c: number, r: number): Cell => {
     if (r < 0 || r >= h) return 'wall';
     if (c < 0 || c >= w) {
-      if (r !== TUNNEL_ROW) return 'wall';
+      if (!TUNNEL_ROWS.includes(r)) return 'wall';
       c = ((c % w) + w) % w;
     }
     return cells[r * w + c];

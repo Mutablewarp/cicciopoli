@@ -7,7 +7,7 @@ import type Phaser from 'phaser';
 import { ITEM_ANIMS, ITEMS } from '../../art/keys';
 import { BONUS_FRAME, MAZE_ANIMS, MAZE_ART } from '../../art/maze/keys';
 import { DEPTH } from './actors';
-import { CENTRE_SPOT, COLS, HOLE_SPOT, MAZE, MAZE_H, MAZE_W, TILE, TUNNEL_ROW, centerOf } from './layout';
+import { CENTRE_SPOT, COLS, HOLE_SPOT, MAZE, MAZE_H, MAZE_W, TILE, TUNNEL_ROWS, centerOf } from './layout';
 
 export type BonusKind = keyof typeof BONUS_FRAME;
 /** The bonus flips between the three foods; Ciccio gets whichever is showing. */
@@ -47,12 +47,11 @@ export class BoardView {
     add.image(0, 0, MAZE_ART.board).setOrigin(0).setDepth(DEPTH.board);
     this.flashRect = add.rectangle(0, 0, MAZE_W, MAZE_H, 0xfff4e0, 0.3).setOrigin(0).setDepth(DEPTH.dots + 0.5).setVisible(false);
     this.covers = [0, 1].map(() => add.tileSprite(0, 0, 64, 64, MAZE_ART.panel).setOrigin(0).setDepth(DEPTH.covers).setTint(PAPER_TINT));
-    // tunnel mouths: the corridor runs on under the tray paper and fades to dark
-    const ty = TUNNEL_ROW * TILE - 8;
-    this.mouths = [
-      add.image(0, ty, MAZE_ART.mouth).setOrigin(1, 0).setDepth(DEPTH.covers + 1),
-      add.image(MAZE_W, ty, MAZE_ART.mouth).setOrigin(0, 0).setFlipX(true).setDepth(DEPTH.covers + 1),
-    ];
+    // tunnel mouths: the corridors run on under the tray paper and fade to dark
+    this.mouths = TUNNEL_ROWS.flatMap((row) => [
+      add.image(0, row * TILE - 8, MAZE_ART.mouth).setOrigin(1, 0).setDepth(DEPTH.covers + 1),
+      add.image(MAZE_W, row * TILE - 8, MAZE_ART.mouth).setOrigin(0, 0).setFlipX(true).setDepth(DEPTH.covers + 1),
+    ]);
     for (const p of MAZE.dots) {
       this.dots.set(p.r * COLS + p.c, add.image(centerOf(p.c), centerOf(p.r), MAZE_ART.dot).setDepth(DEPTH.dots));
     }
@@ -146,8 +145,10 @@ export class BoardView {
     this.bonus.setVisible(false);
   }
 
+  /** Both captions share CENTRE_SPOT: "VAI IN BUCA!" (hole open) steps aside while "PRONTI!" shows. */
   showReady(on: boolean): void {
     this.ready.setVisible(on);
+    this.goText.setVisible(!on && this.hole.visible);
   }
 
   /** Board cleared: the golf hole opens with its flag and the caption starts blinking. */

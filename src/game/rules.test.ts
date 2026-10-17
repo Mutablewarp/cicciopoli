@@ -39,13 +39,13 @@ describe('run rules', () => {
     expect(r.hearts).toBe(3);
   });
 
-  it('pits ignore the shield, drop brie, keep other powers', () => {
+  it('pits ignore the shield (a heart is lost) and keep every power, brie too', () => {
     const r = createRun(1);
     collect(r, 'brie');
     collect(r, 'thai');
     expect(pitFall(r)).toBe('respawn');
     expect(r.hearts).toBe(3);
-    expect(r.powers).toEqual({ brie: false, goat: false, thai: true, wings: false });
+    expect(r.powers).toEqual({ brie: true, goat: false, thai: true, wings: false });
   });
 
   it('reports death at zero hearts', () => {

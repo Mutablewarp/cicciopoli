@@ -9,6 +9,14 @@
 .cc-loading.is-leaving {
   opacity: 0;
 }
+/* Finishing over a level: the game is already live, so a thumb that lands now reaches the
+   controls. Over the title it keeps blocking: the menu stays under the black until it is gone. */
+.cc-loading.is-done {
+  pointer-events: none;
+}
+.cc-title:not([hidden]) ~ .cc-loading.is-done {
+  pointer-events: auto;
+}
 .cc-loading > * {
   transition: opacity 220ms ease-out;
 }
@@ -141,8 +149,19 @@
   line-height: 1.2;
   letter-spacing: 0.04em;
   text-align: center;
+  text-wrap: balance;
   color: var(--cream);
   text-shadow: 1px 1px 0 var(--ink);
+}
+/* 320px phones: the hint stays on one line, so the banner covers less of the playfield */
+@media (max-width: 359px) {
+  .cc-banner {
+    padding: 6px 10px 5px;
+  }
+  .cc-banner__sub {
+    font-size: 12px;
+    letter-spacing: 0;
+  }
 }
 .cc-banner--power {
   --tone: var(--yellow);

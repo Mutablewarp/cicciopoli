@@ -140,6 +140,8 @@ export interface HudState {
   /** 0..1 progress from start to goal */
   progress: number;
   powers: PowerState;
+  /** level 3: FULMINE charges, shown as a digit on the bolt chip (desktop has no touch badge) */
+  boltCount?: number;
 }
 
 export type ButtonState = 'hidden' | 'disabled' | 'enabled';

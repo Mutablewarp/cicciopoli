@@ -35,10 +35,14 @@ export class Projectiles {
 
   update(dt: number): void {
     const sec = dt / 1000;
+    // cull once off the visible view, which can reach beyond the field on tall / wide screens
+    const view = this.scene.cameras.main.worldView;
+    const top = Math.min(0, view.y) - 8;
+    const bottom = Math.max(FIELD.h, view.bottom) + 8;
     for (const s of this.shots) s.y -= SHOT.speed * sec;
     for (const b of this.bombs) b.sprite.y += b.vy * sec;
-    this.shots = this.shots.filter((s) => (s.y > -8 ? true : (s.destroy(), false)));
-    this.bombs = this.bombs.filter((b) => (b.sprite.y < FIELD.h + 8 ? true : (b.sprite.destroy(), false)));
+    this.shots = this.shots.filter((s) => (s.y > top ? true : (s.destroy(), false)));
+    this.bombs = this.bombs.filter((b) => (b.sprite.y < bottom ? true : (b.sprite.destroy(), false)));
   }
 
   removeShot(s: Phaser.GameObjects.Sprite): void {

@@ -194,7 +194,31 @@ window.addEventListener('orientationchange', () => {
 });
 
 /* ------------------------------------------------- focus / visibility */
-window.addEventListener('blur', () => input.reset());
+window.addEventListener('blur', () => {
+  input.reset();
+  // notification shade / Control Center / call overlay: pause once focus is really gone
+  window.setTimeout(() => {
+    if (!document.hasFocus() && currentLevel !== null) game.events.emit('app-hidden');
+  }, 0);
+});
+// A lazy level chunk that fails (weak signal, redeploy while open): reload once, not placeholders.
+window.addEventListener('vite:preloadError', (e) => {
+  try {
+    if (sessionStorage.getItem('cc-reloaded') === '1') return;
+    sessionStorage.setItem('cc-reloaded', '1');
+  } catch {
+    return; // storage blocked: never risk a reload loop
+  }
+  e.preventDefault();
+  location.reload();
+});
+window.setTimeout(() => {
+  try {
+    sessionStorage.removeItem('cc-reloaded');
+  } catch {
+    /* storage blocked */
+  }
+}, 10000);
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     input.reset();

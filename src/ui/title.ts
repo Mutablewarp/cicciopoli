@@ -2,7 +2,7 @@
 import type { LevelId, TitleInfo } from '../contracts';
 import { LEVEL_IDS } from '../contracts';
 import { PAL } from '../art/pixel';
-import { el, onActivate, pixelSvg } from './dom';
+import { brandImage, el, onActivate, pixelSvg } from './dom';
 import { SPEAKER_OFF, SPEAKER_ON } from './icons';
 import { LOGO_URL } from './loading';
 import { Menu } from './menu';
@@ -48,10 +48,7 @@ export function createTitle(onChange: () => void): Title {
     sound.setAttribute('aria-pressed', String(muted));
   }
 
-  const logo = el('img', 'cc-logo');
-  logo.src = LOGO_URL;
-  logo.alt = "CICCIO'S";
-  logo.decoding = 'async';
+  const logo = brandImage('cc-logo', LOGO_URL).img;
   const brand = el('div', 'cc-title__brand');
   brand.append(logo, el('p', 'cc-title__sub', 'THE BURGER ADVENTURE'));
 

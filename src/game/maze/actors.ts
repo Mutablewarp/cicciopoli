@@ -6,7 +6,7 @@ import type Phaser from 'phaser';
 import type { Dir4 } from '../../contracts';
 import { CICCIO_FRAMES, EYES_FRAME, GHOST_FRAMES, MAZE_ART } from '../../art/maze/keys';
 import { chooseRandom, chooseToward, frightFlashWhite, type GhostName } from './ai';
-import { HOUSE, MAZE, OPPOSITE, START, TUNNEL_ROW, tileOf, type TilePos } from './layout';
+import { HOUSE, MAZE, OPPOSITE, START, TUNNEL_ROWS, tileOf, type TilePos } from './layout';
 import { stepGhost, stepPlayer, tryTurn, type Mover } from './movement';
 
 export const SPEED = {
@@ -134,7 +134,7 @@ export class Ghost {
     if (this.state === 'entering') return SPEED.enter;
     if (this.state !== 'active') return SPEED.house;
     const t = this.tile;
-    if (t.r === TUNNEL_ROW && (t.c <= 4 || t.c >= 23)) return SPEED.tunnel;
+    if (TUNNEL_ROWS.includes(t.r) && (t.c <= 4 || t.c >= 23)) return SPEED.tunnel;
     if (this.frightened) return SPEED.fright;
     return this.name === 'pickle' && w.elroy ? SPEED.elroy : SPEED.ghost;
   }

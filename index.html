@@ -15,6 +15,10 @@
     <meta name="format-detection" content="telephone=no" />
     <meta name="description" content="CICCIO'S — The Burger Adventure. Demo concept di un platform pixel art giocabile da telefono e computer." />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <!-- the logo starts downloading now, not after the game bundle has run -->
+    <link rel="preload" as="image" href="./brand/ciccios-logo.png" fetchpriority="high" />
     <title>CICCIO'S — The Burger Adventure</title>
     <style>
       /* Critical pre-paint styles so nothing flashes white before the CSS bundle loads. */
@@ -26,16 +30,17 @@
         align-items: center; justify-content: center; gap: 18px; background: #000;
         color: #fff; font-family: "Helvetica Neue", Arial, sans-serif; pointer-events: none;
       }
-      #cc-splash b {
-        font-weight: 300; font-size: 34px; letter-spacing: 0.32em; margin-right: -0.32em;
-        transform: scaleY(1.35); -webkit-text-stroke: 0.6px #fff;
-      }
+      /* same logo and size as the loading screen; shown only once fully loaded */
+      #cc-splash img { height: clamp(84px, 16vh, 140px); aspect-ratio: 607 / 1040; opacity: 0; transition: opacity 260ms ease-out; }
       #cc-splash span { font-size: 15px; letter-spacing: 0.08em; color: #e4cca8; animation: cc-splash 1s steps(2) infinite; }
       @keyframes cc-splash { 50% { opacity: 0.45; } }
     </style>
   </head>
   <body>
-    <div id="cc-splash" aria-live="polite"><b>CICCIO'S</b><span>Caricamento…</span></div>
+    <div id="cc-splash" aria-live="polite">
+      <img src="./brand/ciccios-logo.png" alt="CICCIO'S" fetchpriority="high" onload="this.style.opacity = 1" />
+      <span>Caricamento…</span>
+    </div>
     <div id="app"></div>
     <noscript style="position:relative;z-index:2;color:#fce4c0;font-family:sans-serif;display:block;padding:24px">
       Per giocare abilita JavaScript.

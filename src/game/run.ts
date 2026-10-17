@@ -4,7 +4,7 @@
  * flows (pit, death, victory) in flow.ts.
  */
 import type Phaser from 'phaser';
-import type { CiccioFrameAnchors, LevelId, PowerState, Services } from '../contracts';
+import type { BannerTone, CiccioFrameAnchors, LevelId, PowerState, Services } from '../contracts';
 import { TILE } from '../art/keys';
 import { HERO } from '../config/tuning';
 import { Blocks } from './blocks';
@@ -117,6 +117,12 @@ export class LevelRun {
   followTarget(): FollowTarget {
     const p = this.player;
     return { x: p.x, bottom: p.bottom, top: p.top, facing: p.facing, onGround: p.onGround, flying: p.mode.id === 'flight' && !p.onGround };
+  }
+
+  /** Shows a banner; the camera keeps Ciccio's head clear of it while it is up. */
+  banner(text: string, opts: { ms: number; tone: BannerTone; sub?: string }): void {
+    this.svc.ui.banner(text, opts);
+    this.rig.coverTop(opts.ms);
   }
 
   /** Zoom / framing after a resize or rotation; renders correctly even while paused. */

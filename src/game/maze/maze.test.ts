@@ -12,8 +12,10 @@ import {
   ghostEatPoints,
   targetFor,
 } from './ai';
-import { CENTRE_SPOT, COLS, HOLE_SPOT, HOUSE, MAZE, MAZE_ROWS, MAZE_W, ROWS, START, TUNNEL_ROW, centerOf, parseMaze, tileOf } from './layout';
-import { CORNER_PX, stepGhost, stepPlayer, tryTurn, type Mover } from './movement';
+import { CENTRE_SPOT, COLS, HOLE_SPOT, HOUSE, MAZE, MAZE_ROWS, MAZE_W, ROWS, START, TUNNEL_ROWS, centerOf, parseMaze, tileOf } from './layout';
+import { CORNER_PX, heldDir, stepGhost, stepPlayer, tryTurn, type Axis, type Mover } from './movement';
+
+const TUNNEL_ROW = TUNNEL_ROWS[0];
 
 const open = MAZE.open;
 
@@ -51,10 +53,14 @@ describe('maze layout', () => {
     expect(seen.size).toBe(cells.length);
   });
 
-  it('treats out-of-board cells as walls except along the wrapping tunnel row', () => {
-    expect(open(-1, TUNNEL_ROW)).toBe(true);
-    expect(open(COLS, TUNNEL_ROW)).toBe(true);
+  it('treats out-of-board cells as walls except along the wrapping tunnel rows', () => {
+    expect(TUNNEL_ROWS).toHaveLength(2);
+    for (const row of TUNNEL_ROWS) {
+      expect(open(-1, row)).toBe(true);
+      expect(open(COLS, row)).toBe(true);
+    }
     expect(open(-1, 1)).toBe(false);
+    expect(open(-1, 14)).toBe(false); // no arcade-style tunnel through the middle of the house
     expect(MAZE.cell(13, 12)).toBe('door');
     expect(MAZE.cell(13, 14)).toBe('house');
     expect(open(13, 12)).toBe(false);
@@ -112,6 +118,41 @@ describe('player movement', () => {
     expect(tryTurn(m, 'left', open)).toBe(true);
     stepPlayer(m, 1, open);
     expect(m.x).toBe(centerOf(3) + 1);
+  });
+
+  // L4-01: Left+Up held at the (12,23) junction used to flip up/left every frame and freeze Ciccio
+  function holdBoth(last: Axis, frames: number): { m: Mover; turns: number } {
+    const m: Mover = { x: START.ciccio.x, y: START.ciccio.y, dir: 'left', moving: true };
+    let turns = 0;
+    for (let i = 0; i < frames; i++) {
+      if (tryTurn(m, heldDir(-1, -1, last, m, open), open)) turns++;
+      stepPlayer(m, 64 / 60, open);
+    }
+    return { m, turns };
+  }
+
+  it('with two axes held, follows the newest press through a junction without flipping', () => {
+    const up = holdBoth('v', 30);
+    expect(tileOf(up.m.y)).toBeLessThan(23); // took the up exit at (12,23)
+    expect(tileOf(up.m.x)).toBe(12);
+    expect(up.turns).toBe(1);
+    // up is walled at (12,20): stops, slides left along row 20, turns up again at col 9
+    const far = holdBoth('v', 60);
+    expect([tileOf(far.m.x), tileOf(far.m.y), far.m.dir]).toEqual([9, 19, 'up']);
+    expect(far.turns).toBe(3);
+    const left = holdBoth('h', 60);
+    expect(tileOf(left.m.y)).toBe(23); // kept running left past the junction
+    expect(tileOf(left.m.x)).toBeLessThan(12);
+    expect(left.turns).toBe(0);
+  });
+
+  it('with two axes held and the newest way walled, a stopped player takes the other way', () => {
+    const m = mover(1, 1, 'up', false); // wall above, corridor to the right
+    expect(heldDir(1, -1, 'v', m, open)).toBe('right');
+    m.moving = true;
+    expect(heldDir(1, -1, 'v', m, open)).toBe('up'); // moving: keep the newest way buffered
+    expect(heldDir(1, 0, 'v', m, open)).toBe('right');
+    expect(heldDir(0, 0, 'h', m, open)).toBe(null);
   });
 
   it('wraps through the side tunnel', () => {
@@ -175,12 +216,12 @@ describe('ghost targeting', () => {
   });
 
   it('never reverses by choice and breaks ties up > left > down > right', () => {
-    // row 5 col 5 is a crossroads; moving right, target straight up
-    expect(exits(5, 5, 'right', open)).toEqual(['up', 'down', 'right']);
-    expect(chooseToward(5, 5, 'right', { c: 5, r: -10 }, open)).toBe('up');
-    expect(chooseToward(5, 5, 'right', { c: 5, r: 5 }, open)).toBe('up'); // tie: up/down/right equal
-    expect(chooseToward(5, 5, 'right', { c: 30, r: 5 }, open)).toBe('right');
-    const r = chooseRandom(5, 5, 'right', open, () => 0.99);
+    // row 17 col 3 is a crossroads (lower tunnel x side lane); moving right, target straight up
+    expect(exits(3, 17, 'right', open)).toEqual(['up', 'down', 'right']);
+    expect(chooseToward(3, 17, 'right', { c: 3, r: -10 }, open)).toBe('up');
+    expect(chooseToward(3, 17, 'right', { c: 3, r: 17 }, open)).toBe('up'); // tie: up/down/right equal
+    expect(chooseToward(3, 17, 'right', { c: 30, r: 17 }, open)).toBe('right');
+    const r = chooseRandom(3, 17, 'right', open, () => 0.99);
     expect(r).toBe('right');
   });
 });

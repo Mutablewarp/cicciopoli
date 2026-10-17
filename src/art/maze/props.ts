@@ -144,7 +144,7 @@ export function caption(text: string): HTMLCanvasElement {
   return c;
 }
 
-/** 12x22: the tunnel corridor continuing left of the board edge (y 106..127), fading to dark. */
+/** 12x22: a tunnel corridor continuing left of the board edge (from 8 px above its row), fading to dark. */
 export function tunnelMouth(): HTMLCanvasElement {
   const w = 12;
   const c = makeCanvas(w, 22);

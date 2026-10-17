@@ -45,7 +45,18 @@ export class Story {
       ease: 'Cubic.easeOut',
       onComplete: () => jet.setBank(0),
     });
-    scene.tweens.add({ targets: title, alpha: 0, y: 92, delay: 1900, duration: 420, ease: 'Quad.easeIn', onComplete: () => title.destroy() });
+    scene.tweens.add({
+      targets: title,
+      alpha: 0,
+      y: 92,
+      delay: 1900,
+      duration: 420,
+      ease: 'Quad.easeIn',
+      onComplete: () => {
+        title.destroy();
+        b.backdrop.revealSide(); // only now: two wordmarks side by side look like a glitch
+      },
+    });
     scene.time.delayedCall(1850, () => {
       if (b.phase === 'intro') this.startWave(0);
     });
@@ -157,6 +168,7 @@ export class Story {
     const { b, scene } = this;
     if (b.phase === 'dying' || b.phase === 'over' || b.phase === 'won') return;
     b.phase = 'dying';
+    b.shots.clearShots(); // provola sticks still in flight must not score after the death
     const { x } = b.jet;
     b.jet.steer = false;
     b.svc.audio.sfx('explode');

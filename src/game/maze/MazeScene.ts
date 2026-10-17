@@ -121,13 +121,22 @@ export class MazeScene extends Phaser.Scene {
     cam.setSize(W, H);
     const top = vp.insetTop * vp.dpr;
     let availH = Math.max(64, H - top - vp.insetBottom * vp.dpr);
+    let left0 = 0;
+    let availW = W;
     if (!vp.portrait) {
       const full = Math.max(64, H - top);
-      if ((W - MAZE_W * fitZoom(W, full)) / 2 / vp.dpr >= LANDSCAPE_SIDE_CSS) availH = full;
+      const pad = LANDSCAPE_SIDE_CSS * vp.dpr;
+      if ((W - MAZE_W * fitZoom(W, full)) / 2 >= pad) availH = full;
+      else if (W - pad > H * 0.6) {
+        // narrow landscape: the cross-pad owns the left column, the board takes the rest at full height
+        availH = full;
+        left0 = pad;
+        availW = W - pad;
+      }
     }
-    const z = fitZoom(W, availH);
+    const z = fitZoom(availW, availH);
     cam.setZoom(z);
-    const sx = Math.round((W - MAZE_W * z) / 2);
+    const sx = Math.round(left0 + (availW - MAZE_W * z) / 2);
     const sy = Math.round(top + (availH - MAZE_H * z) / 2);
     // Phaser zooms around the camera centre: scroll = visible top-left - half size * (1 - 1/z)
     const left = -sx / z;

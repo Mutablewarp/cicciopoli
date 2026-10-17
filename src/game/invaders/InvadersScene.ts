@@ -26,6 +26,8 @@ export class InvadersScene extends Phaser.Scene {
   private hud: HudLink | null = null;
   private paused = false;
   private cleanups: Array<() => void> = [];
+  /** bumped by every create() and teardown(): a boot() that sees another value is stale */
+  private gen = 0;
 
   constructor() {
     super({ key: 'invaders' });
@@ -45,7 +47,7 @@ export class InvadersScene extends Phaser.Scene {
     this.svc.ui.showHud(false);
     this.listen();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.teardown());
-    void this.boot();
+    void this.boot(++this.gen);
   }
 
   private listen(): void {
@@ -64,8 +66,11 @@ export class InvadersScene extends Phaser.Scene {
     );
   }
 
-  private async boot(): Promise<void> {
+  private async boot(gen: number): Promise<void> {
     const { ui } = this.svc;
+    // the scene may be stopped (menu) or restarted while the art loads. Not isActive(): when the
+    // art is cached this runs synchronously inside create(), while the status is still CREATING
+    const stale = (): boolean => gen !== this.gen;
     if (!this.textures.exists(SPACE.jet)) {
       ui.setLoading(0.3, 'Accendo i motori del jet…');
       await nextFrame();
@@ -73,17 +78,18 @@ export class InvadersScene extends Phaser.Scene {
         const mod = (await ART['../../art/space.ts']()) as { buildSpaceArt: () => ArtPack };
         ui.setLoading(0.6, 'Accendo i motori del jet…');
         await nextFrame();
+        if (stale()) return;
         registerArtPack(this, mod.buildSpaceArt());
       } catch (err) {
         console.error('[cicciopoli] space art failed', err);
+        if (stale()) return;
         ui.setLoading(null);
         ui.banner('ERRORE GRAFICA', { tone: 'danger', ms: 2000 });
         this.svc.app.toMenu();
         return;
       }
     }
-    // the scene may have been stopped (menu / restart) while the art was loading
-    if (!this.sys.isActive() || this.battle) return;
+    if (stale() || this.battle) return;
     const battle = new Battle(this, this.svc);
     const story = new Story(battle, {
       restart: () => this.restartLevel(),
@@ -169,6 +175,7 @@ export class InvadersScene extends Phaser.Scene {
   }
 
   private teardown(): void {
+    this.gen++;
     this.cleanups.forEach((fn) => fn());
     this.cleanups = [];
     this.battle = null;

@@ -128,6 +128,10 @@ export function createHud(): Hud {
   }
 
   function update(s: Partial<HudState>): void {
+    if (s.boltCount !== undefined) {
+      const chip = chipEls.get('bolt');
+      if (chip) chip.dataset.count = s.boltCount > 1 ? String(Math.min(99, s.boltCount)) : '';
+    }
     if (s.hearts !== undefined || s.maxHearts !== undefined) {
       const max = s.maxHearts ?? (cur.maxHearts < 0 ? 4 : cur.maxHearts);
       const count = Math.max(0, Math.min(max, s.hearts ?? cur.hearts));

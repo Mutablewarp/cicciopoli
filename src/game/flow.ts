@@ -45,10 +45,10 @@ export class Flow {
     const cp = this.r.checkpoints.update(player.x);
     if (cp) {
       svc.audio.sfx('checkpoint');
-      svc.ui.banner('CHECKPOINT!', { tone: 'info', ms: 1400 });
+      this.r.banner('CHECKPOINT!', { tone: 'info', ms: 1400 });
       this.r.fx.sparkleBurst(cp.x, cp.feetY - 26, 6, 12);
     }
-    if (this.r.goal.shouldAnnounce(player.x)) svc.ui.banner('VAI IN BUCA!', { tone: 'goal', ms: 2400 });
+    if (this.r.goal.shouldAnnounce(player.x)) this.r.banner('VAI IN BUCA!', { tone: 'goal', ms: 2400 });
     const prevX = this.prevX;
     this.prevX = player.x;
     if (this.r.goal.swallows(prevX, player.x, player.bottom, player.onGround)) this.win();
@@ -108,7 +108,6 @@ export class Flow {
     cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       const p = checkpoints.point;
       player.body.enable = true;
-      player.setBrie(false);
       player.teleport(p.x, p.feetY);
       player.facing = 1;
       player.invuln.start(HERO.respawnInvulnMs);

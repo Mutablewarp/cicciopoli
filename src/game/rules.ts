@@ -74,10 +74,9 @@ export function enemyHit(run: RunState): HitOutcome {
   return run.hearts > 0 ? 'hurt' : 'dead';
 }
 
-/** Pits / lava ignore the shield; other powers are kept, Brie is lost. */
+/** Pits / lava ignore the shield (a heart is always lost); every power, Brie too, is kept (BRIEF §4). */
 export function pitFall(run: RunState): 'respawn' | 'dead' {
   run.hearts = Math.max(0, run.hearts - 1);
-  run.powers.brie = false;
   return run.hearts > 0 ? 'respawn' : 'dead';
 }
 

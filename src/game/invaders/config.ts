@@ -82,3 +82,5 @@ export const SHIELDS = { top: 206, xs: [28, 84, 140, 196] } as const;
 /** caught-food tray along the bottom of the field */
 export const TRAY = { y: 279, x0: 10, step: 15, max: 14 } as const;
 export const HOLE = { x: 112, y: 76 } as const;
+/** hit shake: amplitude in world px, whatever the zoom (the backdrop is padded beyond it) */
+export const SHAKE = { ms: 180, px: 3 } as const;

@@ -94,6 +94,8 @@ export const KILL_FX = {
   burnMs: 560,
   /** engulf frame from which the enemy is hidden under the blob */
   engulfHideFrame: 3,
+  /** a walker killed mid-hop drops at most this far (world px) to the ground before its effect */
+  dropMaxPx: 64,
 } as const;
 
 /** Provola Goat cheese shots. */
@@ -184,6 +186,15 @@ export const CAMERA = {
   headMargin: 6,
   /** world px the view may rise above the level top beyond the HUD band (high jumps) */
   maxExtraTop: 64,
+  /**
+   * CSS px under the HUD band a banner covers (8 px offset + box + 7 px drop shadow, measured
+   * from ui/overlays.css: one line in landscape, two in portrait). The head stays below it.
+   */
+  bannerCss: { landscape: 56, portrait: 70 },
+  /** the banner's slide-out after its time is up (ui/banner.ts OUT_MS) */
+  bannerOutMs: 240,
+  /** smoothing rate (1/s) of the banner band, so the view never jumps when one pops in */
+  bannerRate: 8,
   /** screen shake amplitudes, world px */
   shakeHurt: 4,
   shakeClang: 2,

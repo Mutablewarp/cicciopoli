@@ -6,7 +6,7 @@
 import type Phaser from 'phaser';
 import { ITEMS } from '../../art/keys';
 import { SPACE } from '../../art/space/keys';
-import { FIELD, FOOD_POINTS, POINTS, TRAY } from './config';
+import { FIELD, FOOD_POINTS, POINTS, SHAKE, TRAY } from './config';
 import { Z } from './fx';
 
 export interface ViewRect {
@@ -36,7 +36,7 @@ export class Backdrop {
   private readonly legend: Phaser.GameObjects.Container;
   private view: ViewRect = { x: 0, y: 0, w: FIELD.w, h: FIELD.h };
 
-  constructor(scene: Phaser.Scene) {
+  constructor(private readonly scene: Phaser.Scene) {
     this.sky = scene.add.image(0, 0, SPACE.sky).setOrigin(0, 0).setDepth(Z.sky);
     this.stars = [SPACE.starsFar, SPACE.starsMid, SPACE.starsNear].map((key, i) =>
       scene.add.tileSprite(0, 0, 128, 128, key).setOrigin(0, 0).setDepth(Z.stars + i),
@@ -53,7 +53,8 @@ export class Backdrop {
     this.drifters[0].img.setDepth(Z.deco - 1).setAlpha(0.7);
     this.drifters[1].img.setAlpha(0.55);
     this.drifters[2].img.setAlpha(0.6);
-    this.side = scene.add.image(0, 0, SPACE.title).setDepth(Z.side).setVisible(false);
+    // transparent until the intro's big centre wordmark leaves (revealSide): never two titles at once
+    this.side = scene.add.image(0, 0, SPACE.title).setDepth(Z.side).setVisible(false).setAlpha(0);
     this.legend = buildLegend(scene).setDepth(Z.side).setVisible(false);
     // faint playfield edges + the tray baseline (only noticeable when the view is wider)
     const g = scene.add.graphics().setDepth(Z.frame);
@@ -66,7 +67,7 @@ export class Backdrop {
 
   layout(view: ViewRect): void {
     this.view = view;
-    const pad = 2;
+    const pad = SHAKE.px + 2; // the hit shake must never bare the camera background
     this.sky.setPosition(view.x - pad, view.y - pad).setDisplaySize(view.w + pad * 2, view.h + pad * 2);
     for (const s of this.stars) s.setPosition(view.x - pad, view.y - pad).setSize(Math.ceil(view.w + pad * 2), Math.ceil(view.h + pad * 2));
     const panel = (view.w - FIELD.w) / 2;
@@ -81,6 +82,11 @@ export class Backdrop {
     this.legend.setVisible(legendFits);
     if (legendFits) this.legend.setPosition(Math.round(FIELD.w + panel / 2 - LEGEND_W / 2), Math.round(view.y + view.h * 0.3 - 30));
     this.place();
+  }
+
+  /** Fades the side-panel wordmark in (it shows only when landscape leaves room for it). */
+  revealSide(): void {
+    this.scene.tweens.add({ targets: this.side, alpha: 1, duration: 420 });
   }
 
   /** warp > 1 speeds the stars up (black hole). */

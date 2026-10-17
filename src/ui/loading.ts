@@ -1,6 +1,6 @@
 /** Loading screen: bouncing pixel burger, segmented bar, message and percent. */
 import { PAL } from '../art/pixel';
-import { el, pixelSvg, setText } from './dom';
+import { brandImage, el, pixelSvg, setText } from './dom';
 
 const BURGER = [
   '.....kkkkkk.....',
@@ -39,6 +39,9 @@ const SEGMENTS = 14;
 export const LOGO_URL = `${import.meta.env.BASE_URL}brand/ciccios-logo.png`;
 const FILL_STEP_MS = 22;
 const FADE_MS = 240;
+/** Longest a finished loader waits for the logo to decode before leaving to the title. */
+const LOGO_WAIT_MS = 1500;
+const LOGO_POLL_MS = 50;
 
 export interface Loading {
   readonly root: HTMLElement;
@@ -53,10 +56,9 @@ export interface Loading {
 export function createLoading(opaqueExit: () => boolean, onHidden: () => void): Loading {
   const root = el('section', 'cc-screen cc-loading');
   root.setAttribute('aria-live', 'polite');
-  const logo = el('img', 'cc-loading__logo');
-  logo.src = LOGO_URL;
-  logo.alt = "CICCIO'S";
-  logo.decoding = 'async';
+  const { img: logo, ready } = brandImage('cc-loading__logo', LOGO_URL);
+  let logoShown = false;
+  void ready.then(() => (logoShown = true));
   const burger = el('div', 'cc-loading__burger', pixelSvg(BURGER, BURGER_PAL) + '<i class="cc-loading__shadow"></i>');
   const msg = el('p', 'cc-loading__msg', 'Caricamento…');
   const bar = el('div', 'cc-loading__bar');
@@ -67,6 +69,7 @@ export function createLoading(opaqueExit: () => boolean, onHidden: () => void): 
   root.hidden = true;
   let timer = 0;
   let lit = 0;
+  let waited = 0;
 
   function show(p: number): void {
     lit = Math.round(p * SEGMENTS);
@@ -78,7 +81,7 @@ export function createLoading(opaqueExit: () => boolean, onHidden: () => void): 
     root.classList.add(opaqueExit() ? 'is-leaving-opaque' : 'is-leaving');
     timer = window.setTimeout(() => {
       root.hidden = true;
-      root.classList.remove('is-leaving', 'is-leaving-opaque');
+      root.classList.remove('is-done', 'is-leaving', 'is-leaving-opaque');
       onHidden();
     }, FADE_MS);
   }
@@ -86,6 +89,12 @@ export function createLoading(opaqueExit: () => boolean, onHidden: () => void): 
   function fill(): void {
     if (lit >= SEGMENTS) {
       setText(pct, '100%');
+      // first visit on a slow network: the title must not appear before its logo can
+      if (!logoShown && waited < LOGO_WAIT_MS && opaqueExit()) {
+        waited += LOGO_POLL_MS;
+        timer = window.setTimeout(fill, LOGO_POLL_MS);
+        return;
+      }
       timer = window.setTimeout(leave, 120);
       return;
     }
@@ -98,11 +107,14 @@ export function createLoading(opaqueExit: () => boolean, onHidden: () => void): 
     set(progress, message) {
       window.clearTimeout(timer);
       if (progress === null) {
-        if (!root.hidden) fill();
+        if (root.hidden) return;
+        waited = 0;
+        root.classList.add('is-done'); // the game is live underneath: touches go through (overlays.css)
+        fill();
         return;
       }
       root.hidden = false;
-      root.classList.remove('is-leaving', 'is-leaving-opaque');
+      root.classList.remove('is-done', 'is-leaving', 'is-leaving-opaque');
       show(Math.max(0, Math.min(1, progress)));
       if (message) setText(msg, message);
     },

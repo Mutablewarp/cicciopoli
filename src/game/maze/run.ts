@@ -10,7 +10,8 @@ import { FRIGHT_MS, GHOST_NAMES, ModeTimer, ghostEatPoints, targetFor, type Ghos
 import { Ciccio, Ghost, SPEED, type GhostWorld } from './actors';
 import { BONUS_POINTS, BoardView } from './boardView';
 import { poof, popup } from './fx';
-import { CENTRE_SPOT, HOLE_SPOT, MAZE } from './layout';
+import { CENTRE_SPOT, DIRV, HOLE_SPOT, MAZE } from './layout';
+import { heldDir, type Axis } from './movement';
 
 export type Phase = 'ready' | 'play' | 'eat' | 'dying' | 'cleared' | 'hole' | 'won' | 'over';
 
@@ -46,13 +47,8 @@ function pressedDir(input: GameInput): Dir4 | null {
   return typeof input.consumeDir === 'function' ? input.consumeDir() : null;
 }
 
-/** Held direction; when two axes are held, prefer the one that turns (joystick diagonal). */
-function heldDir(input: GameInput, current: Dir4): Dir4 | null {
-  const ay = typeof input.axisY === 'number' ? input.axisY : input.upHeld ? -1 : input.downHeld ? 1 : 0;
-  const h: Dir4 | null = input.axisX < 0 ? 'left' : input.axisX > 0 ? 'right' : null;
-  const v: Dir4 | null = ay < 0 ? 'up' : ay > 0 ? 'down' : null;
-  if (h && v) return current === 'left' || current === 'right' ? v : h;
-  return h ?? v;
+function axisY(input: GameInput): number {
+  return typeof input.axisY === 'number' ? input.axisY : input.upHeld ? -1 : input.downHeld ? 1 : 0;
 }
 
 export class MazeRun {
@@ -67,6 +63,8 @@ export class MazeRun {
   private phaseMs = 0;
   private readyMs: number = RULES.readyMs;
   private want: Dir4 | null = null;
+  /** axis of the newest direction press: it wins while both axes are held */
+  private lastAxis: Axis | null = null;
   private readonly modes = new ModeTimer();
   private readonly totalDots = MAZE.dots.length + MAZE.powers.length;
   private dotsEaten = 0;
@@ -109,9 +107,13 @@ export class MazeRun {
 
   update(dtMs: number, timeMs: number): void {
     this.phaseMs += dtMs;
-    const pressed = pressedDir(this.svc.input);
-    if (pressed) this.want = pressed;
-    const held = heldDir(this.svc.input, this.ciccio.m.dir);
+    const input = this.svc.input;
+    const pressed = pressedDir(input);
+    if (pressed) {
+      this.want = pressed;
+      this.lastAxis = DIRV[pressed].x !== 0 ? 'h' : 'v';
+    }
+    const held = heldDir(input.axisX, axisY(input), this.lastAxis, this.ciccio.m, MAZE.open);
     if (held) this.want = held;
     switch (this.phase) {
       case 'ready':

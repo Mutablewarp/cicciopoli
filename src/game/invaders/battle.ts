@@ -7,7 +7,7 @@ import Phaser from 'phaser';
 import type { Services } from '../../contracts';
 import { Backdrop } from './backdrop';
 import { pickChain, type ChainTarget } from './chain';
-import { CHAIN, FOOD_POINTS, FORM, JET, POINTS, RULES, SHOT, UFO, UFO_POINTS } from './config';
+import { CHAIN, FOOD_POINTS, FORM, JET, POINTS, RULES, SHAKE, SHOT, UFO, UFO_POINTS } from './config';
 import { SpaceFx } from './fx';
 import { Jet } from './jet';
 import { Lightning } from './lightning';
@@ -60,7 +60,10 @@ export class Battle {
     this.swarm = new Swarm(scene);
     this.shots = new Projectiles(scene);
     this.pickups = new Pickups(scene);
-    this.ufo = new Ufo(scene, () => svc.audio.sfx('ufo'));
+    // a UFO still crossing after Ciccio's death flies off silently (no warble over the card)
+    this.ufo = new Ufo(scene, () => {
+      if (this.phase !== 'dying' && this.phase !== 'over') svc.audio.sfx('ufo');
+    });
     this.bolt = new Lightning(scene);
     this.jet = new Jet(scene);
   }
@@ -162,6 +165,7 @@ export class Battle {
 
   /** Lightning hit: the target turns into food in a puff of smoke. */
   private transform(id: number): { x: number; y: number } | null {
+    if (!this.playing) return null; // hops still pending when the jet blows up score nothing
     if (id === UFO_ID) {
       const u = this.ufo.sprite;
       if (!u) return null;
@@ -173,7 +177,7 @@ export class Battle {
       return at;
     }
     const inv = this.swarm.invaders.find((i) => i.id === id && i.alive);
-    if (!inv || !this.playing) return null;
+    if (!inv) return null;
     const at = this.swarm.pos(inv);
     this.killInvader(inv, true);
     return at;
@@ -235,9 +239,16 @@ export class Battle {
     this.hearts = Math.max(0, this.hearts - 1);
     this.svc.audio.sfx('hurt');
     this.fx.boom(this.jet.x, JET.y - 2, 0.7);
-    this.scene.cameras.main.shake(180, 0.006);
+    this.shake();
     if (this.hearts <= 0) this.onDead();
     else this.jet.hurt();
+  }
+
+  /** Phaser scales the offset by camSize * zoom and applies it after the zoom: undo both. */
+  private shake(): void {
+    const cam = this.scene.cameras.main;
+    const k = SHAKE.px / cam.zoom;
+    cam.shake(SHAKE.ms, new Phaser.Math.Vector2(k / cam.width, k / cam.height));
   }
 
   private collide(): void {

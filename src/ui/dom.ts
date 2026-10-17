@@ -72,6 +72,24 @@ export function button(cls: string, html: string, onClick: () => void): HTMLButt
   return b;
 }
 
+/**
+ * The official logo <img>: CSS keeps `.cc-brandimg` invisible until it is fully decoded, so a
+ * slow network never shows it painting in top-down. Resolves (and shows it) even on error.
+ */
+export function brandImage(cls: string, src: string): { img: HTMLImageElement; ready: Promise<void> } {
+  const img = el('img', `${cls} cc-brandimg`);
+  img.src = src;
+  img.alt = "CICCIO'S";
+  img.decoding = 'async';
+  // already in memory (preloaded by index.html, shown by the splash): no fade, no flicker
+  if (img.complete && img.naturalWidth > 0) img.classList.add('is-ready');
+  const ready = img
+    .decode()
+    .catch(() => undefined)
+    .then(() => img.classList.add('is-ready'));
+  return { img, ready };
+}
+
 /** Sets textContent only when it changes (HUD writes run every frame). */
 export function setText(node: Node, text: string): void {
   if (node.textContent !== text) node.textContent = text;

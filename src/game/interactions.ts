@@ -21,12 +21,18 @@ function go(o: Obj): Phaser.GameObjects.GameObject | null {
   return o;
 }
 
-const POWER_BANNERS: Partial<Record<keyof PowerState, { text: string; sub: string }>> = {
-  brie: { text: 'BRIE!', sub: 'Scudo + super salto' },
-  goat: { text: 'PROVOLA GOAT!', sub: 'Tocca GOAT o premi J per sparare' },
-  thai: { text: 'ALETTE THAI!', sub: 'Tocca THAI o premi K' },
-  wings: { text: 'ALETTE CRUNCHY!', sub: 'VOLA: tieni premuto Spazio/↑ · SCENDI: ↓' },
+/** Power-up banners; the hint names the touch buttons or the keys, whichever is in use. */
+const POWER_BANNERS: Partial<Record<keyof PowerState, { text: string; touch: string; keys: string }>> = {
+  brie: { text: 'BRIE!', touch: 'Scudo + super salto', keys: 'Scudo + super salto' },
+  goat: { text: 'PROVOLA GOAT!', touch: 'Tocca GOAT per sparare', keys: 'Premi J per sparare' },
+  thai: { text: 'ALETTE THAI!', touch: 'Tocca THAI per colpire', keys: 'Premi K per colpire' },
+  wings: { text: 'ALETTE CRUNCHY!', touch: 'Tieni premuto VOLA · SCENDI per picchiare', keys: 'Tieni premuto Spazio/↑ · ↓ per scendere' },
 };
+
+/** The touch layout is on (ui/layout.ts sets .is-touch on the shell). */
+function touchLayout(): boolean {
+  return document.querySelector('.is-touch') !== null;
+}
 
 export class Interactions {
   /** brief grace after a stomp / clang so a bounce never turns into a side hit */
@@ -87,7 +93,7 @@ export class Interactions {
       fx.sparkleBurst(player.x, player.centerY, 10, 20);
     }
     const banner = out.gained ? POWER_BANNERS[out.gained] : undefined;
-    if (banner) svc.ui.banner(banner.text, { tone: 'power', sub: banner.sub, ms: 2200 });
+    if (banner) this.r.banner(banner.text, { tone: 'power', sub: touchLayout() ? banner.touch : banner.keys, ms: 2200 });
   }
 
   /* ------------------------------------------------------------ ? blocks */

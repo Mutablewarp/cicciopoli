@@ -29,6 +29,22 @@ function axisOffset(m: Mover, dir: Dir4): number {
   return DIRV[dir].x !== 0 ? m.x - centerOf(tileOf(m.x)) : m.y - centerOf(tileOf(m.y));
 }
 
+export type Axis = 'h' | 'v';
+
+/**
+ * Held direction from the two axes. With both held (diagonal, key rollover, two thumbs on
+ * the cross pad) the axis pressed last wins, so the choice never flips frame to frame; the
+ * other held way is used only while the player stands still with the first way walled.
+ */
+export function heldDir(axisX: number, axisY: number, last: Axis | null, m: Mover, open: OpenFn): Dir4 | null {
+  const h: Dir4 | null = axisX < 0 ? 'left' : axisX > 0 ? 'right' : null;
+  const v: Dir4 | null = axisY < 0 ? 'up' : axisY > 0 ? 'down' : null;
+  if (!h || !v) return h ?? v;
+  const [first, other] = last === 'h' ? [h, v] : [v, h];
+  const d = DIRV[first];
+  return m.moving || open(tileOf(m.x) + d.x, tileOf(m.y) + d.y) ? first : other;
+}
+
 /** Applies a wanted direction if it is legal right now. Returns true when the direction changed. */
 export function tryTurn(m: Mover, want: Dir4 | null, open: OpenFn): boolean {
   if (!want || (want === m.dir && m.moving)) return false;

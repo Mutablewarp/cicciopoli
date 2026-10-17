@@ -17,8 +17,11 @@ export interface Pad {
   readonly zone: HTMLElement;
   /** Drops every finger (layout change, controls hidden). */
   release(): void;
-  /** Forget fingers without releasing them (the InputState was already reset). */
-  forget(): void;
+  /**
+   * After an InputState reset: drop the held directions but keep the fingers, so a thumb
+   * still down presses again on its next move instead of staying dead until it is lifted.
+   */
+  rearm(): void;
 }
 
 export const touchSrc = (pointerId: number): string => `t:${pointerId}`;
@@ -34,7 +37,7 @@ export function capture(target: HTMLElement, pointerId: number): void {
 }
 
 /** Shared pointer bookkeeping: `pick` maps a finger position to a direction (null = none yet). */
-function bindPad(
+export function bindPad(
   zone: HTMLElement,
   face: HTMLElement,
   input: InputState,
@@ -80,8 +83,8 @@ function bindPad(
       fingers.clear();
       draw();
     },
-    forget() {
-      fingers.clear();
+    rearm() {
+      for (const f of fingers.values()) f.dir = null;
       draw();
     },
   };

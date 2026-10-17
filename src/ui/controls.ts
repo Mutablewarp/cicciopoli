@@ -92,10 +92,17 @@ export function createControls(input: InputState, onMode: (m: ControlsMode) => v
       input.press(touchSrc(e.pointerId), action);
       b.classList.add('is-down');
     });
+    // A finger kept down through a reset takes its hold back on its next move, without a new
+    // edge (no jump / shot on resume), like an auto-repeating key.
+    b.addEventListener('pointermove', (e) => {
+      if (!btn.pointers.has(e.pointerId) || input.has(touchSrc(e.pointerId))) return;
+      input.press(touchSrc(e.pointerId), action, false);
+      b.classList.add('is-down');
+    });
     const end = (e: PointerEvent): void => {
       if (!btn.pointers.delete(e.pointerId)) return;
       input.release(touchSrc(e.pointerId));
-      b.classList.toggle('is-down', btn.pointers.size > 0);
+      b.classList.toggle('is-down', [...btn.pointers].some((id) => input.has(touchSrc(id))));
     };
     for (const t of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) b.addEventListener(t, end);
     return btn;
@@ -149,13 +156,11 @@ export function createControls(input: InputState, onMode: (m: ControlsMode) => v
     return { ...none, jump: 'enabled', fire: l.fire, club: l.club, down: l.down };
   }
 
-  // A reset (blur, rotation, overlay) forgets every finger: they must lift and press again.
+  // A reset (blur, rotation, overlay) drops every hold; a finger still down re-presses on its
+  // next move, so nothing can stick but a resting thumb is not dead until lifted.
   input.onReset(() => {
-    for (const p of pads) p.forget();
-    for (const b of Object.values(buttons)) {
-      b.pointers.clear();
-      b.root.classList.remove('is-down');
-    }
+    for (const p of pads) p.rearm();
+    for (const b of Object.values(buttons)) b.root.classList.remove('is-down');
   });
 
   return {

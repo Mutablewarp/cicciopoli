@@ -108,7 +108,7 @@ export class GameScene extends Phaser.Scene {
     this.svc.audio.music(theme.music);
     if (this.svc.input.consume('pause')) this.pendingPause = true; // Esc / P while loading
     this.svc.input.reset();
-    this.svc.ui.banner(def.name, { tone: 'info', sub: `LIVELLO ${def.id}`, ms: 1800 });
+    run.banner(def.name, { tone: 'info', sub: `LIVELLO ${def.id}`, ms: 1800 });
   }
 
   override update(time: number, delta: number): void {
