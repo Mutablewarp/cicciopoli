@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Art Gallery (dev only)</title>
+    <style>
+      body { margin: 0; padding: 16px; background: #1c1c22; color: #fce4c0; font: 12px/1.4 monospace; }
+      h2 { margin: 18px 0 6px; font-size: 14px; color: #fc9000; }
+      .item { display: inline-block; vertical-align: top; margin: 6px 10px 10px 0; padding: 6px; background: #2c2c34; border-radius: 4px; }
+      .item.light { background: #60ccf0; }
+      .item canvas { image-rendering: pixelated; display: block; }
+      .label { margin-top: 4px; color: #ddd; }
+      .err { color: #ff6060; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <div id="out"></div>
+    <script type="module" src="/src/gallery.ts"></script>
+  </body>
+</html>

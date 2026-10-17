@@ -1,0 +1,29 @@
+{
+  "name": "cicciopoli",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "CICCIO'S — The Burger Adventure: browser pixel-art platformer demo (Phaser 3 + TypeScript + Vite).",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "tsc --noEmit && vitest run",
+    "shot": "node scripts/shot.mjs",
+    "test:e2e": "node scripts/e2e.mjs"
+  },
+  "dependencies": {
+    "phaser": "3.90.0"
+  },
+  "devDependencies": {
+    "@fontsource/pixelify-sans": "5.3.0",
+    "@fontsource/press-start-2p": "5.3.0",
+    "playwright": "1.64.1",
+    "pngjs": "7.0.0",
+    "typescript": "5.9.3",
+    "vite": "7.1.12",
+    "vitest": "3.2.4"
+  }
+}
