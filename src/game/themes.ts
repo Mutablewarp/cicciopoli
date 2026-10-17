@@ -222,6 +222,7 @@ export function getTheme(id: ThemeId): ThemeConfig {
 /** Shared textures from the base packs (ciccio + items) that gameplay relies on. */
 export const BASE_REQUIRED: TexSpec[] = [
   { key: CICCIO.sheet, w: 48, h: 48, frames: 27, color: '#fcfcf4' },
+  { key: ITEMS.nugget, w: 12, h: 12, frames: 6, color: '#d8901c' },
   { key: ITEMS.fries, w: 16, h: 16, frames: 4, color: '#fcc030' },
   { key: ITEMS.burger, w: 16, h: 16, frames: 4, color: '#e0902c' },
   { key: ITEMS.brie, w: 16, h: 16, frames: 4, color: '#fcf0d8' },
@@ -249,6 +250,7 @@ export const BASE_ANIMS: AnimSpec[] = [
   loop(CICCIO_ANIMS.fly, CICCIO.sheet, [...CICCIO.fly], 10),
   once(CICCIO_ANIMS.club, CICCIO.sheet, [...CICCIO.club], 18),
   loop(CICCIO_ANIMS.victory, CICCIO.sheet, [...CICCIO.victory], 4),
+  loop(ITEM_ANIMS.nugget, ITEMS.nugget, seq(6), 10),
   loop(ITEM_ANIMS.fries, ITEMS.fries, seq(4), 8),
   loop(ITEM_ANIMS.burger, ITEMS.burger, seq(4), 8),
   loop(ITEM_ANIMS.brie, ITEMS.brie, seq(4), 8),
@@ -264,4 +266,7 @@ export const BASE_ANIMS: AnimSpec[] = [
   once(ITEM_ANIMS.dust, ITEMS.dust, seq(5), 16),
   once(ITEM_ANIMS.poof, ITEMS.poof, seq(6), 16),
   once(ITEM_ANIMS.hitStar, ITEMS.hitStar, seq(4), 20),
+  // kill sheets have no placeholder: these only exist once the items pack draws them
+  once(ITEM_ANIMS.cheeseEngulf, ITEMS.cheeseEngulf, seq(8), 14),
+  once(ITEM_ANIMS.burn, ITEMS.burn, seq(8), 14),
 ];

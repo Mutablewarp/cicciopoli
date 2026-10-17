@@ -4,7 +4,7 @@
  * Level 2 can register more specs with `Attachments.add`.
  */
 import type Phaser from 'phaser';
-import { ITEM_ANIMS, ITEMS } from '../../art/keys';
+import { CICCIO, ITEM_ANIMS, ITEMS } from '../../art/keys';
 import type { CiccioFrameAnchors, FrameAnchor, PowerState } from '../../contracts';
 import { DEPTH } from '../depths';
 
@@ -21,8 +21,13 @@ export interface AttachmentSpec {
   depth: number;
   /** follow the anchor's angle (held club) */
   rotate: boolean;
-  /** far tip relative to the origin, texture px (right-facing): rotation is clamped so it stays above the feet */
+  /**
+   * far tip relative to the origin, texture px (right-facing): rotation is clamped so the
+   * tip stays above the feet and, outside the swing, below the eyes (never over the face)
+   */
   tip?: readonly [number, number];
+  /** frames in which it is drawn behind Ciccio (the club wind-up behind his back) */
+  behindFrames?: readonly number[];
   /** follow squash & stretch (worn items) or only the power scale (auras) */
   squash: boolean;
   alpha?: number;
@@ -48,7 +53,7 @@ export const DEFAULT_ATTACHMENTS: AttachmentSpec[] = [
   },
   {
     id: 'club', key: ITEMS.club, anchor: 'hand', originX: 5.5 / 24, originY: 19.5 / 24, tip: [15.5, -16.5],
-    depth: DEPTH.attach + 1, rotate: true, squash: false, visible: (p) => p.thai,
+    depth: DEPTH.attach + 1, rotate: true, squash: false, visible: (p) => p.thai, behindFrames: [CICCIO.club[0]],
   },
   {
     id: 'shield', key: ITEMS.shield, anim: ITEM_ANIMS.shield, anchor: 'feet', originX: 0.5, originY: 1,
@@ -73,14 +78,16 @@ export interface HeroPose {
   shown: boolean;
 }
 
-/** Largest rotation <= angle that keeps the rotated tip at or above `maxY` (screen y grows down). */
-export function clampTipAngle(angle: number, handY: number, tip: readonly [number, number], scale: number, maxY: number): number {
+/**
+ * Rotation closest to `angle` that keeps the rotated tip between `minY` and `maxY` (screen
+ * y grows down): turned forward / down while the tip would rise above `minY` (the eyes),
+ * then back up while it would sink below `maxY` (the feet), which wins.
+ */
+export function clampTipAngle(angle: number, handY: number, tip: readonly [number, number], scale: number, maxY: number, minY = -Infinity): number {
+  const tipY = (a: number): number => handY + scale * (tip[0] * Math.sin(a) + tip[1] * Math.cos(a));
   let a = angle;
-  for (let i = 0; i < 60; i++) {
-    const tipY = handY + scale * (tip[0] * Math.sin(a) + tip[1] * Math.cos(a));
-    if (tipY <= maxY) return a;
-    a -= 0.05;
-  }
+  for (let i = 0; i < 60 && tipY(a) < minY; i++) a += 0.05;
+  for (let i = 0; i < 60 && tipY(a) > maxY; i++) a -= 0.05;
   return a;
 }
 
@@ -138,6 +145,9 @@ export class Attachments {
   }
 
   update(pose: HeroPose, powers: PowerState): void {
+    const frame = Number(pose.sprite.frame.name) || 0;
+    const swinging = (CICCIO.club as readonly number[]).includes(frame);
+    const eyes = swinging ? -Infinity : this.anchorWorld(pose, 'head').y;
     for (const { spec, sprite } of this.live) {
       const on = spec.visible(powers);
       sprite.setVisible(on && pose.shown);
@@ -151,8 +161,9 @@ export class Attachments {
         sprite.setPosition(pose.sprite.x, pose.sprite.y).setRotation(0);
         continue;
       }
+      sprite.setDepth(spec.behindFrames?.includes(frame) ? DEPTH.behindHero : spec.depth);
       const p = this.anchorWorld(pose, spec.anchor);
-      const angle = spec.tip ? clampTipAngle(p.angle, p.y, spec.tip, sy, pose.sprite.y - 1) : p.angle;
+      const angle = spec.tip ? clampTipAngle(p.angle, p.y, spec.tip, sy, pose.sprite.y - 1, eyes) : p.angle;
       sprite.setPosition(p.x, p.y).setRotation(spec.rotate ? (left ? -angle : angle) : 0);
       if (spec.tip) this.tips.set(spec.id, rotatedPoint(p.x, p.y, spec.tip, angle, sx, pose.facing));
     }

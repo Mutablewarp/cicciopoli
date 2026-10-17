@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ITEMS, ITEM_ANIMS } from '../keys';
 import { PAL } from '../pixel';
 import { ITEM_ANIM_DEFS, ITEM_SHEETS } from '../items';
-import { badgeRaster } from './cheese';
+import { badgeRaster } from './batter';
 import type { Raster } from './raster';
 
 /** [frame width, frame height, frame count] required by keys.ts. */
@@ -25,10 +25,24 @@ const SPEC: Readonly<Record<string, readonly [number, number, number]>> = {
   [ITEMS.hitStar]: [16, 16, 4],
   [ITEMS.crateBits]: [8, 8, 4],
   [ITEMS.digits]: [6, 8, 12],
+  [ITEMS.nugget]: [12, 12, 6],
+  [ITEMS.cheeseEngulf]: [32, 32, 8],
+  [ITEMS.burn]: [32, 32, 8],
 };
 
 const build = (): Map<string, Raster[]> => new Map(ITEM_SHEETS.map(([key, frames]) => [key, frames()]));
 const opaque = (r: Raster): number => r.data.filter((_, i) => i % 4 === 3 && r.data[i] > 0).length;
+/** Opaque pixels inside the 24x24 enemy box of the 32x32 kill FX (centred, bottom row 31). */
+const enemyBoxCover = (r: Raster): number => {
+  let n = 0;
+  for (let y = 8; y < 32; y++) for (let x = 4; x < 28; x++) if (r.alpha(x, y) === 255) n++;
+  return n / (24 * 24);
+};
+const width = (r: Raster): number => {
+  const xs: number[] = [];
+  for (let y = 0; y < r.h; y++) for (let x = 0; x < r.w; x++) if (r.alpha(x, y) > 0) xs.push(x);
+  return Math.max(...xs) - Math.min(...xs) + 1;
+};
 
 describe('items art pack', () => {
   const sheets = build();
@@ -73,5 +87,23 @@ describe('items art pack', () => {
     expect(club?.alpha(17, 6)).toBe(255); // meaty bulb up-right
     for (const f of sheets.get(ITEMS.shield) ?? []) expect(f.alpha(24, 26)).toBe(0); // face stays visible
     for (const f of sheets.get(ITEMS.wings) ?? []) expect(f.alpha(16, 12)).toBeGreaterThan(0); // attached at the shoulders
+  });
+
+  it('draws the v2 food FX the way gameplay uses them', () => {
+    const engulf = sheets.get(ITEMS.cheeseEngulf) ?? [];
+    expect(enemyBoxCover(engulf[3]), 'engulf#3 hides the enemy').toBe(1);
+    expect(enemyBoxCover(engulf[4]), 'engulf#4 still hides it').toBe(1);
+    expect(opaque(engulf[7])).toBeLessThan(opaque(engulf[6])); // puddle fading
+    const burn = sheets.get(ITEMS.burn) ?? [];
+    expect(enemyBoxCover(burn[3]), 'burn#3 flames over the silhouette').toBeGreaterThan(0.6);
+    expect(enemyBoxCover(burn[0])).toBeLessThan(0.15); // starts small at the base
+    const nugget = (sheets.get(ITEMS.nugget) ?? []).map(width);
+    expect(nugget[0]).toBeGreaterThan(nugget[2]); // coin spin: squashes to the edge-on frame...
+    expect(nugget[2]).toBeGreaterThan(nugget[3]);
+    expect(nugget[4]).toBeGreaterThan(nugget[3]); // ...and opens up again
+    for (const f of sheets.get(ITEMS.cheeseShot) ?? []) {
+      expect(f.alpha(10, 4), 'stick at the front (right)').toBe(255);
+      expect(f.alpha(1, 2) + f.alpha(1, 3)).toBeLessThan(255 * 2); // translucent streak trails behind (left)
+    }
   });
 });

@@ -69,6 +69,13 @@ describe('autotile', () => {
     expect(m[1][5]).toBe(T.GROUND_FILL_L);
   });
 
+  it('a raised mound keeps the lit fill under it (no dark box below its rim)', () => {
+    const m = autotile(terrainOf(['...........', '....###....', '###########', '###########', '###########']));
+    expect([T.GROUND_FILL_M, T.GROUND_FILL_M_ALT]).toContain(m[3][5]);
+    expect([T.GROUND_FILL_M, T.GROUND_FILL_M_ALT]).toContain(m[3][0]);
+    expect(m[4][5]).toBe(T.GROUND_FILL_DEEP);
+  });
+
   it('single-column ground and platforms', () => {
     const m = autotile(terrainOf(['.#.=...===.X', '.#..........']));
     expect(m[0][1]).toBe(T.GROUND_TOP_SINGLE);

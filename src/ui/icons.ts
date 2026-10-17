@@ -26,20 +26,21 @@ export const HEAD_PAL = {
 };
 export const headSvg = (cls = ''): string => pixelSvg(HEAD_ROWS, HEAD_PAL, cls);
 
-const COIN = [
-  '..kkkk..',
-  '.kyyyok.',
-  'kyYyyyOk',
-  'kyYyOyOk',
-  'kyYyOyOk',
-  'kyYyOyOk',
-  'kyYyOyOk',
-  'kyyyyyOk',
-  '.kOOOOk.',
-  '..kkkk..',
+/** Crunchy nugget (the coins of v2): golden-brown bumpy breading, light from the top-left. */
+const NUGGET = [
+  '..kkk.kk..',
+  '.kwllkllk.',
+  'klwlllbbbk',
+  'kllwlbbbok',
+  'klllbbobbk',
+  'kblbbbbbok',
+  'kbbbobbook',
+  '.kbbbbook.',
+  '.kooodook.',
+  '..kkkkkk..',
 ];
-export const coinSvg = (): string =>
-  pixelSvg(COIN, { k: K, Y: '#fff2a8', y: PAL.poleLight, o: PAL.qOrange, O: PAL.qOrangeDark }, 'cc-coin');
+export const nuggetSvg = (): string =>
+  pixelSvg(NUGGET, { k: '#3a1c06', w: '#fff0b8', l: '#f4c25a', b: '#d88a2a', o: '#a85a14', d: '#7a3c0a' }, 'cc-coin');
 
 const BRIE = [
   '..........kk',
@@ -55,19 +56,66 @@ const BRIE = [
   'kssssssssssk',
   'kkkkkkkkkkkk',
 ];
+/** Provola Goat: three battered provola sticks (rectangular, golden-beige batter). */
 const GOAT = [
-  'kkkkkkkkkkkk',
-  'kLLLLLLLLLLk',
-  'kLyyyyyyyyOk',
-  'kLyOOyyyyyOk',
-  'kLyOOyyyOyOk',
-  'kLyyyyyyyyOk',
-  'kLyyyyOOyyOk',
-  'kLOyyyOOyyOk',
-  'kLyyyyyyyyOk',
-  'kLyyyOyyyyOk',
-  'kOOOOOOOOOOk',
-  'kkkkkkkkkkkk',
+  '....kkkkk....',
+  '....kLLyk....',
+  '....kLyykkkkk',
+  'kkkkkyyOkkLyk',
+  'kLykkLyykkyyk',
+  'kyOkkyyykkyOk',
+  'kLykkyOykkLyk',
+  'kyykkLyykkyyk',
+  'kOykkyyOkkyOk',
+  'kyykkyyykkOyk',
+  'kOOkkOOOkkOOk',
+  'kkkkkkkkkkkkk',
+];
+/** One battered provola stick (maze power pellet, FUOCO shot). */
+const STICK = [
+  '..kkk..',
+  '.kLLyk.',
+  'kLLyyyk',
+  'kLyyOyk',
+  'kyyyyyk',
+  'kLyOyyk',
+  'kyyyyOk',
+  'kyOyyyk',
+  'kyyyyOk',
+  '.kOOOk.',
+  '..kkk..',
+];
+const STICK_PAL = { k: '#3a1c06', L: '#fbe3a6', y: '#e9b864', O: '#b97a2c' };
+/** FUOCO: a provola stick shooting up on a short flame. */
+const FUOCO = [
+  '...kkk...',
+  '..kLLyk..',
+  '.kLLyyyk.',
+  '.kLyyOyk.',
+  '.kyyyyyk.',
+  '.kLyOyyk.',
+  '.kyyyyOk.',
+  '..kOOOk..',
+  '.kkrRrkk.',
+  'krRYYRrk.',
+  '.krRYRk..',
+  '..krRk...',
+  '...kk....',
+];
+/** FULMINE: a fat lightning bolt. */
+const BOLT = [
+  '......kkkk',
+  '.....kYyyk',
+  '....kYyyk.',
+  '...kYyyk..',
+  '..kYyyykkk',
+  '.kYyyyyyyk',
+  'kkkkkyyyk.',
+  '....kyyk..',
+  '...kyyk...',
+  '...kyk....',
+  '..kyk.....',
+  '..kk......',
 ];
 const THAI = [
   '..kkkk......',
@@ -115,7 +163,10 @@ const FOOD_PAL = {
   G: PAL.poleLight,
 };
 export const brieSvg = (): string => pixelSvg(BRIE, FOOD_PAL);
-export const goatSvg = (): string => pixelSvg(GOAT, FOOD_PAL);
+export const goatSvg = (): string => pixelSvg(GOAT, STICK_PAL);
+export const pelletSvg = (): string => pixelSvg(STICK, STICK_PAL);
+export const fuocoSvg = (): string => pixelSvg(FUOCO, { ...STICK_PAL, r: '#e0441c', R: '#ff8a1c', Y: '#ffe25a' });
+export const boltSvg = (): string => pixelSvg(BOLT, { k: K, Y: '#fffbd0', y: PAL.cheese });
 export const thaiSvg = (): string => pixelSvg(THAI, FOOD_PAL);
 export const wingsSvg = (): string => pixelSvg(WINGS, { ...FOOD_PAL, d: PAL.fryDark });
 

@@ -151,11 +151,11 @@
   --face: var(--orange);
   --face-hi: var(--orange-hi);
   --face-lo: var(--orange-lo);
-  --text: #fff8ec;
+  --text: var(--ink);
 }
+/* dark ink on the orange face: crisp at any DPR (an outline of 8 text-shadows left seams) */
 .cc-btn--primary .cc-btn__label {
-  text-shadow: 2px 0 0 var(--ink), -2px 0 0 var(--ink), 0 2px 0 var(--ink), 0 -2px 0 var(--ink), 2px 2px 0 var(--ink),
-    -2px 2px 0 var(--ink), 2px -2px 0 var(--ink), -2px -2px 0 var(--ink), 0 4px 0 var(--ink);
+  text-shadow: 0 2px 0 rgba(255, 226, 170, 0.7);
 }
 .cc-btn.is-selected {
   background: var(--cream-hi);

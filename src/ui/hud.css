@@ -82,7 +82,7 @@
   gap: 7px;
 }
 .cc-coin {
-  width: calc(var(--u) * 8);
+  width: calc(var(--u) * 10);
   height: calc(var(--u) * 10);
   flex: none;
 }
@@ -218,7 +218,8 @@
     box-shadow: 0 2px 0 rgba(10, 10, 10, 0.55);
   }
   .cc-hud.is-hidden {
-    display: none;
+    /* keeps its layout height: --play-inset-t stays stable while hidden */
+    visibility: hidden;
   }
   .cc-hud__left {
     flex-direction: row;
@@ -239,6 +240,24 @@
   }
   .cc-time {
     gap: 4px;
+  }
+  .cc-pause {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+/* 320-360px phones: smaller icons so the progress rail stays readable */
+@media (orientation: portrait) and (max-width: 360px) {
+  .cc-hud {
+    --u: 1.75px;
+    column-gap: 9px;
+    padding-left: calc(var(--safe-l) + 9px);
+    padding-right: calc(var(--safe-r) + 7px);
+  }
+  .cc-hud__right {
+    gap: 6px;
   }
   .cc-pause {
     width: 44px;

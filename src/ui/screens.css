@@ -87,6 +87,8 @@
   margin: -2px 0 0;
   font-family: var(--f-pixel);
   font-size: 11px;
+  line-height: 1.45;
+  text-align: center;
   letter-spacing: 0.04em;
   color: var(--cream-lo);
 }
@@ -169,6 +171,17 @@
 }
 .cc-btn--audio {
   gap: 2px;
+}
+/* "LIVELLO SUCCESSIVO ▶" fits one line on 320px phones and wraps to two in landscape rows */
+.cc-btn--next .cc-btn__label {
+  padding: 0 8px 3px;
+  font-size: clamp(10px, 3.3vw, 13px);
+  line-height: 1.3;
+  white-space: normal;
+  text-align: center;
+}
+.cc-btn--next.is-selected::after {
+  display: none;
 }
 
 /* key legend (desktop only) */

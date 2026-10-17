@@ -65,6 +65,10 @@ export class Pickle extends Enemy {
     this.timer = ENEMY.pickle.restMs;
   }
 
+  protected override onSentHome(): void {
+    this.state = 'walk';
+  }
+
   onStomp(): StompResult {
     return 'kill';
   }
@@ -75,6 +79,14 @@ export class Pickle extends Enemy {
 }
 
 type ChiliState = 'idle' | 'crouch' | 'leap' | 'rest';
+
+/** Highest sideways speed of an idle hop back home. */
+const HOME_HOP_VX = 80;
+
+/** Seconds a jump with this initial vy stays in the air (flat ground). */
+function airTime(vy: number): number {
+  return (2 * -vy) / MOVE.gravity;
+}
 
 export class Chili extends Enemy {
   readonly kind = 'chili';
@@ -92,8 +104,8 @@ export class Chili extends Enemy {
     switch (this.state) {
       case 'idle':
         this.play(HILLS_ANIMS.chiliIdle);
+        if (!this.onGround) break; // keeps the sideways drift of a hop home
         this.body.setVelocityX(0);
-        if (!this.onGround) break;
         if (this.senses(host, c.senseX, 56)) {
           this.faceHero(host);
           this.state = 'crouch';
@@ -103,7 +115,10 @@ export class Chili extends Enemy {
         this.hopMs -= dtMs;
         if (this.hopMs <= 0) {
           this.hopMs = c.idleHopMs;
-          this.body.setVelocityY(c.hopVy);
+          // strayed from home after a leap: idle hops carry it back
+          const dx = this.homeX - this.sprite.x;
+          const vx = Math.abs(dx) > 4 ? Math.max(-HOME_HOP_VX, Math.min(HOME_HOP_VX, dx / airTime(c.hopVy))) : 0;
+          this.body.setVelocity(vx, c.hopVy);
         }
         break;
       case 'crouch':
@@ -128,12 +143,16 @@ export class Chili extends Enemy {
     }
   }
 
-  /** Leaps toward Ciccio, shortening (or cancelling) the leap rather than jumping into a pit. */
+  /**
+   * Leaps toward Ciccio, never landing farther than the leash from home (it cannot follow
+   * him to a checkpoint), shortening or cancelling the leap rather than jumping into a pit.
+   */
   private leap(host: EnemyHost): void {
     const c = ENEMY.chili;
     this.faceHero(host);
-    const air = (2 * -c.leapVy) / MOVE.gravity;
-    let vx = this.dir * c.leapVx;
+    const air = airTime(c.leapVy);
+    const target = Math.max(this.homeX - c.leash, Math.min(this.homeX + c.leash, this.sprite.x + this.dir * c.leapVx * air));
+    let vx = (target - this.sprite.x) / air;
     const landX = (v: number): number => this.sprite.x + v * air;
     if (!host.world.isSolidAt(landX(vx), this.body.bottom + 4)) vx *= 0.5;
     if (!host.world.isSolidAt(landX(vx), this.body.bottom + 4)) vx = 0;
@@ -148,6 +167,11 @@ export class Chili extends Enemy {
 
   protected squashFrame(): number {
     return 4;
+  }
+
+  protected override onSentHome(): void {
+    this.state = 'rest';
+    this.timer = ENEMY.chili.restMs;
   }
 }
 
@@ -182,6 +206,10 @@ export class Armor extends Enemy {
         if (this.timer <= 0) this.state = 'walk';
         break;
     }
+  }
+
+  protected override onSentHome(): void {
+    this.state = 'walk';
   }
 
   onStomp(host: EnemyHost): StompResult {

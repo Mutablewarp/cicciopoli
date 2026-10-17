@@ -16,6 +16,18 @@ function arp(v: Voice, t: number, freqs: readonly number[], gap: number, o: ArpO
 
 const notes = (names: readonly string[], p: number): number[] => names.map((n) => hz(n) * p);
 
+/** Called once per maze dot: alternates a rising "nam" and a falling "nom" blip. */
+const chomp: Recipe = (() => {
+  let up = false;
+  return (v, t, p) => {
+    up = !up;
+    const f = (up ? 300 : 560) * p;
+    const to = (up ? 560 : 280) * p;
+    tone(v, { wave: 0.375, t, f, to, slide: 0.045, a: 0.002, d: 0.05, peak: 0.12, lp: 2600 });
+    tone(v, { wave: 'triangle', t, f: f / 2, to: to / 2, slide: 0.045, a: 0.002, d: 0.045, peak: 0.1 });
+  };
+})();
+
 export const SFX: Readonly<Record<SfxName, Recipe>> = {
   jump: (v, t, p) => {
     tone(v, { wave: 0.25, t, f: 250 * p, to: 660 * p, slide: 0.1, a: 0.003, hold: 0.03, d: 0.14, peak: 0.3 });
@@ -182,5 +194,103 @@ export const SFX: Readonly<Record<SfxName, Recipe>> = {
     [0.12, 0.2].forEach((dt, i) =>
       tone(v, { wave: 'triangle', t: tp + dt, f: 720 * p * (1 - i * 0.08), a: 0.001, d: 0.05, peak: 0.12 - i * 0.05 }),
     );
+  },
+
+  coin: (v, t, p) => {
+    // crunchy nugget: three crumbly clicks, then a quick bright fifth (fries = slower fourth)
+    [0, 0.018, 0.034].forEach((dt, i) =>
+      hiss(v, { t: t + dt, d: 0.018, peak: 1 - i * 0.2, type: 'bandpass', f: (2400 + i * 900) * p, q: 3 }),
+    );
+    tone(v, { wave: 0.125, t: t + 0.02, f: hz('E6') * p, a: 0.002, hold: 0.025, d: 0.02, peak: 0.28 });
+    tone(v, { wave: 0.125, t: t + 0.06, f: hz('B6') * p, a: 0.002, hold: 0.03, d: 0.14, peak: 0.26 });
+  },
+
+  melt: (v, t, p) => {
+    // gooey blob sinking while its lowpass closes, then cheese bubbles popping
+    tone(v, { wave: 'sawtooth', t, f: 320 * p, to: 95 * p, slide: 0.4, a: 0.02, hold: 0.08, d: 0.32, peak: 0.24, lp: 2200, lpTo: 220, vib: [40, 11] });
+    tone(v, { wave: 'sine', t, f: 160 * p, to: 60 * p, slide: 0.35, a: 0.02, hold: 0.06, d: 0.25, peak: 0.18 });
+    [0.12, 0.2, 0.31, 0.37, 0.48].forEach((dt, i) =>
+      tone(v, { wave: 'sine', t: t + dt, f: (380 + ((i * 170) % 300)) * p, to: (900 + ((i * 230) % 400)) * p, slide: 0.03, a: 0.002, d: 0.04, peak: 0.12 }),
+    );
+  },
+
+  ignite: (v, t, p) => {
+    // whoomph: low noise swell opening up over a soft thump, then the fire crackles
+    hiss(v, { t, a: 0.09, hold: 0.04, d: 0.35, peak: 0.6, type: 'lowpass', f: 250 * p, to: 3200 * p, slide: 0.16, q: 2 });
+    tone(v, { wave: 'sine', t: t + 0.03, f: 120 * p, to: 48 * p, slide: 0.15, a: 0.03, d: 0.22, peak: 0.22 });
+    for (let i = 0; i < 8; i++) {
+      hiss(v, { t: t + 0.12 + i * 0.041 + (i % 3) * 0.009, d: 0.012, peak: 0.28 - i * 0.025, type: 'highpass', f: 2800 + ((i * 1700) % 3500) });
+    }
+  },
+
+  laser: (v, t, p) => {
+    // thin "pew-ew": fast falling pulse with a fainter repeat (shoot = fatter pulse + noise)
+    tone(v, { wave: 0.125, t, f: 2400 * p, to: 600 * p, slide: 0.07, a: 0.001, d: 0.09, peak: 0.34 });
+    tone(v, { wave: 'triangle', t, f: 1200 * p, to: 300 * p, slide: 0.07, a: 0.001, d: 0.08, peak: 0.26 });
+    tone(v, { wave: 0.125, t: t + 0.055, f: 1700 * p, to: 450 * p, slide: 0.06, a: 0.001, d: 0.07, peak: 0.08 });
+  },
+
+  bolt: (v, t, p) => {
+    // electric zap: crackling noise bursts over detuned square chirps and a mains-hum buzz
+    for (let i = 0; i < 9; i++) {
+      hiss(v, { t: t + i * 0.028 + (i % 2) * 0.008, d: 0.016, peak: 0.55 - i * 0.04, type: 'bandpass', f: 2600 + ((i * 2300) % 5600), q: 1.5 });
+    }
+    [0, 0.07, 0.16].forEach((dt, i) => {
+      const f = (2400 - i * 300) * p;
+      tone(v, { wave: 0.5, t: t + dt, f, to: f * 0.4, slide: 0.06, a: 0.001, d: 0.07, peak: 0.09 });
+      tone(v, { wave: 0.5, t: t + dt, f: f * 1.06, to: f * 0.43, slide: 0.06, a: 0.001, d: 0.07, peak: 0.09 });
+    });
+    tone(v, { wave: 'sawtooth', t, f: 92 * p, a: 0.005, hold: 0.18, d: 0.15, peak: 0.2, lp: 1400, vib: [120, 30] });
+  },
+
+  transform: (v, t, p) => {
+    // magic poof: a soft noise puff with a sparkly rising arpeggio coming out of it
+    hiss(v, { t, a: 0.015, d: 0.28, peak: 0.55, type: 'bandpass', f: 1400 * p, to: 380 * p, slide: 0.25, q: 0.9 });
+    arp(v, t + 0.03, notes(['C6', 'E6', 'G6', 'C7', 'E7'], p), 0.035, { wave: 'triangle', a: 0.002, hold: 0.02, d: 0.12, peak: 0.14 });
+    arp(v, t + 0.045, notes(['G6', 'C7', 'E7', 'G7'], p), 0.04, { wave: 0.125, a: 0.002, d: 0.08, peak: 0.04 });
+    tone(v, { wave: 'sine', t: t + 0.2, f: hz('C7') * p, a: 0.01, d: 0.3, peak: 0.07, vib: [25, 12] });
+  },
+
+  explode: (v, t, p) => {
+    // 8-bit blast: a crack, then a noise body whose lowpass falls with a square sub-drop
+    hiss(v, { t, d: 0.04, peak: 0.5, type: 'bandpass', f: 1800, q: 0.8 });
+    hiss(v, { t, a: 0.004, hold: 0.04, d: 0.45, peak: 0.75, type: 'lowpass', f: 3500 * p, to: 140, slide: 0.45, q: 1.2 });
+    tone(v, { wave: 0.5, t, f: 190 * p, to: 38 * p, slide: 0.3, a: 0.002, d: 0.32, peak: 0.16, lp: 900 });
+  },
+
+  ufo: (v, t, p) => {
+    // warbling saucer siren, ~0.8 s
+    const o = { t, a: 0.08, hold: 0.45, d: 0.27, vib: [260, 7.5] } as const;
+    tone(v, { ...o, wave: 'triangle', f: 780 * p, peak: 0.13 });
+    tone(v, { ...o, wave: 0.25, f: 390 * p, peak: 0.05, lp: 1800 });
+  },
+
+  invaderStep: (v, t, p) => {
+    // soft low thump; the mid click keeps it audible on phone speakers
+    tone(v, { wave: 'sine', t, f: 105 * p, to: 52 * p, slide: 0.06, a: 0.002, d: 0.08, peak: 0.2 });
+    tone(v, { wave: 'triangle', t, f: 240 * p, to: 120 * p, slide: 0.03, a: 0.001, d: 0.035, peak: 0.05 });
+  },
+
+  chomp,
+
+  pellet: (v, t, p) => {
+    // power surge: a throbbing saw climbing as its filter opens, capped by a bright chord
+    const rise = { t, slide: 0.4, a: 0.03, hold: 0.3, d: 0.15, vib: [60, 14] } as const;
+    tone(v, { ...rise, wave: 'sawtooth', f: 110 * p, to: 440 * p, peak: 0.24, lp: 500, lpTo: 5000 });
+    tone(v, { ...rise, wave: 0.25, f: 220 * p, to: 880 * p, peak: 0.08 });
+    notes(['D6', 'F#6', 'A6'], p).forEach((f) => tone(v, { wave: 0.25, t: t + 0.4, f, a: 0.003, hold: 0.06, d: 0.3, peak: 0.07, vib: [20, 8] }));
+  },
+
+  ghostEat: (v, t, p) => {
+    // rising zip
+    tone(v, { wave: 0.25, t, f: 260 * p, to: 2600 * p, slide: 0.16, a: 0.002, hold: 0.06, d: 0.1, peak: 0.2 });
+    tone(v, { wave: 'triangle', t, f: 520 * p, to: 5200 * p, slide: 0.16, a: 0.002, hold: 0.04, d: 0.08, peak: 0.1 });
+    hiss(v, { t, a: 0.05, d: 0.12, peak: 0.25, type: 'bandpass', f: 800, to: 6000, slide: 0.16, q: 1.5 });
+  },
+
+  ghostHome: (v, t, p) => {
+    // descending whoosh of the eyes flying home
+    hiss(v, { t, a: 0.04, hold: 0.1, d: 0.4, peak: 0.7, type: 'bandpass', f: 3500 * p, to: 260 * p, slide: 0.5, q: 1.2 });
+    tone(v, { wave: 'sine', t, f: 1400 * p, to: 180 * p, slide: 0.5, a: 0.03, hold: 0.1, d: 0.4, peak: 0.1, vib: [40, 9] });
   },
 };

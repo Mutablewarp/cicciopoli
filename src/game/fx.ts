@@ -15,6 +15,7 @@ export interface OnceOpts {
   originY?: number;
   scale?: number;
   angle?: number;
+  startFrame?: number;
 }
 
 export class Fx {
@@ -26,7 +27,7 @@ export class Fx {
     s.setDepth(o.depth ?? DEPTH.fx).setOrigin(0.5, o.originY ?? 0.5).setFlipX(o.flipX ?? false);
     s.setScale(o.scale ?? 1).setAngle(o.angle ?? 0);
     if (this.scene.anims.exists(anim)) {
-      s.play(anim);
+      s.play({ key: anim, startFrame: o.startFrame ?? 0 });
       s.once('animationcomplete', () => s.destroy());
     } else {
       this.scene.time.delayedCall(250, () => s.destroy());

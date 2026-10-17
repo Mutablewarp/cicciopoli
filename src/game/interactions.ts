@@ -4,7 +4,7 @@
  */
 import Phaser from 'phaser';
 import type { PowerState } from '../contracts';
-import { CAMERA, HERO, SCORE } from '../config/tuning';
+import { CAMERA, ENEMY, HERO, KILL_FX, SCORE } from '../config/tuning';
 import { shakeWorld } from './camera';
 import type { Enemy } from './enemies/Enemy';
 import { FlightMode } from './player/flight';
@@ -25,7 +25,7 @@ const POWER_BANNERS: Partial<Record<keyof PowerState, { text: string; sub: strin
   brie: { text: 'BRIE!', sub: 'Scudo + super salto' },
   goat: { text: 'PROVOLA GOAT!', sub: 'Tocca GOAT o premi J per sparare' },
   thai: { text: 'ALETTE THAI!', sub: 'Tocca THAI o premi K' },
-  wings: { text: 'ALETTE CRUNCHY!', sub: 'Tieni premuto VOLA per volare' },
+  wings: { text: 'ALETTE CRUNCHY!', sub: 'VOLA: tieni premuto Spazio/↑ · SCENDI: ↓' },
 };
 
 export class Interactions {
@@ -77,7 +77,8 @@ export class Interactions {
     const { run, svc, fx, player } = this.r;
     const out = collect(run, kind);
     fx.popup(x, y - 6, out.points);
-    if (kind === 'fries') svc.audio.sfx('fries');
+    if (kind === 'nugget') svc.audio.sfx('coin');
+    else if (kind === 'fries') svc.audio.sfx('fries');
     else if (kind === 'burger') svc.audio.sfx(out.healed ? 'heal' : 'burger');
     else svc.audio.sfx(kind === 'brie' ? 'brie' : 'powerup');
     if (run.powers.brie) player.setBrie(true);
@@ -129,19 +130,41 @@ export class Interactions {
     if (res === 'clang') {
       this.r.svc.audio.sfx('armorClang');
       shakeWorld(this.r.scene.cameras.main, 90, CAMERA.shakeClang);
+      // slide off the dome: a stomp on the armour must never become an endless trampoline
+      const off = hero.center.x - eb.center.x;
+      this.r.player.kick((Math.abs(off) > 1 ? Math.sign(off) : this.r.player.facing) * ENEMY.armor.clangKick);
       return;
     }
     this.kill(e, 'stomp');
   }
 
-  /** Removes an enemy with score + sfx for the given method. */
+  /** Removes an enemy with score + sfx for the given method; weapon kills get a hit-stop. */
   kill(e: Enemy, method: KillMethod): void {
     if (!e.alive) return;
+    const top = e.body.top;
     e.kill(method, this.r.host);
     const pts = killPoints(method);
     addScore(this.r.run, pts);
-    this.r.fx.popup(e.sprite.x, e.body.top - 4, pts);
-    this.r.svc.audio.sfx(method === 'stomp' ? 'stomp' : 'enemyHit');
+    this.r.fx.popup(e.sprite.x, top - 4, pts);
+    const audio = this.r.svc.audio;
+    if (method === 'stomp') {
+      audio.sfx('stomp');
+      return;
+    }
+    audio.sfx(method === 'cheese' ? 'melt' : 'ignite');
+    this.hitStop(KILL_FX.hitStopMs);
+    shakeWorld(this.r.scene.cameras.main, KILL_FX.shakeMs, KILL_FX.shake);
+  }
+
+  /** Freezes the physics for a few ms (the scene clock keeps running, so it always resumes). */
+  private hitStop(ms: number): void {
+    const { scene } = this.r;
+    const world = scene.physics.world;
+    if (world.isPaused) return;
+    world.pause();
+    scene.time.delayedCall(ms, () => {
+      if (scene.sys.isActive()) world.resume();
+    });
   }
 
   /** Enemy contact: Brie absorbs it, otherwise a heart (or game over). */

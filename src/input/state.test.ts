@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { keyDown } from './keyboard';
 import { InputState } from './state';
 
 describe('InputState', () => {
@@ -103,5 +104,95 @@ describe('InputState', () => {
     expect(s.consume('club')).toBe(false);
     s.enabled = true;
     expect(s.consume('club')).toBe(false);
+  });
+
+  it('axisY: last pressed of up/down wins; ↑ also reads as jump, Space is not up', () => {
+    const s = new InputState();
+    s.press('k:Space', 'jump');
+    expect(s.axisY).toBe(0);
+    expect(s.jumpHeld).toBe(true);
+    s.press('k:ArrowDown', 'down');
+    expect(s.axisY).toBe(1);
+    s.press('k:ArrowUp', 'up');
+    expect(s.axisY).toBe(-1);
+    s.release('k:ArrowUp');
+    expect(s.axisY).toBe(1);
+    s.release('k:ArrowDown');
+    s.release('k:Space');
+    s.press('k:KeyW', 'up');
+    expect([s.axisY, s.jumpHeld, s.upHeld]).toEqual([-1, true, true]);
+    expect(s.consume('jump')).toBe(true);
+  });
+
+  it('consumeDir latches the most recent direction press once', () => {
+    const s = new InputState();
+    expect(s.consumeDir()).toBe(null);
+    s.press('k:ArrowLeft', 'left');
+    s.press('p:1', 'up');
+    s.release('p:1');
+    expect(s.consumeDir()).toBe('up');
+    expect(s.consumeDir()).toBe(null);
+    s.press('p:2', 'right');
+    s.press('p:2', 'down'); // cross-pad finger slides to another arm
+    expect(s.consumeDir()).toBe('down');
+    s.pushDir('left'); // swipe
+    expect(s.consumeDir()).toBe('left');
+    s.press('k:Space', 'jump');
+    expect(s.consumeDir()).toBe(null);
+  });
+
+  it('consumeDir is masked while disabled and cleared by reset', () => {
+    const s = new InputState();
+    s.press('p:1', 'up');
+    s.enabled = false;
+    expect(s.consumeDir()).toBe(null);
+    s.enabled = true;
+    expect(s.consumeDir()).toBe(null);
+    s.enabled = false;
+    s.pushDir('left');
+    s.enabled = true;
+    expect(s.consumeDir()).toBe(null);
+    s.pushDir('right');
+    s.reset();
+    expect(s.consumeDir()).toBe(null);
+  });
+
+  it('silent re-acquire holds without latching an edge or a direction', () => {
+    const s = new InputState();
+    s.press('k:ArrowRight', 'right', false);
+    s.press('k:Space', 'jump', false);
+    expect([s.axisX, s.jumpHeld]).toEqual([1, true]);
+    expect(s.consume('jump')).toBe(false);
+    expect(s.consumeDir()).toBe(null);
+  });
+});
+
+describe('keyDown', () => {
+  it('re-acquires a held key after a reset from its auto-repeat (L1-07)', () => {
+    const s = new InputState();
+    keyDown(s, 'ArrowRight', false, 'platform');
+    expect(s.consumeDir()).toBe('right');
+    s.reset(); // pause / rotation
+    keyDown(s, 'ArrowRight', true, 'platform');
+    expect(s.axisX).toBe(1);
+    expect(s.consumeDir()).toBe(null);
+    keyDown(s, 'ArrowRight', true, 'platform'); // further repeats change nothing
+    expect(s.axisX).toBe(1);
+  });
+
+  it('never re-acquires pause from a repeat (held Esc must not re-pause)', () => {
+    const s = new InputState();
+    keyDown(s, 'Escape', true, 'platform');
+    expect(s.consume('pause')).toBe(false);
+  });
+
+  it('Space is fire in the shooter, jump elsewhere; unmapped keys are ignored', () => {
+    const s = new InputState();
+    keyDown(s, 'Space', false, 'shooter');
+    expect([s.fireHeld, s.jumpHeld]).toEqual([true, false]);
+    s.reset();
+    keyDown(s, 'Space', false, 'maze');
+    expect(s.jumpHeld).toBe(true);
+    expect(keyDown(s, 'KeyQ', false, 'platform')).toBe(false);
   });
 });

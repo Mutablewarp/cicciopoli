@@ -9,8 +9,10 @@ import { SERVICES_KEY } from '../contracts';
 import { BASE_PACKS_KEY } from './BootScene';
 import { debugEnabled, installDebug, uninstallDebug } from './debug';
 import { Flow } from './flow';
+import { RefreshMeter } from './frameRate';
 import { Interactions } from './interactions';
 import { getLevel } from './levels';
+import { nextLevel } from './rules';
 import { LevelRun } from './run';
 import { loadThemeArt } from './themeLoader';
 import { getTheme } from './themes';
@@ -26,6 +28,9 @@ export class GameScene extends Phaser.Scene {
   private ix: Interactions | null = null;
   private flow: Flow | null = null;
   private paused = false;
+  /** pause asked while it could not open (loading, respawn fade): opens on the next play frame */
+  private pendingPause = false;
+  private meter = new RefreshMeter(60);
   private cleanups: Array<() => void> = [];
 
   constructor() {
@@ -38,6 +43,7 @@ export class GameScene extends Phaser.Scene {
     this.ix = null;
     this.flow = null;
     this.paused = false;
+    this.pendingPause = false;
   }
 
   create(): void {
@@ -46,6 +52,7 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setRoundPixels(true);
     this.svc.input.reset();
     this.svc.ui.showHud(false);
+    this.meter = new RefreshMeter(this.physics.world.fps);
     this.listen();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.teardown());
     void this.boot();
@@ -84,7 +91,10 @@ export class GameScene extends Phaser.Scene {
     const flow = new Flow(run, ix, {
       restart: () => this.restartLevel(),
       toMenu: () => this.toMenu(),
-      next: () => this.svc.app.startLevel(2),
+      next: () => {
+        const next = nextLevel(def.id);
+        if (next) this.svc.app.startLevel(next);
+      },
     });
     this.run = run;
     this.ix = ix;
@@ -96,6 +106,7 @@ export class GameScene extends Phaser.Scene {
     this.svc.ui.setLoading(null);
     this.svc.ui.showHud(true);
     this.svc.audio.music(theme.music);
+    if (this.svc.input.consume('pause')) this.pendingPause = true; // Esc / P while loading
     this.svc.input.reset();
     this.svc.ui.banner(def.name, { tone: 'info', sub: `LIVELLO ${def.id}`, ms: 1800 });
   }
@@ -103,10 +114,11 @@ export class GameScene extends Phaser.Scene {
   override update(time: number, delta: number): void {
     const { run, ix, flow } = this;
     if (!run || !ix || !flow) return;
-    if (this.svc.input.consume('pause')) {
-      this.pause();
-      return;
-    }
+    const hz = this.meter.sample(delta);
+    if (hz !== null) this.physics.world.setFPS(hz);
+    if (this.svc.input.consume('pause')) this.pause();
+    if (this.pendingPause && run.phase === 'play') this.pause();
+    if (this.paused) return;
     const dt = Math.min(delta, 50); // a long hitch must not teleport timers / camera
     ix.tick(dt);
     run.update(dt, time);
@@ -116,7 +128,14 @@ export class GameScene extends Phaser.Scene {
   /* ---------------------------------------------------------------- pause */
 
   private pause(): void {
-    if (this.paused || !this.run || this.run.phase !== 'play' || !this.sys.isActive()) return;
+    if (this.paused || !this.sys.isActive()) return;
+    const phase = this.run?.phase;
+    if (phase === 'won' || phase === 'over') return;
+    if (phase !== 'play') {
+      this.pendingPause = true; // still loading or mid-respawn: honoured as soon as play resumes
+      return;
+    }
+    this.pendingPause = false;
     this.paused = true;
     this.svc.audio.sfx('pause');
     this.physics.world.pause();
@@ -150,12 +169,14 @@ export class GameScene extends Phaser.Scene {
     this.svc.ui.hideOverlays();
     this.svc.input.reset();
     this.paused = false;
+    this.pendingPause = false;
     this.physics.world.resume();
     this.scene.restart({ level: this.levelId });
   }
 
   private toMenu(): void {
     this.paused = false;
+    this.pendingPause = false;
     this.svc.app.toMenu();
   }
 
@@ -166,6 +187,7 @@ export class GameScene extends Phaser.Scene {
     this.ix = null;
     this.flow = null;
     this.paused = false;
+    this.pendingPause = false;
     uninstallDebug();
   }
 }

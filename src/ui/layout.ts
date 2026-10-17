@@ -2,7 +2,7 @@
  * Touch vs desktop mode. Desktop = fine pointer and no touch seen yet: touch controls
  * hidden, key legends shown. The first real touch switches to touch mode for good.
  */
-export function trackPointerMode(shell: HTMLElement): void {
+export function trackPointerMode(shell: HTMLElement, onChange: () => void): void {
   let touch = !window.matchMedia('(pointer: fine)').matches;
   const apply = (): void => {
     shell.classList.toggle('is-touch', touch);
@@ -12,6 +12,7 @@ export function trackPointerMode(shell: HTMLElement): void {
     if (touch) return;
     touch = true;
     apply();
+    onChange();
   };
   apply();
   window.addEventListener(

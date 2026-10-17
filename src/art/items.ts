@@ -8,7 +8,10 @@ import { ITEMS, ITEM_ANIMS } from './keys';
 import type { Raster } from './items/raster';
 import { sheetOf } from './items/raster';
 import { brieFrames, burgerFrames, friesFrames } from './items/food';
-import { badgeRaster, cheeseShotFrames, cheeseSplatFrames, provolaFrames } from './items/cheese';
+import { badgeRaster, cheeseShotFrames, provolaFrames } from './items/batter';
+import { cheeseEngulfFrames, cheeseSplatFrames } from './items/cheese';
+import { nuggetFrames } from './items/nugget';
+import { burnFrames } from './items/burn';
 import { clubFrames, thaiFrames } from './items/glaze';
 import { crunchyFrames, wingsFrames } from './items/crunchy';
 import { flameFrames } from './items/fire';
@@ -36,6 +39,9 @@ export const ITEM_SHEETS: readonly (readonly [string, () => Raster[]])[] = [
   [ITEMS.hitStar, hitStarFrames],
   [ITEMS.crateBits, crateBitsFrames],
   [ITEMS.digits, digitFrames],
+  [ITEMS.nugget, nuggetFrames],
+  [ITEMS.cheeseEngulf, cheeseEngulfFrames],
+  [ITEMS.burn, burnFrames],
 ];
 
 const range = (n: number): number[] => Array.from({ length: n }, (_, i) => i);
@@ -60,6 +66,9 @@ export const ITEM_ANIM_DEFS: readonly AnimDef[] = [
   anim(ITEM_ANIMS.dust, ITEMS.dust, 5, 16, false),
   anim(ITEM_ANIMS.poof, ITEMS.poof, 6, 16, false),
   anim(ITEM_ANIMS.hitStar, ITEMS.hitStar, 4, 20, false),
+  anim(ITEM_ANIMS.nugget, ITEMS.nugget, 6, 10, true),
+  anim(ITEM_ANIMS.cheeseEngulf, ITEMS.cheeseEngulf, 8, 14, false),
+  anim(ITEM_ANIMS.burn, ITEMS.burn, 8, 14, false),
 ];
 
 export function buildItemsArt(): ArtPack {

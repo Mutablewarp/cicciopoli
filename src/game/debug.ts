@@ -36,9 +36,13 @@ export interface DebugApi {
   win(): void;
   /** live enemies: kind, feet position, awake flag */
   enemies(): { kind: string; x: number; y: number; awake: boolean }[];
+  /** freezes Ciccio's sprite on one sheet frame (null = back to normal) to inspect attachments */
+  pose(frame: number | null): void;
+  /** camera visible rect (world px) */
+  view(): { x: number; y: number; w: number; h: number };
 }
 
-const GIVE: Record<string, PickupKind> = { brie: 'brie', goat: 'goat', thai: 'thai', wings: 'crunchy', crunchy: 'crunchy', burger: 'burger', fries: 'fries' };
+const GIVE: Record<string, PickupKind> = { nugget: 'nugget', brie: 'brie', goat: 'goat', thai: 'thai', wings: 'crunchy', crunchy: 'crunchy', burger: 'burger', fries: 'fries' };
 
 export function debugEnabled(): boolean {
   return new URLSearchParams(window.location.search).has('debug');
@@ -78,6 +82,13 @@ export function installDebug(r: LevelRun, ix: Interactions, flow: Flow): void {
     },
     enemies: () =>
       r.enemies.alive().map((e) => ({ kind: e.kind, x: Math.round(e.sprite.x), y: Math.round(e.body.bottom), awake: e.awake })),
+    pose: (frame) => {
+      r.view.auto = frame === null;
+      if (frame === null) return;
+      r.view.sprite.anims.stop();
+      r.view.sprite.setFrame(frame).setVisible(true);
+    },
+    view: () => r.rig.view(),
     win: () => {
       r.player.teleport(r.goal.x, r.goal.surfaceY);
       flow.win();

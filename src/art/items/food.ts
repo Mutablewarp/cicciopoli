@@ -18,40 +18,59 @@ export function shineCycle(base: Raster, sweeps: readonly (readonly Pt[])[], out
 /* ------------------------------------------------------------------ fries */
 
 const FRY = { light: '#fde488', base: PAL.fry, dark: PAL.fryDark, crisp: '#b06408' };
-const BOX = {
-  white: '#fffdf4',
-  cream: PAL.creamLight,
-  shade: PAL.creamShade,
-  red: PAL.shoe,
-  redDark: PAL.shoeDark,
-  peachLight: '#fcdcb8',
-  peach: '#f4c89c',
-  peachDark: '#d8a478',
+/** Ciccio's maroon paper boat tray (photo, bottom box). */
+const TRAY = {
+  rim: '#dc7466',
+  light: '#c24c48',
+  base: '#a5363a',
+  dark: '#7e2429',
+  deep: '#5a161c',
+  inner: '#6c1c22',
+  liner: '#f6f2ea',
 };
 
-/** Front fries as in the cup art: [x of the 2-px stick, top row, extra crispy]. Gaps become ink. */
-const FRIES: readonly (readonly [number, number, boolean])[] = [[2, 4, false], [5, 2, true], [8, 1, false], [11, 3, false]];
+/** Fries: x at the tray, top row, lean (px at the tip), crispy dark tip. Drawn back to front. */
+const FRIES: readonly (readonly [number, number, number, boolean])[] = [
+  [7, 1, 1, false],
+  [10, 2, 2, true],
+  [2, 3, -1, true],
+  [4, 1, 0, false],
+  [9, 2, -1, false],
+  [12, 4, 1, false],
+  [6, 3, -1, true],
+];
 
-function drawFries(r: Raster): void {
-  for (const [x, top, crisp] of FRIES) {
-    const [lit, side, end] = crisp ? [FRY.base, FRY.dark, FRY.crisp] : [FRY.light, FRY.base, FRY.dark];
-    for (let y = top; y <= 7; y++) {
-      const tip = y === top;
-      r.set(x, y, tip ? side : lit);
-      r.set(x + 1, y, tip || y === 7 ? end : side);
-    }
+/** One 2-px fry: lit left side, shaded right side (separates it from its neighbour), crisp tip. */
+function drawFry(r: Raster, x0: number, top: number, lean: number, crisp: boolean): void {
+  const bottom = 9;
+  for (let y = top; y <= bottom; y++) {
+    const x = x0 + Math.round((lean * (bottom - y)) / (bottom - top));
+    const tip = y === top;
+    r.set(x, y, tip ? (crisp ? FRY.dark : FRY.base) : FRY.light);
+    r.set(x + 1, y, tip ? (crisp ? FRY.crisp : FRY.dark) : y === top + 1 ? FRY.base : FRY.dark);
   }
 }
 
-function drawBox(r: Raster): void {
-  for (let x = 2; x <= 13; x++) r.set(x, 8, PAL.ink); // box rim line, as on the cup
+/** Shadowed inside of the tray, visible between the fries. */
+function drawBackWall(r: Raster): void {
+  for (let y = 5; y <= 8; y++) for (let x = 2; x <= 13; x++) r.set(x, y, TRAY.inner);
+}
+
+/** Front wall: lit rim lip, sloped sides (boat), light from the top-left. */
+function drawFrontWall(r: Raster): void {
+  // checkered paper liner peeking over the rim, in front of the fries' feet
+  for (let y = 7; y <= 8; y++) for (let x = 2; x <= 13; x++) r.set(x, y, (x + y) % 2 ? TRAY.liner : PAL.ink);
   for (let y = 9; y <= 14; y++) {
-    const low = y >= 12;
-    for (let x = low ? 3 : 2; x <= (low ? 12 : 13); x++) {
-      let c: string;
-      if (y === 11) c = x >= 12 ? BOX.redDark : BOX.red;
-      else if (low) c = x === 3 ? BOX.peachLight : x >= 11 ? BOX.peachDark : BOX.peach;
-      else c = x === 2 ? BOX.white : x >= 12 ? BOX.shade : BOX.cream;
+    const inset = y >= 13 ? 2 : y >= 11 ? 1 : 0;
+    for (let x = 1 + inset; x <= 14 - inset; x++) {
+      const l = x === 1 + inset;
+      const rr = x === 14 - inset;
+      let c = TRAY.base;
+      if (y === 9) c = rr ? TRAY.light : TRAY.rim;
+      else if (y === 14) c = TRAY.deep;
+      else if (rr) c = TRAY.deep;
+      else if (l) c = TRAY.light;
+      else if (x >= 12 - inset || y === 13) c = TRAY.dark;
       r.set(x, y, c);
     }
   }
@@ -59,15 +78,16 @@ function drawBox(r: Raster): void {
 
 export function friesFrames(): Raster[] {
   const base = new Raster(16, 16);
-  drawFries(base);
-  drawBox(base);
+  drawBackWall(base);
+  for (const [x, top, lean, crisp] of FRIES) drawFry(base, x, top, lean, crisp);
+  drawFrontWall(base);
   base.outline(PAL.ink);
-  // one shine pixel hops across the fry tips, left to right
+  // a shine pixel hops across the fry tips, then along the rim
   return shineCycle(base, [
-    [[2, 5], [2, 6]],
+    [[3, 4], [4, 4]],
     [[5, 3], [5, 4]],
-    [[8, 2], [8, 3]],
-    [[11, 4], [11, 5]],
+    [[7, 2], [8, 3]],
+    [[9, 3], [9, 4], [12, 9]],
   ], PAL.ink, 0.85);
 }
 

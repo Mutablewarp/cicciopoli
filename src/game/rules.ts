@@ -2,10 +2,10 @@
  * Score / health / power rules (BRIEF §4 Rules) as pure functions over a RunState.
  * The scene applies the returned outcome (sfx, FX, HUD); nothing here touches Phaser.
  */
-import type { LevelId, PowerState } from '../contracts';
+import { LEVEL_IDS, type LevelId, type PowerState } from '../contracts';
 import { HERO, SCORE } from '../config/tuning';
 
-export type PickupKind = 'fries' | 'burger' | 'brie' | 'goat' | 'thai' | 'crunchy';
+export type PickupKind = 'nugget' | 'fries' | 'burger' | 'brie' | 'goat' | 'thai' | 'crunchy';
 export type KillMethod = 'stomp' | 'club' | 'cheese';
 
 export interface RunState {
@@ -79,6 +79,12 @@ export function pitFall(run: RunState): 'respawn' | 'dead' {
   run.hearts = Math.max(0, run.hearts - 1);
   run.powers.brie = false;
   return run.hearts > 0 ? 'respawn' : 'dead';
+}
+
+/** Level chain L1 → L2 → L3 → L4 (the last one has no next). */
+export function nextLevel(level: LevelId): LevelId | null {
+  const i = LEVEL_IDS.indexOf(level);
+  return i >= 0 && i + 1 < LEVEL_IDS.length ? LEVEL_IDS[i + 1] : null;
 }
 
 export function clearBonus(run: RunState): number {

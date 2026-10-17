@@ -1,44 +1,13 @@
-/** Title screen: Ciccio's logo, level select, sound toggle, runner strip. */
+/** Title screen: official Ciccio's logo, 2x2 level select, sound toggle, runner strip. */
 import type { LevelId, TitleInfo } from '../contracts';
+import { LEVEL_IDS } from '../contracts';
 import { PAL } from '../art/pixel';
-import { el, pixelSvg } from './dom';
+import { el, onActivate, pixelSvg } from './dom';
 import { SPEAKER_OFF, SPEAKER_ON } from './icons';
-import { logoFaceSvg, wordmarkSvg } from './logo';
+import { LOGO_URL } from './loading';
 import { Menu } from './menu';
-import { KEY_LEGEND, LEVEL_NAMES } from './screens';
-
-const THUMBS: Record<LevelId, { rows: string[]; pal: Record<string, string> }> = {
-  1: {
-    rows: [
-      'ssssssssssssssss',
-      'ssccssssssssyrrs',
-      'scccccssssssyrrr',
-      'ssssssssHHssyrrs',
-      'sssssssHhhHsysss',
-      'ssHHsssHhhhHysss',
-      'sHhhHsHhhhhhyhss',
-      'gggggggggggggggg',
-      'GgGGgGGgGGgGGgGG',
-      'bbkbbbbkbbbbkbbb',
-    ],
-    pal: { s: PAL.sky, c: PAL.cream, H: PAL.hillLight, h: PAL.hill, g: PAL.grass, G: PAL.grassMid, b: PAL.brick, k: PAL.mortar, y: PAL.poleLight, r: PAL.flagRed },
-  },
-  2: {
-    rows: [
-      'BBBBBBBBBBBBBBBB',
-      'BBWWBBBBBBBBBBBB',
-      'BWWWWBBBBKBBBBBB',
-      'WWRRWWWBBKBBBBWW',
-      'WRRRRWWWKKKWWWWR',
-      'RRCCRRRRKLKRRRRR',
-      'RCCCCRRRKKKRRCCC',
-      'dddddddddddddddd',
-      'oYYooYYoooYYooYo',
-      'oooooooooooooooo',
-    ],
-    pal: { B: PAL.bordeaux, W: PAL.wine, R: PAL.lavaRed, C: PAL.coral, K: PAL.castle, L: PAL.castleLit, d: PAL.ink, o: PAL.lavaOrange, Y: PAL.lavaYellow },
-  },
-};
+import { LEVEL_NAMES, keyLegend } from './screens';
+import { levelThumb } from './thumbs';
 
 const GRASS_TILE = pixelSvg(
   ['..g......g...g..', '.gGg....gGg.gGg.', 'gggggggggggggggg', 'GGGGGGGGGGGGGGGG', 'kkkkkkkkkkkkkkkk'],
@@ -68,7 +37,7 @@ export function createTitle(onChange: () => void): Title {
 
   const sound = el('button', 'cc-btn cc-iconbtn cc-title__sound');
   sound.type = 'button';
-  sound.addEventListener('click', () => {
+  onActivate(sound, () => {
     if (!handlers) return;
     renderMute(handlers.onToggleMute());
     sound.blur();
@@ -79,31 +48,37 @@ export function createTitle(onChange: () => void): Title {
     sound.setAttribute('aria-pressed', String(muted));
   }
 
-  const brand = el(
-    'div',
-    'cc-title__brand',
-    `<div class="cc-logo">${logoFaceSvg('cc-logo__face')}${wordmarkSvg('cc-logo__word')}</div>` +
-      '<p class="cc-title__sub">THE BURGER ADVENTURE</p>',
-  );
+  const logo = el('img', 'cc-logo');
+  logo.src = LOGO_URL;
+  logo.alt = "CICCIO'S";
+  logo.decoding = 'async';
+  const brand = el('div', 'cc-title__brand');
+  brand.append(logo, el('p', 'cc-title__sub', 'THE BURGER ADVENTURE'));
+
   const bests = new Map<LevelId, HTMLElement>();
-  const levelBtns = ([1, 2] as const).map((lv) => {
+  const levelBtns = LEVEL_IDS.map((lv) => {
     const b = el('button', `cc-btn cc-level cc-level--${lv}`);
     b.type = 'button';
+    b.setAttribute('aria-label', `Livello ${lv}: ${LEVEL_NAMES[lv]}`);
     const best = el('span', 'cc-level__best');
     bests.set(lv, best);
-    const text = el('span', 'cc-level__text', `<span class="cc-level__name"><b>0${lv}</b> · ${LEVEL_NAMES[lv]}</span>`);
-    text.append(best);
-    b.append(el('span', 'cc-level__thumb', pixelSvg(THUMBS[lv].rows, THUMBS[lv].pal)), text, el('span', 'cc-level__go', '▶'));
-    b.addEventListener('click', menu.guard(() => handlers?.onStart(lv)));
+    const thumb = el('span', 'cc-level__thumb', levelThumb(lv));
+    thumb.append(el('span', 'cc-level__num', `0${lv}`), el('span', 'cc-level__go', '▶'));
+    const text = el('span', 'cc-level__text');
+    text.append(el('span', 'cc-level__name', LEVEL_NAMES[lv]), best);
+    b.append(thumb, text);
+    onActivate(b, menu.guard(() => handlers?.onStart(lv)));
     return b;
   });
-  const nav = el('nav', 'cc-title__menu');
-  nav.setAttribute('aria-label', 'Scegli il livello');
-  nav.append(...levelBtns);
-  nav.insertAdjacentHTML('beforeend', KEY_LEGEND);
+  const grid = el('nav', 'cc-title__menu');
+  grid.setAttribute('aria-label', 'Scegli il livello');
+  grid.append(...levelBtns);
+  const menuCol = el('div', 'cc-title__levels');
+  menuCol.append(grid);
+  menuCol.insertAdjacentHTML('beforeend', keyLegend());
 
   const main = el('div', 'cc-title__main');
-  main.append(brand, nav);
+  main.append(brand, menuCol);
   const canvas = el('canvas', 'cc-runner__canvas');
   const runner = el('div', 'cc-runner');
   const grass = el('div', 'cc-runner__grass');
@@ -128,7 +103,7 @@ export function createTitle(onChange: () => void): Title {
       }
       root.hidden = false;
       isOpen = true;
-      menu.open(levelBtns, { armMs: 250 });
+      menu.open(levelBtns, { armMs: 250, cols: 2 });
       onChange();
     },
     hide() {

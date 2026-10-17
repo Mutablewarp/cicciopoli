@@ -115,7 +115,8 @@ export class LevelRun {
   }
 
   followTarget(): FollowTarget {
-    return { x: this.player.x, bottom: this.player.bottom, top: this.player.top, facing: this.player.facing, onGround: this.player.onGround };
+    const p = this.player;
+    return { x: p.x, bottom: p.bottom, top: p.top, facing: p.facing, onGround: p.onGround, flying: p.mode.id === 'flight' && !p.onGround };
   }
 
   /** Zoom / framing after a resize or rotation; renders correctly even while paused. */

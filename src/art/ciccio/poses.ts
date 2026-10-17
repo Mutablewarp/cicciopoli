@@ -75,16 +75,17 @@ function run(k: number): Pose {
 }
 
 /* ----------------------------------------------------------- airborne */
+// Airborne and hurt poses keep the near (club) hand at belly height, in front: the held
+// Thai club must point forward, never up across the glasses (QA L1-02).
 const JUMP: Pose = {
   pelvis: [24, 35],
   lean: -2,
   face: 'joy',
-  armF: arm(145, 160),
+  armF: arm(55, 80),
   armB: arm(-150, -165),
-  armFBack: true,
   legF: { knee: [30, 37], ankle: [28, 42], shoe: 'point' },
   legB: { knee: [22, 38], ankle: [19, 42], shoe: 'point' },
-  club: -0.2,
+  club: 0.55,
 };
 
 const APEX: Pose = {
@@ -92,11 +93,11 @@ const APEX: Pose = {
   lean: 0,
   belly: 0.4,
   face: 'normal',
-  armF: arm(105, 140),
+  armF: arm(65, 90),
   armB: arm(-105, -140),
   legF: { knee: [30, 38], ankle: [28, 42], shoe: 'point' },
   legB: { knee: [21, 38], ankle: [18, 42], shoe: 'point' },
-  club: 0.1,
+  club: 0.6,
 };
 
 const FALL: Pose = {
@@ -104,12 +105,11 @@ const FALL: Pose = {
   lean: -3,
   belly: -0.3,
   face: 'hurt',
-  armF: arm(130, 175),
+  armF: arm(60, 95),
   armB: arm(-130, -100),
-  armFBack: true,
   legF: { knee: [28, 40], ankle: [29, 42], shoe: 'point' },
   legB: { knee: [21, 40], ankle: [20, 42], shoe: 'point' },
-  club: -0.3,
+  club: 0.7,
 };
 
 const LAND: Pose = {
@@ -122,7 +122,7 @@ const LAND: Pose = {
   armB: arm(-55, -85),
   legF: { knee: [30, 42], ankle: [29, 43], shoe: 'flat' },
   legB: { knee: [18, 42], ankle: [19, 43], shoe: 'flat' },
-  club: 0.45,
+  club: 0.65,
 };
 
 const HURT: Pose = {
@@ -130,11 +130,11 @@ const HURT: Pose = {
   lean: -12,
   head: [-1, 0],
   face: 'hurt',
-  armF: arm(95, 120),
+  armF: arm(45, 75),
   armB: arm(-150, -120),
   legF: { knee: [29, 39], ankle: [31, 41], shoe: 'point' },
   legB: { knee: [20, 41], ankle: [19, 43], shoe: 'flat' },
-  club: -0.4,
+  club: 1,
 };
 
 /* -------------------------------------------------------------- flying */

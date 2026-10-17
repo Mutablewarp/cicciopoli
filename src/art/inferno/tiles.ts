@@ -181,8 +181,10 @@ export function buildInfernoTiles(): HTMLCanvasElement {
     if (l) sideEdge(px, 'l', depth[0]);
     if (r) sideEdge(px, 'r', depth[TILE - 1]);
   };
+  // exposed side columns repeat at every depth: they use the deep bricks so they continue
+  // GROUND_FILL_DEEP without a lit seam, and read as the island's shaded flank (QA VIS-10)
   const fill = (l: boolean, r: boolean) => (px: Px): void => {
-    fillBricks(px, false, 1);
+    fillBricks(px, l || r, 1);
     if (l) sideEdge(px, 'l', null);
     if (r) sideEdge(px, 'r', null);
   };

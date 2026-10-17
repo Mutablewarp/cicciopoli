@@ -34,4 +34,10 @@ describe('held club angle clamp', () => {
     expect(a).toBeLessThan(1.9);
     expect(190 + tip[0] * Math.sin(a) + tip[1] * Math.cos(a)).toBeLessThanOrEqual(207);
   });
+
+  it('turns a raised club forward so its head never rises above the eyes', () => {
+    const a = clampTipAngle(-0.4, 180, tip, 1, 207, 172);
+    expect(a).toBeGreaterThan(-0.4);
+    expect(180 + tip[0] * Math.sin(a) + tip[1] * Math.cos(a)).toBeGreaterThanOrEqual(172);
+  });
 });

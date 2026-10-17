@@ -11,11 +11,64 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-/** A menu button that activates on click (mouse, touch tap, keyboard via the menu). */
+/** Extra px around a button where releasing a finger still counts as a tap. */
+const TAP_SLOP = 10;
+/** A click this soon after a touch activation is the browser's echo of that tap. */
+const CLICK_ECHO_MS = 700;
+
+/**
+ * Activates `fn` on a tap made while other fingers are down (browsers skip `click` then):
+ * touch/pen fire on pointerup of a pointer that went down on this element and ends inside
+ * it; mouse and keyboard (Menu calls .click()) keep using click. Never fires twice per tap.
+ */
+export function onActivate(node: HTMLElement, fn: () => void): void {
+  let finger: number | null = null;
+  let echoUntil = 0;
+  const lift = (): void => {
+    finger = null;
+    node.classList.remove('is-pressed');
+  };
+  node.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' || finger !== null) return;
+    finger = e.pointerId;
+    node.classList.add('is-pressed');
+    try {
+      node.setPointerCapture(e.pointerId);
+    } catch {
+      // pointer already gone
+    }
+  });
+  node.addEventListener('pointerup', (e) => {
+    if (e.pointerId !== finger) return;
+    lift();
+    const r = node.getBoundingClientRect();
+    const inside =
+      e.clientX >= r.left - TAP_SLOP && e.clientX <= r.right + TAP_SLOP && e.clientY >= r.top - TAP_SLOP && e.clientY <= r.bottom + TAP_SLOP;
+    if (!inside) return;
+    echoUntil = performance.now() + CLICK_ECHO_MS;
+    fn();
+  });
+  node.addEventListener('pointercancel', (e) => {
+    if (e.pointerId === finger) lift();
+  });
+  // cancels the compatibility click at the source; the echo guard below covers the rest
+  node.addEventListener('touchend', (e) => {
+    if (performance.now() < echoUntil) e.preventDefault();
+  });
+  node.addEventListener('click', () => {
+    if (performance.now() < echoUntil) {
+      echoUntil = 0;
+      return;
+    }
+    fn();
+  });
+}
+
+/** A menu button: tap (even multi-touch), mouse click or keyboard via the menu. */
 export function button(cls: string, html: string, onClick: () => void): HTMLButtonElement {
   const b = el('button', `cc-btn ${cls}`, html);
   b.type = 'button';
-  b.addEventListener('click', onClick);
+  onActivate(b, onClick);
   return b;
 }
 

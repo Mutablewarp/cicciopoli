@@ -1,17 +1,19 @@
 /**
  * Dev-only harness (ui-harness.html, not part of the build).
- * ?state=loading|title|hud|pause|victory|gameover|banner|logo &level=1|2
- * &fire=&club=&down=enabled|disabled|hidden  &tone=goal|power|danger|info
+ * ?state=loading|loaddone|title|hud|pause|victory|gameover|banner|icons|logo &level=1|2|3|4
+ * &fire=&club=&down=enabled|disabled|hidden &bolts=N  &tone=goal|power|danger|info
  */
 import type { ButtonState, ControlsLayout, LevelId } from '../contracts';
+import { LEVEL_IDS } from '../contracts';
 import { startTitleRunner } from '../titleRunner';
+import { boltSvg, brieSvg, fuocoSvg, goatSvg, headSvg, nuggetSvg, pelletSvg, thaiSvg, wingsSvg } from './icons';
 import { createUI } from './index';
 import { LOGO_FACE_VIEWBOX, WORDMARK_VIEWBOX, logoFaceSvg, wordmarkSvg } from './logo';
 
 const params = new URLSearchParams(location.search);
 const root = document.getElementById('app') as HTMLElement;
 const state = params.get('state') ?? 'hud';
-const level: LevelId = params.get('level') === '2' ? 2 : 1;
+const level: LevelId = LEVEL_IDS.find((l) => String(l) === params.get('level')) ?? 1;
 const log = (msg: string) => () => {
   (window as unknown as { __log: string[] }).__log.push(msg);
 };
@@ -39,7 +41,7 @@ function fakeGame(host: HTMLElement): void {
   const c = document.createElement('canvas');
   host.appendChild(c);
   const ctx = c.getContext('2d') as CanvasRenderingContext2D;
-  const sky = level === 1 ? ['#3aa8e0', '#60ccf0', '#a8e4f4'] : ['#4a0e1c', '#d82810', '#f0645a'];
+  const sky = { 1: ['#3aa8e0', '#60ccf0', '#a8e4f4'], 2: ['#4a0e1c', '#d82810', '#f0645a'], 3: ['#0b0d24', '#141a3e'], 4: ['#1e1a1e', '#1e1a1e'] }[level];
   const hill = level === 1 ? '#489c30' : '#2a1018';
   const ground = level === 1 ? '#a8cc00' : '#fc7a10';
   const frame = (t: number): void => {
@@ -57,6 +59,19 @@ function fakeGame(host: HTMLElement): void {
     sky.forEach((col, i) => g.addColorStop(i / (sky.length - 1), col));
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
+    if (level >= 3) {
+      // portrait playfield centred like the real scenes: starfield / maze walls
+      const pw = Math.min(w, Math.round((h * 224) / 288));
+      const x0 = Math.round((w - pw) / 2);
+      ctx.fillStyle = level === 3 ? '#e8eef8' : '#8a1c22';
+      for (let i = 0; i < 60; i++) ctx.fillRect(x0 + ((i * 37) % pw), (i * 53) % h, level === 3 ? 1 : 8, level === 3 ? 1 : 3);
+      ctx.strokeStyle = '#fcfcf4';
+      ctx.strokeRect(x0 + 0.5, 0.5, pw - 1, h - 1);
+      ctx.fillStyle = level === 3 ? '#a8dcf4' : '#f6c08a';
+      ctx.fillRect(x0 + Math.round(pw / 2) - 6, h - 16, 12, 8);
+      requestAnimationFrame(frame);
+      return;
+    }
     const off = (t / 40) % 160;
     ctx.fillStyle = hill;
     for (let x = -off; x < w + 160; x += 160) {
@@ -80,9 +95,14 @@ function fakeGame(host: HTMLElement): void {
 
 function layoutFor(lv: LevelId): ControlsLayout {
   const pick = (k: string, d: ButtonState): ButtonState => (params.get(k) as ButtonState | null) ?? d;
+  if (lv === 3) {
+    const bolts = Number(params.get('bolts') ?? '3');
+    return { level: 3, mode: 'shooter', fire: pick('fire', 'enabled'), club: pick('club', bolts > 0 ? 'enabled' : 'disabled'), down: 'hidden', jumpLabel: 'SALTA', clubCount: bolts };
+  }
+  if (lv === 4) return { level: 4, mode: 'maze', fire: 'hidden', club: 'hidden', down: 'hidden', jumpLabel: 'SALTA' };
   return lv === 1
-    ? { level: 1, fire: pick('fire', 'enabled'), club: pick('club', 'disabled'), down: pick('down', 'hidden'), jumpLabel: 'SALTA' }
-    : { level: 2, fire: pick('fire', 'hidden'), club: pick('club', 'hidden'), down: pick('down', 'enabled'), jumpLabel: 'VOLA' };
+    ? { level: 1, mode: 'platform', fire: pick('fire', 'enabled'), club: pick('club', 'disabled'), down: pick('down', 'hidden'), jumpLabel: 'SALTA' }
+    : { level: 2, mode: 'platform', fire: pick('fire', 'hidden'), club: pick('club', 'hidden'), down: pick('down', 'enabled'), jumpLabel: 'VOLA' };
 }
 
 function mount(): void {
@@ -105,10 +125,10 @@ function mount(): void {
       level,
       hearts: 3,
       maxHearts: 4,
-      score: level === 1 ? 161 : 1240,
+      score: [161, 1240, 3150, 870][level - 1],
       timeMs: 96000,
       progress: 0.42,
-      powers: { brie: true, goat: level === 1, thai: false, wings: level === 2 },
+      powers: { brie: level === 1, goat: level === 1, thai: false, wings: level === 2, bolt: level === 3, pellet: false },
     });
     ui.setControls(layoutFor(level));
     if (params.get('anim') === '1') {
@@ -125,8 +145,19 @@ function mount(): void {
     case 'loading':
       ui.setLoading(0.62, 'Impasto i panini…');
       break;
+    case 'loaddone':
+      // main.ts boot order: loading -> null -> title in the same tick
+      ui.setLoading(0.35, 'Impasto i panini…');
+      window.setTimeout(() => {
+        ui.setLoading(null);
+        ui.showTitle({ best: { 1: 1735 }, muted: false }, { onStart: (l) => log(`start-${l}`)(), onToggleMute: () => true });
+      }, 400);
+      break;
+    case 'icons':
+      showIcons();
+      return;
     case 'title':
-      ui.showTitle({ best: { 1: 1735 }, muted: false }, { onStart: (l) => log(`start-${l}`)(), onToggleMute: () => true });
+      ui.showTitle({ best: { 1: 1735, 2: 2480 }, muted: false }, { onStart: (l) => log(`start-${l}`)(), onToggleMute: () => true });
       import('../art/ciccio')
         .then((m) => ui.titleRunnerCanvas && startTitleRunner(ui.titleRunnerCanvas, m.buildCiccioArt()))
         .catch(log('runner-unavailable'));
@@ -138,7 +169,7 @@ function mount(): void {
     case 'victory':
       hudOn();
       ui.showVictory(
-        { level, score: 1735, timeMs: 92500, best: 1735, newBest: true, hasNext: level === 1 },
+        { level, score: 1735, timeMs: 92500, best: 1735, newBest: true, hasNext: level < 4 },
         { onNext: log('next'), onReplay: log('replay'), onMenu: log('menu') },
       );
       break;
@@ -157,6 +188,14 @@ function mount(): void {
     default:
       hudOn();
   }
+}
+
+/** All HUD / control icons, big, for pixel review. */
+function showIcons(): void {
+  const all = [nuggetSvg(), goatSvg(), pelletSvg(), fuocoSvg(), boltSvg(), brieSvg(), thaiSvg(), wingsSvg(), headSvg()];
+  root.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:16px;padding:16px;background:#242424">${all
+    .map((svg) => `<div style="width:120px;height:120px;background:#1a1a1c;padding:8px">${svg.replace('<svg ', '<svg style="width:100%;height:100%" ')}</div>`)
+    .join('')}</div>`;
 }
 
 if (state === 'logo') logoCompare();

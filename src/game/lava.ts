@@ -6,7 +6,6 @@
  */
 import Phaser from 'phaser';
 import { INFERNO, INFERNO_ANIMS, ITEM_ANIMS, ITEMS } from '../art/keys';
-import { PAL } from '../art/pixel';
 import { DEPTH } from './depths';
 import { FX_ART } from './fxArt';
 import type { ViewRect } from './parallax';
@@ -49,9 +48,14 @@ export class Lava {
       const s = scene.add.sprite(x, surfaceY, INFERNO.lava, 0).setOrigin(0, 0).setDepth(DEPTH.lava);
       if (anim) s.play(INFERNO_ANIMS.lava);
     }
-    // the strip's last row is lavaRed: the body continues with that colour to the bottom
-    const body = Phaser.Display.Color.HexStringToColor(PAL.lavaRed).color;
-    scene.add.rectangle(-2 * STRIP, surfaceY + STRIP - 1, width + 4 * STRIP, height - surfaceY + 64, body).setOrigin(0, 0).setDepth(DEPTH.lava);
+    // the strip's last row is lavaRed: the textured deep lava continues from that colour,
+    // a flat dark fill backs it far below (beyond any camera sink or shake)
+    const bodyTop = surfaceY + STRIP - 1;
+    const deep = Phaser.Display.Color.HexStringToColor('#3c0806').color;
+    scene.add.rectangle(-2 * STRIP, bodyTop, width + 4 * STRIP, height - surfaceY + 160, deep).setOrigin(0, 0).setDepth(DEPTH.lava);
+    if (scene.textures.exists(FX_ART.lavaDeep)) {
+      for (let x = -2 * STRIP; x < width + 2 * STRIP; x += STRIP) scene.add.image(x, bodyTop, FX_ART.lavaDeep).setOrigin(0, 0).setDepth(DEPTH.lava);
+    }
     for (let x = -GLOW_W; x < width + GLOW_W; x += GLOW_W) {
       const g = scene.add.image(x, surfaceY + GLOW_SINK, INFERNO.lavaGlow).setOrigin(0, 1).setDepth(DEPTH.lavaGlow);
       this.glows.push(g.setBlendMode(Phaser.BlendModes.ADD));

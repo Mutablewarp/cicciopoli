@@ -54,18 +54,23 @@ export const HERO = {
   hurtLockMs: 260,
   /** blinking invulnerability after a hit */
   invulnMs: 1600,
-  /** shorter invulnerability after a pit respawn */
-  respawnInvulnMs: 1000,
+  /** invulnerability after a pit respawn (long enough to read the scene and step away) */
+  respawnInvulnMs: 2000,
+  /** awake enemies closer than this to the respawn point are sent back to their spawn */
+  respawnClearPx: 96,
   /** blink frequency while invulnerable */
   blinkHz: 14,
   /** a body whose top goes this far below the level bottom has fallen into a pit */
   pitMargin: 24,
 } as const;
 
-/** Score table (BRIEF §4 Rules). The run starts at 161 like the cup HUD. */
+/** Score table (BRIEF §4 Rules + §6 v2). The run starts at 161 like the cup HUD. */
 export const SCORE = {
   start: 161,
-  fries: 10,
+  /** the coin */
+  nugget: 10,
+  /** Ciccio's fries tray: rarer bonus */
+  fries: 30,
   burger: 25,
   brie: 30,
   goat: 50,
@@ -75,7 +80,20 @@ export const SCORE = {
   club: 40,
   cheese: 45,
   crate: 20,
-  clear: { 1: 100, 2: 200 },
+  clear: { 1: 100, 2: 200, 3: 300, 4: 400 },
+} as const;
+
+/** Kill effects (BRIEF §6): world freeze + shake on a weapon kill, cheese / fire timings. */
+export const KILL_FX = {
+  /** physics freeze on a cheese / club kill */
+  hitStopMs: 55,
+  shake: 2.5,
+  shakeMs: 120,
+  /** fallbacks when the engulf / burn sheets are missing (placeholder art) */
+  engulfMs: 520,
+  burnMs: 560,
+  /** engulf frame from which the enemy is hidden under the blob */
+  engulfHideFrame: 3,
 } as const;
 
 /** Provola Goat cheese shots. */
@@ -126,8 +144,10 @@ export type FlightParams = { readonly [K in keyof typeof FLIGHT]: number };
 /** Enemy behaviour. Speeds px/s, times ms, distances px. */
 export const ENEMY = {
   pickle: { walk: 34, charge: 105, senseX: 104, senseY: 30, telegraphMs: 360, chargeMs: 1200, restMs: 800 },
-  chili: { hopVy: -150, idleHopMs: 900, senseX: 100, telegraphMs: 560, leapVy: -330, leapVx: 80, restMs: 1100 },
-  armor: { walk: 20, dazedMs: 650 },
+  /** leash: never lands farther than this from its spawn, hops back home when it strayed */
+  chili: { hopVy: -150, idleHopMs: 900, senseX: 100, telegraphMs: 560, leapVy: -330, leapVx: 80, restMs: 1100, leash: 56 },
+  /** clangKick: sideways push on Ciccio after a stomp on the armour (no endless trampoline) */
+  armor: { walk: 20, dazedMs: 650, clangKick: 160 },
   /** sine flight around the spawn point: horizontal sweep + faster vertical wave (rad/s) */
   bat: { rangeX: 40, wx: 0.9, amp: 18, wy: 2.6, track: 4 },
   demon: { walk: 30, chase: 60, senseX: 96, senseY: 28, hopVy: -170, hopMs: 1700 },
@@ -142,8 +162,14 @@ export const CAMERA = {
   /** exponential smoothing rates (1/s): higher = snappier */
   followX: 7,
   followY: 5,
-  /** look-ahead distance in the facing direction */
+  /** minimum look-ahead distance in the facing direction */
   lookAhead: 34,
+  /** look-ahead as a share of the view width (narrow portrait views see further ahead)… */
+  lookShare: 0.15,
+  lookShareFlight: 0.3,
+  /** …capped so wide views keep Ciccio near the centre */
+  lookMax: 48,
+  lookMaxFlight: 80,
   lookAheadRate: 3,
   /** vertical dead zone around the last grounded height (px above / below) */
   deadUp: 52,
@@ -154,6 +180,10 @@ export const CAMERA = {
   maxExtraBottom: 48,
   /** extra room kept between the covered band and the walking line, world px */
   insetMargin: 6,
+  /** Ciccio's head is kept at least this far below the HUD bar (insetTop), world px */
+  headMargin: 6,
+  /** world px the view may rise above the level top beyond the HUD band (high jumps) */
+  maxExtraTop: 64,
   /** screen shake amplitudes, world px */
   shakeHurt: 4,
   shakeClang: 2,

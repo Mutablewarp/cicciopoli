@@ -5,7 +5,7 @@
  */
 import type Phaser from 'phaser';
 import type { ArtPack } from '../contracts';
-import { buildFrames, ctxOf, makeCanvas, PAL, paintGrid } from '../art/pixel';
+import { bayer, buildFrames, ctxOf, makeCanvas, PAL, paintGrid, px } from '../art/pixel';
 import { registerArtPack } from '../art/register';
 
 export const FX_ART = {
@@ -16,6 +16,8 @@ export const FX_ART = {
   bubblePop: 'fx-bubble-pop',
   /** image 48x48, warm posterised halo (ADD blend) */
   glow: 'fx-glow',
+  /** image 32x64, molten lava body under the surface strip (seamless horizontally) */
+  lavaDeep: 'fx-lava-deep',
 } as const;
 
 const TRAIL_PAL = { w: '#f4fcff', b: '#9edcfc', d: '#4aa8e8' };
@@ -60,6 +62,39 @@ function buildGlow(): HTMLCanvasElement {
   return c;
 }
 
+const DEEP_TONES = ['#3c0806', '#5a0c06', PAL.lavaDeep, '#b01c0c', PAL.lavaRed] as const;
+const TAU = Math.PI * 2;
+
+/**
+ * Deep lava (QA VIS-02): continues the strip's last row (lavaRed), darkens into a slow
+ * molten body of dithered blobs crossed by dark wavy crust lines like the box art.
+ * Every wave has whole periods over 32 px, so the image tiles horizontally.
+ */
+function buildLavaDeep(): HTMLCanvasElement {
+  const W = 32;
+  const H = 64;
+  const c = makeCanvas(W, H);
+  const ctx = ctxOf(c);
+  for (let x = 0; x < W; x++) {
+    const a = (x / W) * TAU;
+    const crusts = [22 + Math.round(2.2 * Math.sin(a) + Math.sin(2 * a + 1)), 46 + Math.round(2 * Math.sin(2 * a + 2) + Math.sin(a + 0.5))];
+    for (let y = 0; y < H; y++) {
+      // 1 at the top (strip colour) easing to the dark body by row 14
+      const top = Math.max(0, 1 - y / 14);
+      const blob = 0.42 + 0.22 * Math.sin(2 * a + y * 0.21) * Math.cos(a - y * 0.13) + 0.12 * Math.sin(3 * a + y * 0.37);
+      const v = top + (1 - top) * blob * 0.85;
+      let tone: string = DEEP_TONES[Math.max(0, Math.min(4, Math.floor(v * 4 + bayer(x, y) - 0.25)))];
+      for (const cy of crusts) {
+        if (y === cy) tone = '#22060a';
+        else if (y === cy - 1) tone = '#b01c0c'; // hot rim just above the crust
+        else if (y === cy + 1) tone = '#3c0806';
+      }
+      px(ctx, x, y, tone);
+    }
+  }
+  return c;
+}
+
 function buildFxPack(): ArtPack {
   return {
     name: 'gameplay-fx',
@@ -67,7 +102,10 @@ function buildFxPack(): ArtPack {
       { key: FX_ART.trail, canvas: buildFrames(TRAIL.length, 6, 6, (ctx, i) => paintGrid(ctx, TRAIL[i], TRAIL_PAL)), frameWidth: 6, frameHeight: 6 },
       { key: FX_ART.bubble, canvas: buildFrames(BUBBLE.length, 10, 8, (ctx, i) => paintGrid(ctx, BUBBLE[i], BUBBLE_PAL)), frameWidth: 10, frameHeight: 8 },
     ],
-    images: [{ key: FX_ART.glow, canvas: buildGlow() }],
+    images: [
+      { key: FX_ART.glow, canvas: buildGlow() },
+      { key: FX_ART.lavaDeep, canvas: buildLavaDeep() },
+    ],
     tilesets: [],
     anims: [{ key: FX_ART.bubblePop, sheet: FX_ART.bubble, frames: [0, 1, 2, 3, 4], frameRate: 9, repeat: 0 }],
   };

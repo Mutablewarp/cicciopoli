@@ -110,14 +110,21 @@ describe('tracks', () => {
   });
 
   it('loops have the requested length and form', () => {
-    expect(SONGS.title.loop && SONGS.hills.loop && SONGS.inferno.loop).toBe(true);
+    const loops: SongName[] = ['title', 'hills', 'inferno', 'invaders', 'maze'];
+    for (const n of loops) expect(SONGS[n].loop).toBe(true);
     const bars = (n: SongName): number => compileSong(SONGS[n]).total / SONGS[n].stepsPerBar;
     expect(bars('title')).toBeGreaterThanOrEqual(8);
     expect(bars('title')).toBeLessThanOrEqual(16);
     expect(bars('hills')).toBeGreaterThanOrEqual(16);
     expect(bars('inferno')).toBeGreaterThanOrEqual(16);
-    expect(new Set(SONGS.hills.order).size).toBeGreaterThanOrEqual(2);
-    expect(new Set(SONGS.inferno.order).size).toBeGreaterThanOrEqual(2);
+    expect(bars('invaders')).toBeGreaterThanOrEqual(16);
+    expect(bars('maze')).toBeGreaterThanOrEqual(8);
+    expect(bars('maze')).toBeLessThanOrEqual(16);
+    expect(SONGS.invaders.bpm).toBeCloseTo(128, -1);
+    expect(SONGS.maze.bpm).toBeCloseTo(140, -1);
+    for (const n of ['hills', 'inferno', 'invaders', 'maze'] as const) {
+      expect(new Set(SONGS[n].order).size).toBeGreaterThanOrEqual(2);
+    }
   });
 
   it('jingles are short one-shots', () => {

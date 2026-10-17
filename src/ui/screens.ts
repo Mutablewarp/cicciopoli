@@ -4,20 +4,28 @@ import { button, el, formatTime, seeded } from './dom';
 import { SPEAKER_OFF, SPEAKER_ON, headSvg } from './icons';
 import { Menu } from './menu';
 
-export const LEVEL_NAMES: Record<LevelId, string> = { 1: 'LE COLLINE', 2: 'ALETTE CRUNCHY' };
+export const LEVEL_NAMES: Record<LevelId, string> = {
+  1: 'LE COLLINE',
+  2: 'ALETTE CRUNCHY',
+  3: "CICCIO'S INVADERS",
+  4: 'CICCIO-MAN',
+};
 export const levelTitle = (l: LevelId): string => `0${l} · ${LEVEL_NAMES[l]}`;
 
 const CONFETTI = ['#fc9000', '#fcd400', '#fc0c24', '#60ccf0', '#a8cc00', '#fce4c0'];
 
-export const KEY_LEGEND =
-  '<p class="cc-keys">' +
-  '<span><kbd>←</kbd><kbd>→</kbd><kbd>A</kbd><kbd>D</kbd> muovi</span>' +
-  '<span><kbd>↑</kbd><kbd>W</kbd><kbd>SPAZIO</kbd> salta</span>' +
-  '<span><kbd>↓</kbd><kbd>S</kbd> scendi</span>' +
-  '<span><kbd>J</kbd><kbd>X</kbd> goat</span>' +
-  '<span><kbd>K</kbd><kbd>C</kbd> thai</span>' +
-  '<span><kbd>ESC</kbd><kbd>P</kbd> pausa</span>' +
-  '</p>';
+const keys = (...items: Array<[string[], string]>): string =>
+  `<p class="cc-keys">${items.map(([k, what]) => `<span>${k.map((x) => `<kbd>${x}</kbd>`).join('')} ${what}</span>`).join('')}</p>`;
+const PAUSE_KEYS: [string[], string] = [['ESC', 'P'], 'pausa'];
+
+/** Desktop key legend per level (title: the platform keys plus the shooter extras). */
+export function keyLegend(level?: LevelId): string {
+  if (level === 3) return keys([['←', '→', 'A', 'D'], 'muovi'], [['SPAZIO', 'J', 'X'], 'fuoco'], [['K', 'C'], 'fulmine'], PAUSE_KEYS);
+  if (level === 4) return keys([['←', '↑', '→', '↓'], 'muovi'], [['W', 'A', 'S', 'D'], 'muovi'], PAUSE_KEYS);
+  if (level === 2) return keys([['←', '→', 'A', 'D'], 'muovi'], [['↑', 'W', 'SPAZIO'], 'salta / vola'], [['↓', 'S'], 'scendi'], PAUSE_KEYS);
+  if (level === 1) return keys([['←', '→', 'A', 'D'], 'muovi'], [['↑', 'W', 'SPAZIO'], 'salta'], [['J', 'X'], 'goat'], [['K', 'C'], 'thai'], PAUSE_KEYS);
+  return keys([['←', '→', '↑', '↓'], 'muovi'], [['SPAZIO'], 'salta / fuoco'], [['J', 'X'], 'goat'], [['K', 'C'], 'thai / fulmine'], PAUSE_KEYS);
+}
 
 export function audioLabel(muted: boolean): string {
   return `${muted ? SPEAKER_OFF : SPEAKER_ON}<span class="cc-btn__label">Audio ${muted ? 'off' : 'on'}</span>`;
@@ -54,7 +62,7 @@ export interface Modal {
   hide(): void;
 }
 
-export function createModal(onChange: () => void): Modal {
+export function createModal(onChange: () => void, level: () => LevelId): Modal {
   const root = el('section', 'cc-screen cc-modal');
   root.hidden = true;
   root.setAttribute('role', 'dialog');
@@ -116,7 +124,7 @@ export function createModal(onChange: () => void): Modal {
       const list = el('div', 'cc-card__btns cc-card__btns--grid');
       list.append(...btns);
       c.firstElementChild?.append(list);
-      c.firstElementChild?.insertAdjacentHTML('beforeend', KEY_LEGEND);
+      c.firstElementChild?.insertAdjacentHTML('beforeend', keyLegend(level()));
       present('pause', c, btns, 120, resume);
     },
     showVictory(info, h) {
@@ -135,7 +143,7 @@ export function createModal(onChange: () => void): Modal {
       const btns: HTMLButtonElement[] = [];
       const onNext = h.onNext;
       if (info.hasNext && onNext) {
-        btns.push(button('cc-btn--primary cc-btn--next', `<span class="cc-btn__label">LIVELLO ${info.level + 1} ▶</span>`, menu.guard(onNext)));
+        btns.push(button('cc-btn--primary cc-btn--next', '<span class="cc-btn__label">LIVELLO SUCCESSIVO&nbsp;▶</span>', menu.guard(onNext)));
       }
       btns.push(button(btns.length ? '' : 'cc-btn--primary', '<span class="cc-btn__label">Rigioca</span>', menu.guard(h.onReplay)));
       btns.push(button('', '<span class="cc-btn__label">Menu</span>', menu.guard(h.onMenu)));

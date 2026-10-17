@@ -2,18 +2,21 @@
  * 02 · ALETTE CRUNCHY — the box world. 180 x 20 tiles (320 px high), lava filling the
  * bottom (surface at y = 280, see INFERNO_THEME.lavaTop), ground islands rising out of it.
  * Legend: see DEFAULT_LEGEND in ./parse.ts (# ground, = one-way dark brick ledge, X block,
- * ? / H ? blocks with fries / burger, o fries, h burger, w crunchy wings, v bat, d demon,
+ * ? / H ? blocks with fries / burger, o nugget (coin), F fries tray, h burger, w crunchy
+ * wings, v bat, d demon,
  * s fire spirit, S spawn, C brazier checkpoint, G burning flag + glowing hole,
  * j torch, i spire, l hanging chain).
  *
  * Flow (teach -> test -> twist), every gap after the wings needs flight:
  *  start       walk to the crunchy wings on a torch-lit pedestal (x = 200), then a 16-tile
- *              lava gap nobody can jump: a fries arc draws the climb-and-glide line
- *  bats        island with a demon and "?H?", then bats on sine paths across a fries wave
- *  ring        ledge island (burger on a hanging-chain ledge), a ring of fries around a fire
+ *              lava gap nobody can jump: a nugget arc draws the climb-and-glide line
+ *  bats        island with a demon and "?H?", then bats on sine paths across a nugget wave
+ *  ring        ledge island (burger on a hanging-chain ledge), a ring of nuggets around a fire
  *              spirit, the brazier checkpoint island (x = 1400) with demon and "?H?"
- *  long flight 20 tiles of lava: rest ledges, a burger up at the ceiling, bats, a spirit
- *  gauntlet    two spirits leave a fries corridor between them, bats above and below
+ *  long flight 20 tiles of lava: rest ledges, a burger up at the ceiling on a nugget arc,
+ *              bats, a fire spirit guarding the island's edge (off every arc / ledge line)
+ *  gauntlet    two spirits leave a nugget corridor between them, bats above and below; the
+ *              rest ledge sits clear of the bat's sweep
  *  finale      wide island, last demon, "VAI IN BUCA!", burning flag + glowing hole on a mound
  */
 import type { LevelDef } from './types';
@@ -85,7 +88,7 @@ export const LEVEL2: LevelDef = {
       SKY34,
       '..............o...................',
       '............o...o.................',
-      '..ooho............................',
+      '..Foho............................',
       '..====.....o..s..o........?H?.....',
       SKY34,
       '..l..l......o...o.................',
@@ -105,13 +108,13 @@ export const LEVEL2: LevelDef = {
       '.............h....................',
       '...........o...o..................',
       '..........o.....o.................',
-      '.........o........s...............',
+      '.........o........................',
       '......v...........................',
-      '............ooo...................',
+      '............oFo...................',
       '............===...................',
       '........................H.........',
       'ooo..ooo.........v................',
-      '.....===..........................',
+      '.....===............s.............',
       '.....................j.....d......',
       '....................##########....',
       '....................##########....',
@@ -120,7 +123,7 @@ export const LEVEL2: LevelDef = {
       '....................##########....',
       '....................##########....',
     ],
-    // gauntlet (16): two spirits with a fries corridor between them, bats above and below
+    // gauntlet (16): two spirits with a nugget corridor between them, bats above and below
     [
       SKY16,
       SKY16,
@@ -133,7 +136,7 @@ export const LEVEL2: LevelDef = {
       '.......oo.......',
       'ooooooo.........',
       '.............v..',
-      '.........===....',
+      '.......===......',
       '....s...........',
       SKY16,
       SKY16,

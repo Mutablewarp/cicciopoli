@@ -1,7 +1,7 @@
 /** Top HUD: hearts, coin + score, level progress, power chips, TIME and pause button. */
 import type { HudState, LevelId, PowerState } from '../contracts';
-import { el, setText } from './dom';
-import { FLAG_SVG, PAUSE_GLYPH, brieSvg, coinSvg, goatSvg, headSvg, heartSvg, thaiSvg, wingsSvg } from './icons';
+import { el, onActivate, setText } from './dom';
+import { FLAG_SVG, PAUSE_GLYPH, boltSvg, brieSvg, goatSvg, headSvg, heartSvg, nuggetSvg, pelletSvg, thaiSvg, wingsSvg } from './icons';
 
 type PowerKey = keyof PowerState;
 
@@ -10,12 +10,16 @@ const CHIPS: ReadonlyArray<{ key: PowerKey; svg: () => string; name: string }> =
   { key: 'goat', svg: goatSvg, name: 'Provola Goat' },
   { key: 'thai', svg: thaiSvg, name: 'Alette Thai' },
   { key: 'wings', svg: wingsSvg, name: 'Alette Crunchy' },
+  { key: 'bolt', svg: boltSvg, name: 'Fulmine' },
+  { key: 'pellet', svg: pelletSvg, name: 'Provola stick' },
 ];
 
 /** Chips shown per level even when inactive (an active power is always shown). */
 const LEVEL_CHIPS: Record<LevelId, readonly PowerKey[]> = {
   1: ['brie', 'goat', 'thai'],
-  2: ['brie', 'wings'],
+  2: ['wings'],
+  3: ['bolt'],
+  4: ['pellet'],
 };
 
 const POP: Keyframe[] = [{ transform: 'scale(1)' }, { transform: 'scale(1.35)' }, { transform: 'scale(1)' }];
@@ -25,13 +29,15 @@ export interface Hud {
   setVisible(v: boolean): void;
   update(s: Partial<HudState>): void;
   onPause(cb: () => void): void;
+  /** Level of the last HUD update (pause card key legend). */
+  readonly level: LevelId;
 }
 
 export function createHud(): Hud {
   const root = el('header', 'cc-hud is-hidden');
   root.setAttribute('aria-label', 'Stato di gioco');
   const hearts = el('div', 'cc-hearts');
-  const score = el('div', 'cc-score', coinSvg());
+  const score = el('div', 'cc-score', nuggetSvg());
   const scoreNum = el('span', 'cc-score__num', '161');
   score.appendChild(scoreNum);
   const left = el('div', 'cc-hud__left');
@@ -85,7 +91,7 @@ export function createHud(): Hud {
   let shownProgress = -1;
   let heartEls: HTMLElement[] = [];
   let pauseCb: (() => void) | null = null;
-  pauseBtn.addEventListener('click', () => {
+  onActivate(pauseBtn, () => {
     pauseBtn.blur();
     pauseCb?.();
   });
@@ -111,7 +117,7 @@ export function createHud(): Hud {
   function renderChips(level: LevelId, p: PowerState): void {
     for (const c of CHIPS) {
       const chip = chipEls.get(c.key) as HTMLElement;
-      const on = p[c.key];
+      const on = !!p[c.key];
       const hide = !on && !LEVEL_CHIPS[level].includes(c.key);
       if (chip.hidden !== hide) chip.hidden = hide;
       if (chip.classList.contains('is-on') !== on) {
@@ -156,7 +162,7 @@ export function createHud(): Hud {
     }
     const level = s.level ?? cur.level;
     const p = s.powers;
-    const powersChanged = !!p && CHIPS.some((c) => p[c.key] !== cur.powers[c.key]);
+    const powersChanged = !!p && CHIPS.some((c) => !!p[c.key] !== !!cur.powers[c.key]);
     if (powersChanged || level !== cur.level) {
       if (p) cur.powers = { ...p };
       cur.level = level;
@@ -173,6 +179,9 @@ export function createHud(): Hud {
     update,
     onPause(cb) {
       pauseCb = cb;
+    },
+    get level() {
+      return cur.level;
     },
   };
 }

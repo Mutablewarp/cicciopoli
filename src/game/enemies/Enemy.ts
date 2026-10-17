@@ -11,6 +11,7 @@ import type { ViewRect } from '../parallax';
 import type { EnemyKind } from '../levels/types';
 import type { KillMethod } from '../rules';
 import type { World } from '../world';
+import { catchFire, cheeseEngulf } from './killFx';
 
 export type StompResult = 'kill' | 'clang' | 'hurt';
 
@@ -39,6 +40,9 @@ export abstract class Enemy {
   awake = false;
   /** cheese and club kill it */
   vulnerable = true;
+  /** spawn point (feet), where a respawn sends it back */
+  readonly homeX: number;
+  readonly homeY: number;
   protected dir: -1 | 1 = -1;
   protected timer = 0;
   protected wasAirborne = false;
@@ -52,6 +56,8 @@ export abstract class Enemy {
     box: BodyBox,
     gravity = true,
   ) {
+    this.homeX = x;
+    this.homeY = feetY;
     this.sprite = scene.physics.add.sprite(x, feetY, key, 0);
     this.sprite.setOrigin(0.5, 1).setDepth(DEPTH.enemies);
     group.add(this.sprite);
@@ -64,6 +70,18 @@ export abstract class Enemy {
     this.body.updateFromGameObject(); // origin / box changed after the body was created
     this.body.enable = false;
   }
+
+  /** Back to the spawn point at rest (pit respawn safety). */
+  sendHome(): void {
+    if (!this.alive) return;
+    this.body.reset(this.homeX, this.homeY);
+    this.timer = 0;
+    this.wasAirborne = false;
+    this.onSentHome();
+  }
+
+  /** Per-type state reset after sendHome. */
+  protected onSentHome(): void {}
 
   /** Per-type behaviour while awake and alive. */
   protected abstract think(dtMs: number, host: EnemyHost): void;
@@ -147,6 +165,16 @@ export abstract class Enemy {
       host.fx.dust(this.sprite.x - 6, this.sprite.y, -1);
       host.fx.dust(this.sprite.x + 6, this.sprite.y, 1);
       this.scene.tweens.add({ targets: this.sprite, alpha: 0, delay: 380, duration: 220, onComplete: () => this.sprite.destroy() });
+      return;
+    }
+    if (method === 'cheese' || method === 'club') {
+      host.fx.hitStar(this.sprite.x, this.body.center.y);
+      const done = (): void => {
+        this.scene.tweens.killTweensOf(this.sprite);
+        this.sprite.destroy();
+      };
+      if (method === 'cheese') cheeseEngulf(this.scene, host.fx, this.sprite, done);
+      else catchFire(this.scene, host.fx, this.sprite, done);
       return;
     }
     host.fx.hitStar(this.sprite.x, this.body.center.y);

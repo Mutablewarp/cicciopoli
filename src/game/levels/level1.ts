@@ -1,21 +1,24 @@
 /**
  * 01 · LE COLLINE — the cup world. 240 x 16 tiles, ground surface on row 13 (y = 208).
  * Legend: see DEFAULT_LEGEND in ./parse.ts (# ground, = one-way platform, X block,
- * ? / B / P / T ? blocks with fries / brie / provola / thai, K crate, o fries, h burger,
+ * ? / B / P / T ? blocks with fries / brie / provola / thai, K crate, o nugget (coin),
+ * F fries tray (bonus), h burger,
  * p pickle, c chili, a armoured burger, S spawn, C checkpoint, G hole + flag,
  * Y tree, u bush, f flower, r rock, n sign).
  *
  * Flow (teach -> test -> twist):
  *  start       walk, the cup's "???" trio (Brie in the middle), a 1-tile step, first pickle
- *  first gaps  2- and 3-tile pits with fries arcs tracing the jump, a one-way platform,
+ *  first gaps  2- and 3-tile pits with nugget arcs tracing the jump, a one-way platform,
  *              a chili, crates as stepping stones
- *  provola     plateau with the Provola ? block, two pickles to shoot, secret burger on a
- *              high platform reached from a stepping platform
+ *  provola     plateau with the Provola ? block, two pickles to shoot, secret burger and two
+ *              fries trays on a high platform reached from a stepping platform
  *  checkpoint  5-tile pit with a stepping platform, checkpoint, chilies hopping around a wall
  *  thai        "?TH" trio (Thai + burger refill), crates to smash, two armoured burgers,
  *              an escape platform
- *  twist       second checkpoint, four pits in a row, enemies on islands, burger refill
- *  finale      block stairs, last pickle, "VAI IN BUCA!", golf flag + hole on a mound
+ *  twist       second checkpoint (5 tiles before the first pit), four pits in a row,
+ *              enemies on islands, burger refill
+ *  finale      block stairs with fries trays on top, last pickle, "VAI IN BUCA!", golf flag
+ *              + hole on a mound
  */
 import type { LevelDef } from './types';
 
@@ -69,7 +72,7 @@ export const LEVEL1: LevelDef = {
       '................................',
       '................................',
       '................................',
-      '..................oho...........',
+      '..................FhF...........',
       '..................===...........',
       '......P.........................',
       '................................',
@@ -133,7 +136,7 @@ export const LEVEL1: LevelDef = {
       '.......oo.......===..................o......',
       '......o..o..........................o.o.....',
       '............................................',
-      '..C.........c...........p.......X.c......uf.',
+      'C...........c...........p.......X.c......uf.',
       '######....#####.....########....####...#####',
       '######....#####.....########....####...#####',
       '######....#####.....########....####...#####',
@@ -148,7 +151,7 @@ export const LEVEL1: LevelDef = {
       '......................................',
       '......................................',
       '......................................',
-      '......oo..............................',
+      '......FF..............................',
       '......XX..............................',
       '.....XXXX.............................',
       '....XXXXXX................f.G.f.......',

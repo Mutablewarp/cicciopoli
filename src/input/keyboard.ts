@@ -1,3 +1,4 @@
+import type { ControlsMode } from '../contracts';
 import type { HoldAction, InputState } from './state';
 
 /** Physical key positions (KeyboardEvent.code), so WASD also works on AZERTY layouts. */
@@ -6,8 +7,8 @@ export const KEYMAP: Readonly<Record<string, HoldAction>> = {
   KeyA: 'left',
   ArrowRight: 'right',
   KeyD: 'right',
-  ArrowUp: 'jump',
-  KeyW: 'jump',
+  ArrowUp: 'up',
+  KeyW: 'up',
   Space: 'jump',
   ArrowDown: 'down',
   KeyS: 'down',
@@ -19,19 +20,34 @@ export const KEYMAP: Readonly<Record<string, HoldAction>> = {
   KeyP: 'pause',
 };
 
+/** Space fires in the shooter (BRIEF §6: Space/J/X = fuoco). */
+export function actionFor(code: string, mode: ControlsMode): HoldAction | undefined {
+  return mode === 'shooter' && code === 'Space' ? 'fire' : KEYMAP[code];
+}
+
+/**
+ * Feeds one gameplay keydown into the state; returns false for unmapped keys.
+ * An OS auto-repeat of a key the state no longer tracks (dropped by pause / rotation reset)
+ * re-acquires the hold silently, so a direction held through a pause keeps working.
+ */
+export function keyDown(state: InputState, code: string, repeat: boolean, mode: ControlsMode): boolean {
+  const action = actionFor(code, mode);
+  if (!action) return false;
+  const src = `k:${code}`;
+  if (!repeat) state.press(src, action);
+  else if (action !== 'pause' && !state.has(src)) state.press(src, action, false);
+  return true;
+}
+
 /** Returns true when the key was handled by an open menu and must not reach gameplay. */
 export type KeyInterceptor = (e: KeyboardEvent) => boolean;
 
-export function bindKeyboard(state: InputState, intercept: () => KeyInterceptor | null): void {
+export function bindKeyboard(state: InputState, intercept: () => KeyInterceptor | null, mode: () => ControlsMode): void {
   window.addEventListener('keydown', (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey) return; // leave browser shortcuts alone
     const handler = intercept();
     if (handler && handler(e)) return;
-    const action = KEYMAP[e.code];
-    if (!action) return;
-    e.preventDefault(); // no page scroll on Space / arrows
-    if (e.repeat) return;
-    state.press(`k:${e.code}`, action);
+    if (keyDown(state, e.code, e.repeat, mode())) e.preventDefault(); // no page scroll on Space / arrows
   });
   window.addEventListener('keyup', (e) => {
     if (KEYMAP[e.code]) state.release(`k:${e.code}`);

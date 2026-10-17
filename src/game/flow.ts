@@ -10,7 +10,7 @@ import { Enemy } from './enemies/Enemy';
 import type { Rect } from './combat/club';
 import type { Interactions } from './interactions';
 import type { LevelRun } from './run';
-import { clearBonus, pitFall } from './rules';
+import { clearBonus, nextLevel, pitFall } from './rules';
 
 type ClubTarget = Enemy | Phaser.Physics.Arcade.Sprite;
 
@@ -112,12 +112,23 @@ export class Flow {
       player.teleport(p.x, p.feetY);
       player.facing = 1;
       player.invuln.start(HERO.respawnInvulnMs);
+      this.clearRespawn(p.x);
+      // a direction held through the fall must not walk Ciccio straight back into the pit
+      this.r.svc.input.reset();
       rig.snapTo(this.r.followTarget());
       this.r.parallax.update(rig.view(), 0);
       player.frozen = false;
       this.r.phase = 'play';
       cam.fadeIn(260, 0, 0, 0);
     });
+  }
+
+  /** Enemies loitering at the respawn point go back home (a chili parked on the post). */
+  private clearRespawn(x: number): void {
+    for (const e of this.r.enemies.alive()) {
+      const d = Math.abs(e.sprite.x - x);
+      if (d < HERO.respawnClearPx && Math.abs(e.homeX - x) > d) e.sendHome();
+    }
   }
 
   /* ------------------------------------------------------------ game over */
@@ -131,8 +142,13 @@ export class Flow {
     player.body.stop();
     player.body.enable = false;
     svc.audio.jingle('gameover');
-    if (!fromPit) {
-      view.auto = false;
+    view.auto = false;
+    if (fromPit) {
+      // sunk into the lava / fallen: never leave the sprite frozen on the surface
+      const s = view.sprite;
+      s.anims.stop();
+      scene.tweens.add({ targets: s, y: s.y + 14, alpha: 0, duration: 320, ease: 'Quad.easeIn', onComplete: () => s.setVisible(false) });
+    } else {
       const s = view.sprite;
       s.anims.stop();
       s.setFrame(CICCIO.hurt).setVisible(true).setDepth(s.depth + 20);
@@ -164,7 +180,7 @@ export class Flow {
       const newBest = svc.save.recordWin(levelId, run.score);
       svc.audio.jingle('win');
       scene.time.delayedCall(FLOW.victoryDelayMs, () => {
-        const hasNext = levelId === 1;
+        const hasNext = nextLevel(levelId) !== null;
         svc.ui.showVictory(
           { level: levelId, score: run.score, timeMs: this.r.timeMs, best: svc.save.data.best[levelId] ?? run.score, newBest, hasNext },
           {

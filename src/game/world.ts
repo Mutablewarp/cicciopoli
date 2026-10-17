@@ -12,6 +12,8 @@ import { addGlow } from './fxArt';
 import type { ThemeConfig } from './themes';
 
 const PLAT_SET = new Set(PLAT_TILES);
+/** Highest ledge lip (px above the feet) that a sideways push climbs onto. */
+const CORNER_STEP = 6;
 
 /** Decorative ground rows drawn below the level (the camera may sink there in landscape). */
 const EXTRA_ROWS = 4;
@@ -83,7 +85,8 @@ export class World {
     const dip = body.bottom - top;
     const wasAbove = body.prev.y + body.height <= top + 0.5;
     const over = body.right > other.pixelX && body.left < other.pixelX + other.width;
-    if (over && dip > 0 && wasAbove && body.velocity.y >= 0 && (other.collideUp || PLAT_SET.has(other.index))) {
+    const landing = over && dip > 0 && wasAbove && body.velocity.y >= 0 && (other.collideUp || PLAT_SET.has(other.index));
+    if (landing || (dip > 0 && !wasAbove && this.cornerStep(body, other, dip))) {
       body.position.y -= dip;
       body.updateCenter();
       body.velocity.y = 0;
@@ -93,6 +96,22 @@ export class World {
     }
     return !PLAT_SET.has(other.index);
   };
+
+  /**
+   * Corner forgiveness (QA L2-08): pushing sideways into a solid tile whose top is only a few
+   * px above the feet, with room overhead, steps up onto it instead of stopping dead.
+   */
+  private cornerStep(body: Phaser.Physics.Arcade.Body, tile: Phaser.Tilemaps.Tile, dip: number): boolean {
+    if (dip > CORNER_STEP || !tile.collideUp || body.velocity.y < -30) return false;
+    const left = tile.pixelX;
+    const right = left + tile.width;
+    const into = body.velocity.x > 0 ? body.right > left && body.left < left : body.velocity.x < 0 && body.left < right && body.right > right;
+    if (!into) return false;
+    for (let k = 1; k <= Math.ceil(body.height / TILE); k++) {
+      if (this.isSolidAt(left + 1, tile.pixelY - (k - 1) * TILE - 1) && this.level.terrain[tile.y - k]?.[tile.x] !== 'plat') return false;
+    }
+    return true;
+  }
 
   /** Ground, block or platform at a world point (outside the map sides counts as wall). */
   isSolidAt(x: number, y: number): boolean {

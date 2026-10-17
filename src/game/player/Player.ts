@@ -93,6 +93,12 @@ export class Player {
     this.grounded = false;
   }
 
+  /** Sideways shove that keeps the vertical motion (armour clang). */
+  kick(vx: number): void {
+    this.motor.vx = vx;
+    this.body.setVelocityX(vx);
+  }
+
   /** Knockback away from a hit source plus a short input lock. */
   knockback(fromX: number): void {
     const dir = this.x < fromX ? -1 : 1;

@@ -1,6 +1,7 @@
 /**
- * Pickups (fries, burger, brie, provola, thai, crunchy): static overlap bodies, idle
- * animation, sprite-only bob, collected exactly once. Power-ups can rise out of ? blocks.
+ * Pickups (nugget coins, fries trays, burger, brie, provola, thai, crunchy): static overlap
+ * bodies, idle animation, sprite-only bob, collected exactly once. Power-ups can rise out
+ * of ? blocks.
  */
 import type Phaser from 'phaser';
 import { ITEM_ANIMS, ITEMS } from '../art/keys';
@@ -10,6 +11,7 @@ import { addGlow, FX_ART } from './fxArt';
 import type { PickupKind } from './rules';
 
 const ART: Record<PickupKind, { key: string; anim: string }> = {
+  nugget: { key: ITEMS.nugget, anim: ITEM_ANIMS.nugget },
   fries: { key: ITEMS.fries, anim: ITEM_ANIMS.fries },
   burger: { key: ITEMS.burger, anim: ITEM_ANIMS.burger },
   brie: { key: ITEMS.brie, anim: ITEM_ANIMS.brie },
@@ -17,6 +19,10 @@ const ART: Record<PickupKind, { key: string; anim: string }> = {
   thai: { key: ITEMS.thai, anim: ITEM_ANIMS.thai },
   crunchy: { key: ITEMS.crunchy, anim: ITEM_ANIMS.crunchy },
 };
+
+/** Wings catch column: width and how far it reaches below the sprite top (into the pedestal). */
+const WINGS_CATCH_W = 20;
+const WINGS_CATCH_BELOW = 24;
 
 export interface Pickup {
   sprite: Phaser.Physics.Arcade.Sprite;
@@ -46,11 +52,19 @@ export class Pickups {
     sprite.setDepth(DEPTH.pickups);
     const body = sprite.body as Phaser.Physics.Arcade.StaticBody;
     body.setSize(12, 12, true);
-    // the wings on their pedestal: a tall catch zone, so a hop onto it or a jump over it both collect
-    if (kind === 'crunchy') body.setSize(16, 44, false).setOffset((sprite.width - 16) / 2, sprite.height - 36);
+    // the wings must be impossible to skip: a catch column from the pedestal up to the top of
+    // the level, so walking into them, hopping on them or jumping high over them all collect
+    if (kind === 'crunchy') {
+      const top = y - sprite.height / 2;
+      body.setSize(WINGS_CATCH_W, top + WINGS_CATCH_BELOW, false).setOffset((sprite.width - WINGS_CATCH_W) / 2, -top);
+    }
     const phase = (x * 0.37) % (Math.PI * 2);
-    if (this.scene.anims.exists(art.anim)) sprite.play({ key: art.anim, startFrame: Math.floor(phase * 2) % 4 });
-    const p: Pickup = { sprite, kind, baseY: y, phase, taken: false, bob: kind !== 'fries' };
+    if (this.scene.anims.exists(art.anim)) {
+      const frames = Math.max(1, this.scene.anims.get(art.anim).frames.length);
+      sprite.play({ key: art.anim, startFrame: Math.floor(phase * 2) % frames });
+    }
+    // coins sit still (their arcs trace jump lines); trays and power-ups bob
+    const p: Pickup = { sprite, kind, baseY: y, phase, taken: false, bob: kind !== 'nugget' };
     if (kind === 'crunchy' && this.scene.textures.exists(FX_ART.glow)) {
       p.glow = addGlow(this.scene, x, y, { depth: DEPTH.pickups - 1, alpha: 0.95, pulse: 0.4 });
     }
@@ -92,7 +106,8 @@ export class Pickups {
     p.taken = true;
     (p.sprite.body as Phaser.Physics.Arcade.StaticBody).enable = false;
     this.items.delete(p.sprite);
-    this.fx.sparkleBurst(p.sprite.x, p.sprite.y, p.kind === 'fries' ? 3 : 6, p.kind === 'fries' ? 7 : 12);
+    const small = p.kind === 'nugget';
+    this.fx.sparkleBurst(p.sprite.x, p.sprite.y, small ? 3 : 6, small ? 7 : 12);
     this.scene.tweens.killTweensOf(p.sprite);
     p.sprite.destroy();
     if (p.glow) {

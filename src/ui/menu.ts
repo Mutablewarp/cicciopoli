@@ -9,6 +9,8 @@ export interface MenuOptions {
   /** Activation is ignored for this long after opening. */
   armMs?: number;
   initial?: number;
+  /** Grid columns: ↑/↓ move by this many items, ←/→ by one. */
+  cols?: number;
 }
 
 export class Menu {
@@ -17,12 +19,14 @@ export class Menu {
   private armedAt = 0;
   private done = false;
   private onBack: (() => void) | undefined;
+  private cols = 1;
 
   open(items: HTMLButtonElement[], opts: MenuOptions = {}): void {
     this.items = items;
     this.armedAt = performance.now() + (opts.armMs ?? 0);
     this.done = false;
     this.onBack = opts.onBack;
+    this.cols = opts.cols ?? 1;
     items.forEach((b, i) => {
       b.onpointerenter = (e) => {
         if (e.pointerType === 'mouse') this.select(i, false);
@@ -47,23 +51,33 @@ export class Menu {
     if (focus) this.items[this.sel].focus({ preventScroll: true });
   }
 
+  /** Moves the selection; keys held from gameplay (auto-repeat, arm time) never navigate. */
+  private nav(e: KeyboardEvent, step: number): void {
+    if (e.repeat || performance.now() < this.armedAt) return;
+    this.select(this.sel + step);
+  }
+
   /** Keyboard handler while this menu is on top; swallows every key so gameplay never sees it. */
   handleKey(e: KeyboardEvent): boolean {
     switch (e.code) {
       case 'ArrowDown':
-      case 'ArrowRight':
       case 'KeyS':
-      case 'KeyD':
-        this.select(this.sel + 1);
+        this.nav(e, this.cols);
         break;
       case 'ArrowUp':
-      case 'ArrowLeft':
       case 'KeyW':
+        this.nav(e, -this.cols);
+        break;
+      case 'ArrowRight':
+      case 'KeyD':
+        this.nav(e, 1);
+        break;
+      case 'ArrowLeft':
       case 'KeyA':
-        this.select(this.sel - 1);
+        this.nav(e, -1);
         break;
       case 'Tab':
-        this.select(this.sel + (e.shiftKey ? -1 : 1));
+        this.nav(e, e.shiftKey ? -1 : 1);
         break;
       case 'Enter':
       case 'NumpadEnter':

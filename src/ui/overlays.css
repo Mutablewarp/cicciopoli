@@ -4,17 +4,23 @@
   z-index: 40;
   gap: 14px;
   background: #000;
-  transition: opacity 300ms ease-out;
+  transition: opacity 240ms ease-out;
 }
 .cc-loading.is-leaving {
   opacity: 0;
 }
-.cc-loading__word {
+.cc-loading > * {
+  transition: opacity 220ms ease-out;
+}
+.cc-loading.is-leaving-opaque > * {
+  opacity: 0;
+}
+.cc-loading__logo {
+  display: block;
+  height: clamp(84px, 16vh, 140px);
   width: auto;
-  height: 30px;
-  aspect-ratio: 176 / 51;
-  margin-bottom: 18px;
-  color: #fff;
+  aspect-ratio: 607 / 1040;
+  margin-bottom: 10px;
 }
 .cc-loading__burger {
   position: relative;
@@ -72,59 +78,71 @@
 }
 
 /* -------------------------------------------------------------- banner */
+/* Compact single line just under the HUD; dims to 0.78 after the pop-in so Ciccio stays
+   visible through it while it is up. */
 .cc-banner-layer {
   position: absolute;
   inset: 0;
   z-index: 4;
   display: grid;
-  /* upper third: the camera keeps Ciccio low in the view, so the banner never hides him */
   place-items: start center;
-  padding-top: clamp(14px, 9%, 90px);
+  padding-top: calc(var(--play-inset-t, 0px) + 8px);
   pointer-events: none;
-}
-@media (orientation: landscape) {
-  .cc-banner-layer {
-    /* clear the overlaid HUD bar */
-    padding-top: calc(var(--safe-t) + 62px);
-  }
 }
 .cc-banner {
   grid-area: 1 / 1;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px 10px;
   max-width: calc(100% - 24px);
-  padding: 14px 22px 13px;
-  background: rgba(24, 24, 26, 0.9);
-  box-shadow: 0 0 0 3px var(--ink), inset 0 0 0 3px var(--tone-lo), 0 6px 0 3px var(--ink);
+  padding: 8px 14px 7px;
+  background: rgba(24, 24, 26, 0.88);
+  box-shadow: 0 0 0 3px var(--ink), inset 0 0 0 2px var(--tone-lo), 0 4px 0 3px var(--ink);
   --tone: var(--cream);
   --tone-lo: #4a4440;
-  animation: cc-banner-in 340ms cubic-bezier(0.3, 1.6, 0.5, 1) both;
+  opacity: 0.78;
+  animation: cc-banner-in 1300ms both;
 }
 .cc-banner.is-out {
   animation: cc-banner-out 240ms ease-in both;
 }
 @keyframes cc-banner-in {
-  from { transform: scale(0.4); opacity: 0; }
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.3, 1.6, 0.5, 1);
+  }
+  26% {
+    transform: none;
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
 }
 @keyframes cc-banner-out {
-  to { transform: translateY(-18px) scale(0.92); opacity: 0; }
+  to {
+    transform: translateY(-12px) scale(0.92);
+    opacity: 0;
+  }
 }
 .cc-banner__text {
   font-family: var(--f-pixel);
-  font-size: clamp(18px, 6vw, 30px);
+  font-size: clamp(14px, 4.4vw, 22px);
   line-height: 1.2;
   text-align: center;
   color: var(--tone);
-  text-shadow: 2px 0 0 var(--ink), -2px 0 0 var(--ink), 0 2px 0 var(--ink), 0 -2px 0 var(--ink), 2px 2px 0 var(--ink),
-    -2px 2px 0 var(--ink), 2px -2px 0 var(--ink), -2px -2px 0 var(--ink), 0 4px 0 var(--ink);
+  text-shadow: 2px 2px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink);
 }
 .cc-banner__sub {
-  font-size: 16px;
-  letter-spacing: 0.05em;
+  font-size: 14px;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
   text-align: center;
   color: var(--cream);
+  text-shadow: 1px 1px 0 var(--ink);
 }
 .cc-banner--power {
   --tone: var(--yellow);
@@ -137,20 +155,33 @@
 .cc-banner--goal {
   --tone: #ffb020;
   --tone-lo: #b8280a;
-  background: linear-gradient(180deg, rgba(150, 20, 10, 0.92), rgba(70, 10, 6, 0.92));
+  background: linear-gradient(180deg, rgba(150, 20, 10, 0.9), rgba(70, 10, 6, 0.9));
 }
 .cc-banner--goal:not(.is-out) .cc-banner__text {
   animation: cc-goal-pulse 0.5s steps(2) infinite;
 }
 @keyframes cc-goal-pulse {
-  50% { color: #fff1a8; transform: scale(1.06); }
+  50% {
+    color: #fff1a8;
+  }
 }
 
-@media (min-width: 1600px) and (min-height: 900px) {
+@media (orientation: landscape) {
+  .cc-banner {
+    padding: 6px 12px 5px;
+  }
   .cc-banner__text {
-    font-size: 40px;
+    font-size: clamp(12px, 2.2vw, 22px);
   }
   .cc-banner__sub {
-    font-size: 22px;
+    font-size: 13px;
+  }
+}
+@media (min-width: 1600px) and (min-height: 900px) {
+  .cc-banner__text {
+    font-size: 30px;
+  }
+  .cc-banner__sub {
+    font-size: 18px;
   }
 }

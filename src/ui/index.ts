@@ -8,6 +8,7 @@ import '@fontsource/pixelify-sans/600.css';
 import '@fontsource/pixelify-sans/700.css';
 import './styles.css';
 import './hud.css';
+import './pads.css';
 import './controls.css';
 import './screens.css';
 import './overlays.css';
@@ -18,6 +19,7 @@ import { createBanner } from './banner';
 import { createControls } from './controls';
 import { el } from './dom';
 import { createHud } from './hud';
+import { trackInsets } from './insets';
 import { trackPointerMode } from './layout';
 import { createLoading } from './loading';
 import { createModal } from './screens';
@@ -34,8 +36,9 @@ export function createUI(root: HTMLElement): { ui: GameUI; input: GameInput } {
   const gameHost = el('div', 'game-host');
   const bannerLayer = el('div', 'cc-banner-layer');
   play.append(gameHost, bannerLayer);
-  const controls = createControls(input);
+  const controls = createControls(input, (m) => hub.setMode(m));
   stage.append(hud.root, play, controls.root);
+  hub.bindSwipe(gameHost);
 
   // Any open screen disables gameplay input and owns the keyboard; closing the last one restores it.
   let wasBlocked = false;
@@ -52,12 +55,19 @@ export function createUI(root: HTMLElement): { ui: GameUI; input: GameInput } {
     }
     wasBlocked = top !== null;
   };
-  const modal = createModal(sync);
+  const modal = createModal(sync, () => hud.level);
   const title = createTitle(sync);
-  const loading = createLoading();
+  const loading = createLoading(
+    () => title.open,
+    () => {
+      if (title.open) title.root.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 320, easing: 'ease-out' });
+    },
+  );
   shell.append(stage, modal.root, title.root, loading.root);
   root.appendChild(shell);
-  trackPointerMode(shell);
+  document.getElementById('cc-splash')?.remove(); // static splash from index.html
+  const insets = trackInsets(play, gameHost, hud.root, controls.root);
+  trackPointerMode(shell, () => insets.update());
 
   const ui: GameUI = {
     setLoading: (p, msg) => loading.set(p, msg),
@@ -71,7 +81,10 @@ export function createUI(root: HTMLElement): { ui: GameUI; input: GameInput } {
     },
     showHud: (v) => hud.setVisible(v),
     updateHud: (s) => hud.update(s),
-    setControls: (layout) => controls.set(layout),
+    setControls: (layout) => {
+      controls.set(layout);
+      insets.update();
+    },
     banner: createBanner(bannerLayer),
     showPause: (h, muted) => modal.showPause(h, muted),
     showVictory: (info, h) => modal.showVictory(info, h),

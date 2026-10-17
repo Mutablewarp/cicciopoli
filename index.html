@@ -20,11 +20,24 @@
       /* Critical pre-paint styles so nothing flashes white before the CSS bundle loads. */
       html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
       #app { position: fixed; inset: 0; background: #000; }
+      /* Static splash: paints before any JS; createUI removes it when the UI mounts. */
+      #cc-splash {
+        position: fixed; inset: 0; z-index: 1; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 18px; background: #000;
+        color: #fff; font-family: "Helvetica Neue", Arial, sans-serif; pointer-events: none;
+      }
+      #cc-splash b {
+        font-weight: 300; font-size: 34px; letter-spacing: 0.32em; margin-right: -0.32em;
+        transform: scaleY(1.35); -webkit-text-stroke: 0.6px #fff;
+      }
+      #cc-splash span { font-size: 15px; letter-spacing: 0.08em; color: #e4cca8; animation: cc-splash 1s steps(2) infinite; }
+      @keyframes cc-splash { 50% { opacity: 0.45; } }
     </style>
   </head>
   <body>
+    <div id="cc-splash" aria-live="polite"><b>CICCIO'S</b><span>Caricamento…</span></div>
     <div id="app"></div>
-    <noscript style="color:#fce4c0;font-family:sans-serif;display:block;padding:24px">
+    <noscript style="position:relative;z-index:2;color:#fce4c0;font-family:sans-serif;display:block;padding:24px">
       Per giocare abilita JavaScript.
     </noscript>
     <script type="module" src="/src/main.ts"></script>

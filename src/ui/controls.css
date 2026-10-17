@@ -1,4 +1,6 @@
-/* Touch controls — own dark band below the game (portrait), corner overlays (landscape). */
+/* Touch controls — own dark band below the game (portrait), corner overlays (landscape).
+   Action buttons are laid out in art units scaled by --k, so a smaller cluster also frees
+   layout width for the d-pad (a CSS transform would not). */
 .cc-controls {
   display: none;
 }
@@ -21,75 +23,37 @@
   background-position: 0 0, 0 0, 18px 18px;
   box-shadow: inset 0 3px 0 var(--ink), inset 0 5px 0 #2c2c30;
 }
+/* the cross pad needs 3 arms of >= 60px */
+.is-touch .cc-controls[data-mode='maze'] {
+  height: calc(clamp(200px, 30vh, 250px) + var(--safe-b));
+  height: calc(clamp(200px, 30dvh, 250px) + var(--safe-b));
+  justify-content: center;
+}
 .cc-controls.is-off > * {
   visibility: hidden;
 }
-
-/* ------------------------------------------------------------ d-pad */
-.cc-pad-zone {
-  position: relative;
-  flex: 1 1 auto;
-  min-width: 0;
-  align-self: stretch;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  padding-left: 6px;
-  touch-action: none;
-}
-.cc-dpad {
-  position: relative;
-  display: flex;
-  width: 168px;
-  height: 84px;
-  border-radius: 34px;
-  padding: 4px;
-  gap: 4px;
-  background: var(--ink);
-  filter: drop-shadow(0 5px 0 #0a0a0b);
-  pointer-events: none;
-}
-.cc-dpad__half {
-  position: relative;
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #3a3a42;
-  box-shadow: inset 0 4px 0 #5c5c68, inset 0 -7px 0 #222228;
-  transition: transform 50ms;
-}
-.cc-dpad__half.is-l {
-  border-radius: 30px 6px 6px 30px;
-}
-.cc-dpad__half.is-r {
-  border-radius: 6px 30px 30px 6px;
-}
-.cc-dpad__half .cc-glyph {
-  width: 21px;
-  height: 35px;
-  margin-bottom: 3px;
-}
-.cc-dpad__half.is-down {
-  background: #4a4a54;
-  box-shadow: inset 0 3px 0 #6c6c78, inset 0 -2px 0 #222228, inset 0 0 0 3px var(--orange);
-  transform: translateY(3px);
-}
-.cc-dpad__half.is-down .cc-glyph {
-  filter: drop-shadow(0 0 6px rgba(252, 192, 96, 0.9));
+.cc-cross-zone,
+.cc-controls[data-mode='maze'] .cc-pad-zone,
+.cc-controls[data-mode='maze'] .cc-act-zone {
+  display: none;
 }
 
 /* ---------------------------------------------------- action cluster */
 .cc-act-zone {
+  --k: 1;
   position: relative;
   flex: none;
-  width: 206px;
-  height: 162px;
-  transform-origin: 100% 50%;
+  width: calc(206px * var(--k));
+  height: calc(162px * var(--k));
 }
 .cc-act {
-  --size: 62px;
+  --s: 62;
+  --x: 0;
+  --y: 0;
+  --size: calc(var(--s) * var(--k) * 1px);
   position: absolute;
+  left: calc(var(--x) * var(--k) * 1px);
+  top: calc(var(--y) * var(--k) * 1px);
   width: var(--size);
   height: var(--size);
   touch-action: none;
@@ -102,23 +66,27 @@
   inset: -9px;
   border-radius: 50%;
 }
-.cc-act--jump {
-  --size: 88px;
-  left: 116px;
-  top: 36px;
+.cc-act--jump,
+.cc-act--shoot {
+  --s: 88;
+  --x: 116;
+  --y: 36;
 }
 .cc-act--club {
-  left: 40px;
-  top: 0;
+  --x: 40;
 }
 .cc-act--fire,
 .cc-act--down {
-  left: 14px;
-  top: 86px;
+  --x: 14;
+  --y: 86;
 }
 .cc-controls[data-level='2'] .cc-act--down {
-  left: 30px;
-  top: 66px;
+  --x: 30;
+  --y: 66;
+}
+.cc-act--bolt {
+  --x: 22;
+  --y: 40;
 }
 .cc-act__face {
   position: absolute;
@@ -149,7 +117,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: calc(3px * var(--k));
   transition: transform 50ms;
 }
 .cc-act.is-down .cc-act__icon {
@@ -159,22 +127,31 @@
   filter: brightness(1.18) drop-shadow(0 0 7px rgba(255, 236, 190, 0.75));
 }
 .cc-act__icon > svg {
-  width: 36px;
-  height: 36px;
+  width: calc(var(--size) * 0.58);
+  height: calc(var(--size) * 0.58);
   filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.45));
 }
 .cc-act--down .cc-act__icon > svg {
-  width: 28px;
-  height: 26px;
+  width: calc(var(--size) * 0.45);
+  height: calc(var(--size) * 0.42);
 }
 .cc-act--jump .cc-act__icon > svg {
-  width: 30px;
-  height: 27px;
-  margin-top: 4px;
+  width: calc(var(--size) * 0.34);
+  height: calc(var(--size) * 0.31);
+  margin-top: calc(var(--size) * 0.045);
+}
+.cc-act--shoot .cc-act__icon > svg {
+  width: calc(var(--size) * 0.3);
+  height: calc(var(--size) * 0.43);
+  margin-top: calc(var(--size) * 0.03);
+}
+.cc-act--bolt .cc-act__icon > svg {
+  width: calc(var(--size) * 0.46);
+  height: calc(var(--size) * 0.55);
 }
 .cc-act__name {
   font-family: var(--f-pixel);
-  font-size: 10px;
+  font-size: calc(10px * var(--k));
   font-weight: 400;
   color: #fff8ec;
   text-shadow: 2px 0 0 var(--ink), -2px 0 0 var(--ink), 0 2px 0 var(--ink), 0 -2px 0 var(--ink), 2px 2px 0 var(--ink);
@@ -194,6 +171,22 @@
   pointer-events: none;
   padding: 3px 5px 2px;
   background: rgba(14, 14, 16, 0.72);
+}
+.cc-act__badge {
+  position: absolute;
+  right: -5px;
+  top: -5px;
+  min-width: 22px;
+  height: 22px;
+  padding: 5px 4px 0;
+  font-family: var(--f-pixel);
+  font-size: 10px;
+  line-height: 1;
+  text-align: center;
+  color: var(--ink);
+  background: var(--yellow);
+  box-shadow: 0 0 0 2px var(--ink), 0 3px 0 2px var(--ink), inset 0 -3px 0 var(--yellow-lo), inset 0 2px 0 #fff3a0;
+  pointer-events: none;
 }
 .cc-act__lock {
   display: none;
@@ -230,24 +223,26 @@
     transform-origin: 0 50%;
   }
   .cc-act-zone {
-    transform: scale(1.2);
+    --k: 1.2;
     margin-right: 16px;
   }
 }
 @media (orientation: portrait) and (max-height: 640px) {
   .cc-act-zone {
-    transform: scale(0.9);
+    --k: 0.9;
+  }
+}
+/* 320-360px phones: a smaller cluster leaves >= 44px per d-pad half */
+@media (orientation: portrait) and (max-width: 360px) {
+  .cc-act-zone {
+    --k: 0.82;
   }
 }
 
 /* -------------------------------------------- landscape: corner overlays */
 @media (orientation: landscape) {
-  /* height of the band the corner buttons cover: main.ts hands it to the camera, which
-     keeps Ciccio's walking line above the thumbs */
-  .is-touch {
-    --play-inset-b: 108px;
-  }
-  .is-touch .cc-controls {
+  .is-touch .cc-controls,
+  .is-touch .cc-controls[data-mode='maze'] {
     position: absolute;
     inset: auto 0 0 0;
     height: 0;
@@ -259,28 +254,63 @@
   .cc-controls.is-off {
     display: none;
   }
-  .cc-pad-zone {
+  .cc-pad-zone,
+  .cc-cross-zone {
     position: absolute;
     left: 0;
     bottom: 0;
+    pointer-events: auto;
+  }
+  .cc-pad-zone {
     width: calc(var(--safe-l) + 236px);
     height: 170px;
     padding: 0 0 calc(var(--safe-b) + 14px) calc(var(--safe-l) + 22px);
     align-items: flex-end;
     justify-content: flex-start;
-    pointer-events: auto;
   }
+  .cc-cross-zone {
+    width: calc(var(--safe-l) + 236px);
+    height: 240px;
+    padding: 0 0 calc(var(--safe-b) + 12px) calc(var(--safe-l) + 18px);
+    align-items: flex-end;
+    justify-content: flex-start;
+  }
+  .cc-cross {
+    height: 186px;
+  }
+  /* one flat row [THAI][GOAT][SALTA] that stays below the walking line */
   .cc-act-zone {
     position: absolute;
     right: calc(var(--safe-r) + 14px);
-    bottom: calc(var(--safe-b) + 18px);
-    transform-origin: 100% 100%;
+    bottom: calc(var(--safe-b) + 10px);
+    width: calc(214px * var(--k));
+    height: calc(90px * var(--k));
     pointer-events: none;
+  }
+  .cc-act--jump,
+  .cc-act--shoot {
+    --s: 80;
+    --x: 134;
+    --y: 0;
+  }
+  .cc-act--fire,
+  .cc-act--down,
+  .cc-controls[data-level='2'] .cc-act--down,
+  .cc-act--bolt {
+    --s: 56;
+    --x: 70;
+    --y: 12;
+  }
+  .cc-act--club {
+    --s: 56;
+    --x: 6;
+    --y: 12;
   }
   .cc-act {
     pointer-events: auto;
   }
   .cc-dpad,
+  .cc-cross,
   .cc-act__face {
     opacity: 0.62;
   }
@@ -288,28 +318,32 @@
     opacity: 0.8;
   }
   .cc-act.is-down .cc-act__face,
-  .cc-pad-zone:active .cc-dpad {
+  .cc-pad-zone:active .cc-dpad,
+  .cc-cross-zone:active .cc-cross {
     opacity: 1;
   }
 }
 @media (orientation: landscape) and (max-height: 400px) {
-  .is-touch {
-    --play-inset-b: 96px;
-  }
   .cc-act-zone {
-    transform: scale(0.86);
+    --k: 0.9;
   }
   .cc-pad-zone {
     transform: scale(0.9);
     transform-origin: 0 100%;
   }
+  .cc-cross {
+    height: 180px;
+  }
 }
 @media (orientation: landscape) and (min-height: 700px) {
   .cc-act-zone {
-    transform: scale(1.15);
+    --k: 1.15;
   }
   .cc-pad-zone {
     transform: scale(1.15);
     transform-origin: 0 100%;
+  }
+  .cc-cross {
+    height: 210px;
   }
 }

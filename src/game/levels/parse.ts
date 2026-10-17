@@ -5,7 +5,8 @@
  *   blocks    ?  ? block → fries    B ? block → brie    P ? block → provola goat
  *             T  ? block → thai     H ? block → burger  W ? block → crunchy wings
  *             K  wooden crate (breakable by cheese / club)
- *   pickups   o  fries   h  burger   b  brie   g  provola goat   t  thai   w  crunchy wings
+ *   pickups   o  nugget (coin)   F  fries tray (bonus)   h  burger   b  brie   g  provola goat
+ *             t  thai   w  crunchy wings
  *   enemies   p  pickle (sottaceto)   c  chili (peperoncino)   a  armoured burger
  *             v  bat   d  demon   s  fire spirit
  *   markers   S  spawn   C  checkpoint   G  goal hole + golf flag
@@ -29,7 +30,8 @@ export const DEFAULT_LEGEND: Legend = {
   H: { entity: { type: 'qblock', contents: 'burger' } },
   W: { entity: { type: 'qblock', contents: 'crunchy' } },
   K: { entity: { type: 'crate' } },
-  o: { entity: { type: 'pickup', kind: 'fries' } },
+  o: { entity: { type: 'pickup', kind: 'nugget' } },
+  F: { entity: { type: 'pickup', kind: 'fries' } },
   h: { entity: { type: 'pickup', kind: 'burger' } },
   b: { entity: { type: 'pickup', kind: 'brie' } },
   g: { entity: { type: 'pickup', kind: 'goat' } },

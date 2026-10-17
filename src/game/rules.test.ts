@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SCORE } from '../config/tuning';
-import { clearBonus, collect, createRun, enemyHit, killPoints, pitFall, Timer } from './rules';
+import { clearBonus, collect, createRun, enemyHit, killPoints, nextLevel, pitFall, Timer } from './rules';
 
 describe('run rules', () => {
   it('starts with 4 hearts and the cup score 161', () => {
@@ -11,11 +11,13 @@ describe('run rules', () => {
 
   it('scores pickups and grants powers once', () => {
     const r = createRun(1);
-    expect(collect(r, 'fries').points).toBe(10);
+    expect(collect(r, 'nugget').points).toBe(10);
+    expect(collect(r, 'fries').points).toBe(30);
     expect(collect(r, 'goat').gained).toBe('goat');
     expect(collect(r, 'goat').gained).toBeNull();
-    expect(r.score).toBe(161 + 10 + 50 + 50);
+    expect(r.score).toBe(161 + 10 + 30 + 50 + 50);
     expect(r.powers.goat).toBe(true);
+    expect(collect(r, 'nugget').gained).toBeNull();
   });
 
   it('burger heals only a missing heart', () => {
@@ -62,6 +64,14 @@ describe('run rules', () => {
     expect(clearBonus(r1)).toBe(SCORE.clear[1]);
     const r2 = createRun(2);
     expect(clearBonus(r2)).toBe(200);
+    expect(clearBonus(createRun(3))).toBe(300);
+  });
+
+  it('chains the levels 1 → 2 → 3 → 4, the last has no next', () => {
+    expect(nextLevel(1)).toBe(2);
+    expect(nextLevel(2)).toBe(3);
+    expect(nextLevel(3)).toBe(4);
+    expect(nextLevel(4)).toBeNull();
   });
 });
 

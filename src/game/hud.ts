@@ -13,13 +13,13 @@ function samePowers(a: PowerState, b: PowerState): boolean {
 /** Touch layout per level: GOAT / THAI on level 1, SCENDI + SALTA→VOLA on level 2. */
 export function defaultControls(level: LevelId, p: PowerState): ControlsLayout {
   if (level === 2) {
-    return { level, fire: 'hidden', club: 'hidden', down: 'enabled', jumpLabel: p.wings ? 'VOLA' : 'SALTA' };
+    return { level, mode: 'platform', fire: 'hidden', club: 'hidden', down: 'enabled', jumpLabel: p.wings ? 'VOLA' : 'SALTA' };
   }
-  return { level, fire: p.goat ? 'enabled' : 'disabled', club: p.thai ? 'enabled' : 'disabled', down: 'hidden', jumpLabel: 'SALTA' };
+  return { level, mode: 'platform', fire: p.goat ? 'enabled' : 'disabled', club: p.thai ? 'enabled' : 'disabled', down: 'hidden', jumpLabel: 'SALTA' };
 }
 
 function layoutKey(l: ControlsLayout): string {
-  return `${l.level}|${l.fire}|${l.club}|${l.down}|${l.jumpLabel}`;
+  return `${l.level}|${l.mode}|${l.fire}|${l.club}|${l.down}|${l.jumpLabel}`;
 }
 
 export class HudSync {

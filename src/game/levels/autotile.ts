@@ -32,6 +32,20 @@ function edge(l: boolean, r: boolean, left: number, mid: number, right: number, 
   return mid;
 }
 
+/** Columns either side that must also be 2+ rows deep before the darker fill starts. */
+const DEEP_REACH = 4;
+
+/**
+ * 2+ rows below the surface here AND in the nearby ground columns: a raised mound or step
+ * keeps the lit fill under it instead of opening a dark box below its rim (QA VIS-10).
+ */
+function isDeep(t: Terrain[][], row: number, col: number): boolean {
+  for (let dc = -DEEP_REACH; dc <= DEEP_REACH; dc++) {
+    if (isGround(t, row, col + dc) && !isGround(t, row - 2, col + dc)) return false;
+  }
+  return true;
+}
+
 function groundTile(t: Terrain[][], row: number, col: number): number {
   const openL = !isGround(t, row, col - 1);
   const openR = !isGround(t, row, col + 1);
@@ -40,8 +54,7 @@ function groundTile(t: Terrain[][], row: number, col: number): number {
     const mid = alt ? T.GROUND_TOP_M_ALT : T.GROUND_TOP_M;
     return edge(openL, openR, T.GROUND_TOP_L, mid, T.GROUND_TOP_R, T.GROUND_TOP_SINGLE);
   }
-  const deep = isGround(t, row - 2, col);
-  const mid = deep ? T.GROUND_FILL_DEEP : alt ? T.GROUND_FILL_M_ALT : T.GROUND_FILL_M;
+  const mid = isDeep(t, row, col) ? T.GROUND_FILL_DEEP : alt ? T.GROUND_FILL_M_ALT : T.GROUND_FILL_M;
   return edge(openL, openR, T.GROUND_FILL_L, mid, T.GROUND_FILL_R, T.GROUND_FILL_SINGLE);
 }
 
