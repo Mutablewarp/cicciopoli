@@ -1,0 +1,194 @@
+36 confirmed; 11 rejected
+
+[MEDIUM] L1-01 (l1) Ciccio vanishes behind the HUD bar / off the top of the screen on high jumps
+  files: src/game/camera.ts, src/game/levels/level1.ts, src/ui/hud.ts
+  fix: Treat the HUD height as a top inset. Either let the camera scroll above world y=0 by HUD height + jump headroom (as it already does in portrait), or add 1-2 empty rows of sky above the map so it is never clamped. Lowering the row-6 platform also works.
+  verify: Reproduced (t01.mjs, t01b.mjs). From the row-6 secret-burger platform (place 1272,96), the full-jump apex puts the feet at world y 19-21 while the camera is clamped at worldView.y -1 to 4. On desktop 1280x720 the feet reach 61 css px against a HUD bottom of 64. At 844x390 they reach 35 against 52, and at 667x375 they reach 20 against 52. So the who
+
+[MEDIUM] L1-02 (l1) The Thai club is raised above the head in the jump, apex, fall and hurt poses, and the hand and handle cover the glasses
+  files: src/art/ciccio/poses.ts, src/art/ciccio.ts, src/game/player/attachments.ts
+  fix: Move the hand anchor for frames 12-16 to hip or belly height and set angles that point the club forward and down. Alternatively, in Attachments.update clamp the tip so it also stays below the head anchor (today clampTipAngle only keeps it above the feet). Render the wind-up frame 22 behind the body (DEPTH.behindHero).
+  verify: Reproduced by forcing each frame with THAI+GOAT (t02c.mjs; t02c-sheet.png, t02c-zoom.png). In frame 12 facing right, the white handle and hand sit on the right lens of the glasses. Frames 12, 13, 14 and 16 hold the club straight up beside or above the head. In frame 14 facing left the handle touches the left lens. Idle, run, land and shoot poses ho
+
+[MEDIUM] L1-09 (l1) Centre banners ('VAI IN BUCA!') can cover Ciccio's head when he jumps high near the top of the screen
+  files: src/ui/banner.ts, src/game/camera.ts
+  fix: Make banners translucent or move them when the hero's screen y is in the banner band. Fixing L1-01 (more top headroom) also mostly resolves this.
+  verify: Reproduced (t09.mjs, t09-desk.png). I jumped off the top of the finale stairs (feet 144) as 'VAI IN BUCA!' appeared. On desktop the banner box spans y 60-127 css and covers 42 px of the hero (hair, glasses and torso hidden at the apex). At 844x390 the overlap is 57 px. This sits on the main path at the finale and the banner stays for 2.4 s, so it i
+
+[MEDIUM] L2-01 (l2) Power-up and checkpoint banners cover Ciccio while he flies; in portrait he is completely hidden during his first flight
+  files: src/ui/overlays.css, src/ui/banner.ts, src/game/interactions.ts, src/game/flow.ts
+  fix: On level 2 (or whenever the hero is in the upper half of the view), place the banner lower, make it smaller, or make it mostly transparent. Alternatives: shorten the wings banner, or show it only after landing. The banner must never sit over the 48-120 world-y flight band.
+  verify: Reproduced, but it is worst in landscape, not portrait. Measured per frame with rAF (banner3.mjs) on the real wings pickup, holding VOLA 0.5 s after pickup. Landscape 844x390: banner CSS y 62-152 and hero 40-117, so the hero is 100% covered for about 0.3-1.0 s and more than 50% covered for about 2.0 s. His head also goes under the HUD bar (b4-land.
+
+[MEDIUM] F2 (mobile) Pause button and overlay buttons (LIVELLO 2, Rigioca, Riprova, Menu…) ignore a tap made while another finger is still on the screen
+  files: src/ui/hud.ts, src/ui/dom.ts, src/ui/title.ts, src/ui/menu.ts
+  fix: Use the same fix as F1. Activate menu and HUD buttons on pointerup of a pointer that went down on the same button (touch/pen), keep click for mouse and keyboard, and keep Menu.guard for arming and de-duplication.
+  verify: Reproduced in Chromium with CDP multi-touch (v2_twofinger.mjs, built from the production bundle). A single tap on pause opens it. A second-finger tap on pause while finger 1 holds the right d-pad half leaves it closed in portrait and landscape, and it stays closed after finger 1 lifts. On the victory card (after the 650 ms arm time), a second-finge
+
+[MEDIUM] F4 (mobile) In landscape, banners (power-up, checkpoint, VAI IN BUCA) hide Ciccio completely at the top of a normal jump; in level 2 his head goes under the HUD bar
+  files: src/ui/overlays.css, src/ui/banner.ts, src/config/tuning.ts, src/game/camera.ts
+  fix: In landscape, make banners compact and semi-transparent, or place them low-centre / to the side, or fade them while Ciccio's head is inside their rect. Raise CAMERA.topMargin / reduce deadUp in landscape so the head stays clear of the 52px HUD.
+  verify: The banner part is confirmed. iPhone 844x390 landscape, level 1, flat ground at tile 60, give('brie') then jump. Banner 'BRIE! Scudo + super salto' sits at x314-530 y62-152 (opaque, lasts 2.2 s). Ciccio is at screen x 367, and at the apex his head is at y≈103-108 and feet at 166-171. Screenshot v4-iphone-land-apex-banner.png shows Ciccio fully hidd
+
+[MEDIUM] F5 (mobile) Ciccio judders while running on high-refresh displays: physics is fixed at 60 Hz with no render interpolation
+  files: src/main.ts, src/game/player/PlayerView.ts, src/game/camera.ts
+  fix: Interpolate the drawn position (sprite/camera target) between the previous and current physics step using the accumulator fraction. Or set the Arcade fps to the measured display rate (60/90/120) at boot, so one physics step runs per frame.
+  verify: Reproduced with an injected requestAnimationFrame shim at 60, 90 and 120 Hz (measured 60, 90 and 120 fps; Chromium with GPU, DPR 1; level 1 at tile 150 holding right, camera scrolling; v6_hz.mjs). At 60 Hz the sprite moves 2.5 px every frame and hero-vs-camera dx stays around ±0.5. At 120 Hz the sprite moves 0,2.5,0,2.5 (still on 24 of 48 frames) w
+
+[MEDIUM] VIS-01 (visual) The title logo is shown in negative (white hair and brows) and the wordmark is missing BURGERS and 'and more'
+  files: /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/ui/logo.ts, /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/ui/title.ts, /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/ui/title.css, /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/ui/loading.ts
+  fix: Add the BURGERS line and the 'and more' script to wordmarkSvg. For the face, either show the logo as drawn (black ink on a cream or white plaque) or keep the hair, brows and lenses dark with a light outline, so the likeness survives on black. Have the owner confirm the treatment.
+  verify: Reproduced in title_p390.png. The hair and brows are filled solid white, the lenses are hollow white rings, and the wordmark reads only CICCIO'S. The logo.ts header says the white-on-black version is deliberate, and the subtitle 'THE BURGER ADVENTURE' arguably stands in for BURGERS. The real problem is the mixed treatment: the hair and brows are in
+
+[MEDIUM] VIS-03 (visual) The playfield runs under the translucent HUD bar, so fries, ledges, enemies and clouds show through the hearts, score and TIME
+  files: /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/ui/hud.css, /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/game/camera.ts, /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/main.ts
+  fix: Expose the HUD height as an inset (like --play-inset-b, e.g. --play-inset-t). Have the camera keep content and the preferBottom top margin below it, or make the bar opaque and shrink the game host under it.
+  verify: Reproduced. The landscape HUD is 52 css px of 390 and the desktop HUD 64 of 720. The bar is translucent and the camera ignores it. At L2 place(1918,224) in landscape (l2l_chromium_1918.png), a brick ledge and three fries sit behind the hearts and the score. At the L2 spawn, fries boxes show behind 'TIME 000' (z_hud_tr.png). The checkpoint shot show
+
+[MEDIUM] VIS-04 (visual) In landscape, power-up and checkpoint banners cover Ciccio's head
+  files: /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/ui/banner.ts, /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/ui/overlays.css, /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/game/camera.ts
+  fix: In landscape, make the banners smaller (a single line, sub-text smaller) and anchor them just under the HUD. Or place the banner in the half of the screen away from the hero, or fade it to about 60% after the pop-in.
+  verify: Wings case reproduced at 844x390. On pickup the banner rect is css [175,62,669,152] and the hero (x 312, feet y 147) is completely hidden (wings_chromium_land.png). The banner shows for 2200 ms, exactly when it says 'Tieni premuto VOLA per volare'. This contradicts the overlays.css comment that the banner never hides Ciccio. The checkpoint case did
+
+[MEDIUM] VIS-06 (visual) The level 2 card text '02 · ALETTE CRUNCHY' runs into the ▶ arrow at 360 px width and overflows the card at 320 px and 568x320
+  files: /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/ui/title.css, /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/ui/title.ts
+  fix: Let the level name wrap onto two lines, or step the font size down with clamp() or a container query under about 380 px. Reserve the arrow's width with padding-right. In short landscape, offset the menu below the sound button or move the button into the card row gap.
+  verify: Reproduced with a DOM Range. At 360x780 the text right edge is 321 and the arrow's left edge 311, so the 'Y' of CRUNCHY touches the arrow (crop_p360_card2.png). At 320x568 the text ends at 321 but the card ends at 302, and 'CRUNCHY' is clipped (crop_p320_card2.png). At 568x320 the text ends at 553 against a card edge of 545, and the sound button [5
+
+[MEDIUM] R1 (robust) HUD pause button and all overlay buttons ignore taps while another finger is on the screen
+  files: src/ui/hud.ts, src/ui/dom.ts, src/ui/title.ts, src/ui/screens.ts
+  fix: Fire these actions on pointer events, not click. Act on pointerup when the same pointerId went down on the button and the release lands inside its rect, or act on pointerdown for the pause button. Keep click only for mouse and keyboard activation, and suppress the click that may follow so the action does not run twice. Keep menu.guard() arming as it is.
+  verify: Reproduced on a fresh production build served at /cicciopoli/, using Chromium mobile emulation and real CDP multi-touch (scratch/qa-robust-verify/multitouch.mjs), in both portrait (390x844) and landscape (844x390). Holding the right d-pad half or SALTA with finger 1 and tapping the pause button with finger 2 gives a pointerdown on .cc-pause but no 
+
+[LOW] L1-03 (l1) Holding an arrow key when the IN BUCA / GAME OVER screen opens cycles the selection at autorepeat speed, so Space/Enter can trigger the wrong button
+  files: src/ui/menu.ts
+  fix: In Menu.handleKey ignore navigation keys with e.repeat (Enter/Space already do this). Optionally ignore navigation during armMs too, so keys held from gameplay never move the selection.
+  verify: Reproduced (t03.mjs). I held ArrowRight with repeat keydowns at about 30 Hz while walking into the hole from x 3656. The card appeared about 2.7 s later. The selection then cycled LIVELLO 2 > Rigioca > Menu about every 75 ms, 22 changes in 1.5 s, and stopped wherever the key was released. Enter and Space ignore repeats, so a wrong activation needs 
+
+[LOW] L1-04 (l1) Respawn trap at checkpoint 1: the chili follows Ciccio, parks on the checkpoint post and hits him about 1.1 s after respawn
+  files: src/game/enemies/hillsEnemies.ts, src/game/levels/level1.ts, src/config/tuning.ts, src/game/flow.ts
+  fix: Give the chili a home range (it returns to spawn x and never leaps past ±N px). Or push enemies away from / despawn them near the checkpoint on respawn, or extend respawnInvulnMs to about 2000. Move checkpoint 2 one or two tiles further from the pit, or drop held directions on respawn.
+  verify: Reproduced only on the backtrack path (t04b.mjs). I walked across checkpoint 1 (1656), let the chili approach (x 1774 to 1726), then fell into the pit behind the checkpoint. The idle hero was hit 2987 ms after respawn. On the next respawn the chili sat at x 1667, 11 px from the respawn point, and hit 1033 ms after respawn (invulnerability is 1000 m
+
+[LOW] L1-06 (l1) Armoured burger acts as an endless trampoline: with no input Ciccio bounces on it forever (clang + camera shake every bounce)
+  files: src/game/interactions.ts, src/game/enemies/hillsEnemies.ts
+  fix: Add a small horizontal kick away from the armor centre on 'clang', or make the armor slide out from under Ciccio while dazed.
+  verify: Reproduced (t06.mjs). I dropped Ciccio onto the armoured burger at x 2264 with no input. He had 0 landings in 10 s, feet oscillating between y 147 and 182, hearts unchanged, and the armour stayed in place because it is re-dazed on every clang. Any horizontal input ends it. This is cosmetic and confusing rather than harmful.
+
+[LOW] L1-07 (l1) A direction held through pause/resume (also level start or rotation) is dropped, and OS autorepeat cannot restore it
+  files: src/input/keyboard.ts, src/game/GameScene.ts, src/main.ts
+  fix: In bindKeyboard, accept a repeat keydown for a hold action when its source is no longer tracked (state.has(`k:${code}`) is false).
+  verify: Reproduced (t07.mjs). axisX was 1 while holding right. After Esc, Esc (pause, resume) plus 10 repeat keydowns, axisX was 0 and Ciccio moved 0 px in 800 ms. Releasing and pressing again restores it. Desktop only, and common behaviour in games.
+
+[LOW] L1-10 (l1) In landscape the right action cluster (THAI/GOAT/SALTA, about 180x150 css px) sits on the walking line and hides incoming enemies and the goal flag
+  files: src/ui/controls.ts, src/ui/layout.ts, src/game/camera.ts
+  fix: Lower the cluster opacity further while idle, or add a right-side inset that keeps the look-ahead region clear (the camera already has insetBottom; add an insetRight / bigger lookAhead in landscape).
+  verify: Observed at 844x390 (t10-pickle.png, t10-flag.png). The THAI button sits at walking-line height over the right of the view, and in the finale it overlaps the area around the hole and mound. The buttons are translucent, and the pickle, flag and hole stay visible through or beside them. A minor layout trade-off of overlay controls, not a blocker.
+
+[LOW] L2-02 (l2) A normal running jump clears the wings pedestal, so the player reaches the 16-tile lava gap without the power that the gap requires
+  files: src/game/levels/level2.ts, src/game/items.ts
+  fix: Make the wings impossible to miss. Options: a taller pickup hitbox or a vertical column of wings, a low ceiling or wall over the pedestal, auto-collect when the player passes over it, or an invisible barrier at the gap edge until the player has the wings.
+  verify: Reproduced (skip.mjs). A held running jump started at x=131, 136 or 143 lands at x=256-284 with wings=false. Jumps at 121 or 151-178 collect the wings. The skip window is only about 13 px, about 90 ms at full run speed. It does not soft-lock: the wings stay visible just behind the player, he can walk back, and a lava death respawns him at the start
+
+[LOW] L2-03 (l2) In portrait the player sees only 0.79 s ahead while flying, so bats and spirits appear almost on contact
+  files: src/game/camera.ts, src/config/tuning.ts
+  fix: When in flight mode, or when the view is narrow, scale the look-ahead to the view width (for example about 30% of view width instead of the fixed 34 px), so Ciccio sits about one third from the left edge in portrait.
+  verify: The numbers reproduce (view.mjs). Portrait 390x844 view is 234 world px wide, with 122-126 px ahead of Ciccio (0.79 s at 155 px/s). Landscape 844x390 shows 259 px (1.67 s) and desktop 219 px (1.41 s). This comes from the fixed 34 px look-ahead on a narrow view. It is a tuning concern rather than a bug: the player can slow down, and spirits are stat
+
+[LOW] L2-04 (l2) The fries arc in the long-flight section leads straight into a fire spirit
+  files: src/game/levels/level2.ts
+  fix: Move the spirit 2-3 rows lower, or bend the end of the arc upward or downward around it, so the guide line never runs into a hazard that cannot be stomped.
+  verify: Reproduced (arc.mjs). The spirit body is 10x15 at about x 1864-1874, y 95-110. A bot that follows the fries arc at full speed and then glides, keeps rising, releases right or dives is hit every time at x≈1856-1858. This happens in desktop and portrait. Pressing LEFT (reversing) at the last fry, or a little earlier, avoids it and still collects ever
+
+[LOW] L2-05 (l2) The only rest ledge in the final 20-tile gap sits inside a bat's flight path
+  files: src/game/levels/level2.ts, src/config/tuning.ts
+  fix: Move that bat to col 147 or later, or one row lower. Alternatively shift the ledge 2 tiles left so the rest spot is actually safe.
+  verify: Reproduced (rest.mjs, standing still for 12 s). Hero center x=2256, 2264 and 2272 took 0 hits. x=2280 was hit after about 6 s of game time, and x=2296 was hit within 0.4 s. The bat at col 145 sweeps in to body-left ≈2281, so the right third of the 48 px ledge is unsafe. The bat is visible and the left part of the ledge is safe. Minor.
+
+[LOW] L2-08 (l2) No corner forgiveness: gliding into an island just 2-4 px below its top edge stops Ciccio dead against the wall
+  files: src/game/player/Player.ts, src/game/world.ts
+  fix: Add a small step-up or corner correction: if blocked sideways and the feet are within about 6 px below a tile top with free space above, nudge the body up onto the tile.
+  verify: Reproduced (edge.mjs). Gliding right into island 2's wall (x=608, rim y=208) with the feet only 1-4 px below the rim at contact leaves the hero stuck at x=600, sinking to y≈262-269 within 1 s. With the feet 2 px above the rim he lands normally. Arcade resolves the contact horizontally and there is no corner correction. Holding VOLA recovers, so the
+
+[LOW] L2-09 (l2) The level 2 HUD shows a Brie power chip that can never light up
+  files: src/ui/hud.ts, src/game/hud.ts
+  fix: Hide the Brie chip on level 2, the same way Goat and Thai are hidden.
+  verify: Confirmed. hud.ts LEVEL_CHIPS[2] = ['brie','wings']. The level 2 map has no 'b' or 'B' cell (its ? blocks are fries/H burger only), and createRun() resets powers for each level. So the grey Brie chip next to the wings chip can never light on level 2 (visible in every L2 screenshot). It is a small HUD inconsistency.
+
+[LOW] L2-10 (l2) The wings banner names an on-screen button that keyboard players do not have, and never mentions SCENDI
+  files: src/game/interactions.ts
+  fix: Use for example 'Tieni premuto VOLA (Spazio/↑) · SCENDI (↓) per picchiare', or pick the text by input mode.
+  verify: Confirmed. On desktop at 1280x720 no touch controls are rendered, yet the banner reads 'Tieni premuto VOLA per volare' (b2-desk-900.png), and SCENDI/↓ is never explained. The level 1 banners do mention the keys. Phones are the main target, and Space is the obvious key to try, so this is low.
+
+[LOW] L2-11 (l2) After a game over in lava, Ciccio's sprite stays frozen above the lava in a wingless flying pose behind the GAME OVER card
+  files: src/game/flow.ts
+  fix: On a game over from the pit or lava, hide the sprite or tween it down into the lava, as the non-final respawn already does with its fade-out.
+  verify: Reproduced (lavaover.mjs). On the final-heart lava death the sprite stays visible at feet y≈299, lying on the lava in a wingless flying pose. On desktop it remains visible below the GAME OVER card (lavaover-desk-2.png). On portrait and landscape phones the card covers it, so it shows only during the roughly 0.9 s before the card appears (lavaover-*
+
+[LOW] F3 (mobile) In landscape the right-hand action cluster covers the walking line where the next pits and enemies appear; the camera inset reserves only the bottom 96–108px and ignores safe-area-bottom
+  files: src/ui/controls.css, src/game/camera.ts, src/main.ts
+  fix: Make --play-inset-b equal the real covered height, cluster top included, plus var(--safe-b). Or lower and flatten the landscape cluster (e.g. GOAT/THAI beside SALTA rather than above it) so it stays below the walking line. Consider a lower idle opacity (~0.45) for the landscape discs.
+  verify: Measurements reproduced (v3_layout.mjs, v5_flight.mjs). iPhone 844x390: feet at y=285, --play-inset-b is 96px, THAI x687-741 y233-286, SALTA x753-828 y264-339, GOAT y307-360. Android 915x412: feet at 296, inset 108. With the iPhone safe area emulated (Emulation.setSafeAreaInsetsOverride L/R 47, B 21), the cluster rises 21px (SALTA y243, THAI y212-2
+
+[LOW] F6 (mobile) Leaving the app during the pit-respawn fade (or while level 2 art is loading) does not pause the game
+  files: src/game/GameScene.ts
+  fix: If app-hidden arrives while phase is 'respawning' or before the run exists, set a pending flag and open the pause as soon as phase returns to 'play'.
+  verify: Reproduced in both levels (v7_hide.mjs, faking document.hidden and dispatching visibilitychange). As a control, hiding during play opens PAUSA. After falling (level 1: teleport above the first pit; level 2: place(600,330) into lava), the phase is 'respawning' and hearts drop to 3. Hiding and then showing the page during that phase opens no pause ca
+
+[LOW] F7 (mobile) On 320px-wide phones the d-pad shrinks to 94px (each half ≈43px drawn) and the HUD progress bar to ≈73px
+  files: src/ui/controls.css
+  fix: Add a max-width:340px media query that scales the action cluster (as the existing max-height rule does) and gives the d-pad a min-width of about 120px.
+  verify: Reproduced at 320x568 DPR2 (v3_layout.mjs, v3-se1-port.png). .cc-dpad is x12-106 (94px wide). Each half is 41px wide, below the 44px target. The touch zone .cc-pad-zone is 100x156, so input still works. The action zone is scaled to 185px. The progress rail is only 37px wide (x136-173), which makes the progress bar almost unreadable. It is still usa
+
+[LOW] VIS-02 (visual) In landscape, the bottom ~14% of the level 2 screen is a flat, untextured red block under the lava
+  files: /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/game/lava.ts, /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/game/camera.ts, /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/config/tuning.ts
+  fix: Texture the lava body: repeat the molten strip or a darker 'deep lava' tile with dark wavy crust lines like the box, covering surfaceY+32 to height+maxExtraBottom. Alternatively, do not let the camera sink below the level bottom when the theme hazard is lava.
+  verify: Reproduced at 844x390 mobile, level 2 (l2l_chromium_spawn.png and l2l_chromium_1918.png). The view is worldView y 117..351 against a 320 px level, so about 31 world px sit below the level bottom. That band is the flat lavaRed rectangle, about 14% of the screen height. It sits under the d-pad and SALTA and reads as a molten body, not as broken. Poli
+
+[LOW] VIS-05 (visual) In landscape, the right control cluster sits on the walking line and hides enemies, crates and the goal hole
+  files: /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/ui/controls.css, /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/ui/layout.ts, /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/game/camera.ts
+  fix: In landscape, place GOAT/THAI beside SALTA horizontally and lower the cluster into the inset band, and set --play-inset-b from the tallest button. Or lower the opacity of locked buttons so that locked THAI/GOAT do not sit on the play line before they are usable.
+  verify: Reproduced in L1 landscape at place(1873,208) (l1l_chromium_1873.png). The locked, semi-transparent THAI disc sits in the band just above the grass, and SALTA (css top 264) reaches above the walking line (css 285). Only the last ~150 css px at the right edge are affected. The hero is at css x 367, so about 12 tiles ahead stay clear before the clust
+
+[LOW] VIS-08 (visual) Primary button labels (RIPRENDI, RIPROVA, LIVELLO 2, RIGIOCA) are muddy: the 9-shadow outline swallows thin letters and leaves hairline seams on 3x phones
+  files: /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/ui/styles.css
+  fix: In .cc-btn--primary .cc-btn__label, replace the 8-direction 2px text-shadow plus 0 4px with a 1px outline (or -webkit-text-stroke on a pixel font at an integer scale) plus one drop shadow. Or use dark ink text on the orange face.
+  verify: Reproduced at 390x844 DPR 3 on the pause overlay (btn_1.png, z_btn1x4.png). The primary label uses an 8-direction 2px ink text-shadow plus 0 4px, and orange hairline seams cross the outline around I and P. The 'I' glyphs look muddy. The text is still legible, and secondary buttons (single 2px shadow) look cleaner. Minor polish.
+
+[LOW] VIS-09 (visual) The first loading bar stops at 35%, then cross-fades over the fully drawn title, briefly showing two logos
+  files: /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/main.ts, /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/ui/loading.ts, /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/ui/overlays.css
+  fix: Call setLoading(1) before hiding the loading screen. Show the title only after the loading fade completes, or give the loading screen an opaque background until the title has faded in.
+  verify: Reproduced. 30 ms after load, the loading root is 'cc-loading is-leaving' at opacity 0.26-0.51 over a fully drawn title (title_p390_early_30.png). Two CICCIO'S wordmarks, the burger over the chin, and 'Impasto i panini… 35%' over the level cards all show at once. The bar never passes 35%. The dissolve lasts about 320 ms, so it is barely noticeable,
+
+[LOW] VIS-10 (visual) On level 2 islands, the edge brick columns are lit below the top rows, which creates hard vertical seams and a dark box under the goal mound
+  files: /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/art/inferno.ts, /Users/giorgiomaida/Downloads/CICCIOPOLI_AGENTIC_KIT/cicciopoli/src/game/levels/autotile.ts
+  fix: Shade the GROUND_FILL_R variant (the right edge should be the darkest) and give FILL_L/R deep variants that match GROUND_FILL_DEEP below row 2. Alternatively, apply the deep fill per column depth rather than through the row-2 neighbour test.
+  verify: Right-edge seam reproduced on desktop L2 at x=213 (l2d_213.png, z_edge3.png). In the lower rows the last two island columns use lighter bricks, with a hard vertical seam against the darker deep fill. It is visible but subtle at normal zoom. I did not verify the 'dark box under the goal mound' part, because the camera was high in my shot.
+
+[LOW] R2 (robust) Black screen for 1.2–3.2 s on mobile data before any UI or loading screen shows
+  files: index.html, src/main.ts, vite.config.ts
+  fix: Inline a tiny static splash in index.html: the wordmark as inline SVG or text plus 'Caricamento…', on the same dark background, removed when createUI mounts. Optional: dynamically import Phaser after the UI is created so the DOM loading screen can paint first.
+  verify: Reproduced with load.mjs (gzip prod build, CPU x4, cold context). Time until #app gets any child: 4G (120 ms RTT, 1.1 MB/s) 1166 ms, 3G (300 ms, 200 KB/s) 3125 ms. Before that the screen is plain black. Cause confirmed: index.html has only a #000 pre-paint. main.ts imports Phaser statically at the top, so createUI() and the 'Accendo la piastra…' lo
+
+[LOW] R3 (robust) Pause requests during the pit-respawn fade are silently dropped (Esc/P, the pause button and app switch)
+  files: src/game/GameScene.ts
+  fix: Allow pausing in phase 'respawning' (the fade callback runs on the camera, which is paused with the scene). Or store a pendingPause flag and apply it when Flow sets phase back to 'play'.
+  verify: Reproduced with respawn2.mjs/respawn3.mjs (prod build, __game.place(x,420)). The phase was confirmed 'respawning' in the same task as each action. Results: Esc gives play, no modal. A CDP tap on .cc-pause gives play, no modal. A hidden page for 50 ms or 1500 ms (document.hidden overridden plus a visibilitychange event) returns to a live game with n
+
+[LOW] R4 (robust) Documented `npm run test:e2e` fails: scripts/e2e.mjs does not exist
+  files: package.json, README.md, scripts/
+  fix: Add the missing scripts/e2e.mjs smoke test (title, level 1, level 2, pause, menu, no page errors). Otherwise remove the script and the README line.
+  verify: Confirmed: `npm run test:e2e` fails with MODULE_NOT_FOUND because scripts/ contains only shot.mjs. package.json defines test:e2e and README.md advertises it. This is tooling and documentation only, with no effect on players or the demo.
+
+=== REJECTED titles
+- L1-05 medium Level 1 is cleared in about 25-29 s; the BRIEF targets 90-150 s for a beginner | Not a defect. The BRIEF sets L1 at ~240 tiles, so 3840 px at runMax 150 gives a 25.6 s floor. A bot holding right only shows an expert floor; it says nothing ab
+- L1-08 low Brie shield absorbs a hit but the knockback can throw Ciccio into a pit, so he loses the shield and a heart anyway | The mechanics reproduce (t08.mjs): idle with Brie at x 482 next to the cols 31-32 pit with the first pickle behind, the shield breaks, and 0.9 s later the hero 
+- L1-11 low Score popups overlap into unreadable strings ('+10+10') and the '+30' Brie popup draws behind Ciccio's head | Part is false: popups use DEPTH.popup 40 against the hero sprite's 20 (measured in t11.mjs), so the +30 cannot draw behind the head; in t11-run1.png the +10 dra
+- L2-06 low Keys and fingers still held are ignored after a pause/resume or a rotation, so Ciccio drops toward the lava | The behaviour reproduces (pausehold.mjs): after Esc to pause and Esc to resume, held keys read axis=0 and jump=false, and repeat keydowns are ignored. However, 
+- L2-07 low In landscape the lava surface is hidden while flying at mid height: either off-screen or under the overlay controls | Not a defect. Landscape 844x390 with the hero at y 150-214: the lava line is at CSS y 290-341, and the canvas bottom is at 390. The overlay controls cover only 
+- F1 high HUD pause button never responds to a tap in WebKit, so iPhone players cannot pause, restart, go to the menu or mute duri | Not reproduced on real Mobile Safari. In Playwright WebKit (macOS) I got the same result as the reporter: v1_pause.mjs gives 'closed closed closed' and the even
+- VIS-07 low In portrait, about 45% of the game view is empty sky, while horizontal visibility is only about 14 tiles | Measurements confirmed: portrait 390x844, zoom 5, worldView 234x312, with 56 px above the level top. But l1p_chromium_117.png looks intentional and fine: clouds
+- VIS-11 low The Ciccio head on the HUD progress bar covers the finish-flag icon near the goal, and on 320 px phones the bar shrinks  | Measured in portrait at the goal: marker [229,8,257,36], flag [247,4,265,26]. The head overlaps the pole, but the red flag stays visible above it, so it reads a
+- VIS-12 low With Brie, Ciccio is scaled ×1.12 (non-integer), which gives uneven pixel sizes next to the native-scale world, badge an | Confirmed: the Ciccio sprite scaleX/Y is 1.12 with Brie. But BRIEF §4 explicitly requires 'Ciccio scale ×1.12' for Brie, so this is intended behaviour per the b
+- R5 low Console warning on every load: Canvas2D willReadFrequently, plus long main-thread tasks during art generation | The code observation is correct: makeCanvas() (pixel.ts:82) calls getContext('2d') with no options before ctxOf() asks for willReadFrequently, so that flag is i
+- R6 low Debug cheats and physics debug overlay are reachable on the public URL | Confirmed that window.__app and window.__game exist on the prod build with ?debug=1 and are absent without it (cons.mjs). This is intended: main.ts and debug.ts
