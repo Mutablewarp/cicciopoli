@@ -1,0 +1,315 @@
+/* Touch controls — own dark band below the game (portrait), corner overlays (landscape). */
+.cc-controls {
+  display: none;
+}
+.is-touch .cc-controls {
+  position: relative;
+  z-index: 2;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: calc(clamp(170px, 30vh, 250px) + var(--safe-b));
+  height: calc(clamp(170px, 30dvh, 250px) + var(--safe-b));
+  padding: 8px calc(var(--safe-r) + 8px) calc(var(--safe-b) + 6px) calc(var(--safe-l) + 6px);
+  /* faint dark bricks, the cup's ground under the game */
+  background-color: #1b1a1c;
+  background-image: linear-gradient(#141315 2px, transparent 2px),
+    linear-gradient(90deg, #141315 2px, transparent 2px),
+    linear-gradient(90deg, #141315 2px, transparent 2px);
+  background-size: 100% 18px, 36px 36px, 36px 36px;
+  background-position: 0 0, 0 0, 18px 18px;
+  box-shadow: inset 0 3px 0 var(--ink), inset 0 5px 0 #2c2c30;
+}
+.cc-controls.is-off > * {
+  visibility: hidden;
+}
+
+/* ------------------------------------------------------------ d-pad */
+.cc-pad-zone {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 6px;
+  touch-action: none;
+}
+.cc-dpad {
+  position: relative;
+  display: flex;
+  width: 168px;
+  height: 84px;
+  border-radius: 34px;
+  padding: 4px;
+  gap: 4px;
+  background: var(--ink);
+  filter: drop-shadow(0 5px 0 #0a0a0b);
+  pointer-events: none;
+}
+.cc-dpad__half {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #3a3a42;
+  box-shadow: inset 0 4px 0 #5c5c68, inset 0 -7px 0 #222228;
+  transition: transform 50ms;
+}
+.cc-dpad__half.is-l {
+  border-radius: 30px 6px 6px 30px;
+}
+.cc-dpad__half.is-r {
+  border-radius: 6px 30px 30px 6px;
+}
+.cc-dpad__half .cc-glyph {
+  width: 21px;
+  height: 35px;
+  margin-bottom: 3px;
+}
+.cc-dpad__half.is-down {
+  background: #4a4a54;
+  box-shadow: inset 0 3px 0 #6c6c78, inset 0 -2px 0 #222228, inset 0 0 0 3px var(--orange);
+  transform: translateY(3px);
+}
+.cc-dpad__half.is-down .cc-glyph {
+  filter: drop-shadow(0 0 6px rgba(252, 192, 96, 0.9));
+}
+
+/* ---------------------------------------------------- action cluster */
+.cc-act-zone {
+  position: relative;
+  flex: none;
+  width: 206px;
+  height: 162px;
+  transform-origin: 100% 50%;
+}
+.cc-act {
+  --size: 62px;
+  position: absolute;
+  width: var(--size);
+  height: var(--size);
+  touch-action: none;
+  cursor: pointer;
+}
+.cc-act::before {
+  /* hit slop: a fingertip slightly off the edge still counts */
+  content: '';
+  position: absolute;
+  inset: -9px;
+  border-radius: 50%;
+}
+.cc-act--jump {
+  --size: 88px;
+  left: 116px;
+  top: 36px;
+}
+.cc-act--club {
+  left: 40px;
+  top: 0;
+}
+.cc-act--fire,
+.cc-act--down {
+  left: 14px;
+  top: 86px;
+}
+.cc-controls[data-level='2'] .cc-act--down {
+  left: 30px;
+  top: 66px;
+}
+.cc-act__face {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.cc-act__disc {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+}
+.cc-act__disc svg {
+  width: 100%;
+  height: auto;
+}
+.cc-act__disc.is-dn,
+.cc-act.is-down .cc-act__disc.is-up {
+  display: none;
+}
+.cc-act.is-down .cc-act__disc.is-dn {
+  display: block;
+}
+.cc-act__icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  transition: transform 50ms;
+}
+.cc-act.is-down .cc-act__icon {
+  transform: translateY(calc(var(--size) * 0.077));
+}
+.cc-act.is-down .cc-act__face {
+  filter: brightness(1.18) drop-shadow(0 0 7px rgba(255, 236, 190, 0.75));
+}
+.cc-act__icon > svg {
+  width: 36px;
+  height: 36px;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.45));
+}
+.cc-act--down .cc-act__icon > svg {
+  width: 28px;
+  height: 26px;
+}
+.cc-act--jump .cc-act__icon > svg {
+  width: 30px;
+  height: 27px;
+  margin-top: 4px;
+}
+.cc-act__name {
+  font-family: var(--f-pixel);
+  font-size: 10px;
+  font-weight: 400;
+  color: #fff8ec;
+  text-shadow: 2px 0 0 var(--ink), -2px 0 0 var(--ink), 0 2px 0 var(--ink), 0 -2px 0 var(--ink), 2px 2px 0 var(--ink);
+}
+.cc-act__label {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 4px);
+  transform: translateX(-50%);
+  font-family: var(--f-pixel);
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--cream);
+  text-shadow: 1px 1px 0 var(--ink), -1px 1px 0 var(--ink), 1px -1px 0 var(--ink), -1px -1px 0 var(--ink), 0 2px 0 var(--ink);
+  white-space: nowrap;
+  pointer-events: none;
+  padding: 3px 5px 2px;
+  background: rgba(14, 14, 16, 0.72);
+}
+.cc-act__lock {
+  display: none;
+  position: absolute;
+  right: -2px;
+  bottom: 2px;
+  width: 20px;
+  height: 22px;
+  pointer-events: none;
+}
+.cc-act__lock svg {
+  width: 100%;
+  height: 100%;
+}
+.cc-act.is-disabled {
+  cursor: default;
+}
+.cc-act.is-disabled .cc-act__face {
+  filter: saturate(0.3) brightness(0.62);
+}
+.cc-act.is-disabled .cc-act__label {
+  opacity: 0.5;
+}
+.cc-act.is-disabled .cc-act__lock {
+  display: block;
+}
+
+@media (orientation: portrait) and (min-width: 700px) {
+  .cc-pad-zone {
+    padding-left: 28px;
+  }
+  .cc-dpad {
+    transform: scale(1.2);
+    transform-origin: 0 50%;
+  }
+  .cc-act-zone {
+    transform: scale(1.2);
+    margin-right: 16px;
+  }
+}
+@media (orientation: portrait) and (max-height: 640px) {
+  .cc-act-zone {
+    transform: scale(0.9);
+  }
+}
+
+/* -------------------------------------------- landscape: corner overlays */
+@media (orientation: landscape) {
+  /* height of the band the corner buttons cover: main.ts hands it to the camera, which
+     keeps Ciccio's walking line above the thumbs */
+  .is-touch {
+    --play-inset-b: 108px;
+  }
+  .is-touch .cc-controls {
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 0;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+    pointer-events: none;
+  }
+  .cc-controls.is-off {
+    display: none;
+  }
+  .cc-pad-zone {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: calc(var(--safe-l) + 236px);
+    height: 170px;
+    padding: 0 0 calc(var(--safe-b) + 14px) calc(var(--safe-l) + 22px);
+    align-items: flex-end;
+    justify-content: flex-start;
+    pointer-events: auto;
+  }
+  .cc-act-zone {
+    position: absolute;
+    right: calc(var(--safe-r) + 14px);
+    bottom: calc(var(--safe-b) + 18px);
+    transform-origin: 100% 100%;
+    pointer-events: none;
+  }
+  .cc-act {
+    pointer-events: auto;
+  }
+  .cc-dpad,
+  .cc-act__face {
+    opacity: 0.62;
+  }
+  .cc-act__label {
+    opacity: 0.8;
+  }
+  .cc-act.is-down .cc-act__face,
+  .cc-pad-zone:active .cc-dpad {
+    opacity: 1;
+  }
+}
+@media (orientation: landscape) and (max-height: 400px) {
+  .is-touch {
+    --play-inset-b: 96px;
+  }
+  .cc-act-zone {
+    transform: scale(0.86);
+  }
+  .cc-pad-zone {
+    transform: scale(0.9);
+    transform-origin: 0 100%;
+  }
+}
+@media (orientation: landscape) and (min-height: 700px) {
+  .cc-act-zone {
+    transform: scale(1.15);
+  }
+  .cc-pad-zone {
+    transform: scale(1.15);
+    transform-origin: 0 100%;
+  }
+}

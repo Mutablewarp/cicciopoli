@@ -1,0 +1,263 @@
+/* Title screen — black, logo + level select (stacked in portrait, side by side in landscape). */
+.cc-title {
+  z-index: 30;
+  justify-content: space-between;
+  padding: calc(var(--safe-t) + 10px) 0 calc(var(--safe-b) + 6px);
+  background: #000;
+  animation: cc-fade 260ms ease-out;
+}
+.cc-title__sound {
+  position: absolute;
+  top: calc(var(--safe-t) + 12px);
+  right: calc(var(--safe-r) + 12px);
+  z-index: 2;
+}
+.cc-title__main {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(16px, 3.4vh, 34px);
+  padding: 0 calc(var(--safe-r) + 18px) 0 calc(var(--safe-l) + 18px);
+}
+.cc-title__brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(10px, 1.8vh, 16px);
+}
+.cc-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #fff;
+  animation: cc-float 4.2s ease-in-out infinite;
+}
+.cc-logo__face {
+  height: clamp(120px, 28vh, 270px);
+  width: auto;
+  aspect-ratio: 156 / 218;
+}
+.cc-logo__word {
+  height: clamp(34px, 6.6vh, 64px);
+  width: auto;
+  aspect-ratio: 176 / 51;
+  margin-top: clamp(10px, 2.2vh, 20px);
+}
+@keyframes cc-float {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.cc-title__sub {
+  margin: 0;
+  font-family: var(--f-pixel);
+  font-size: clamp(10px, 3vw, 15px);
+  line-height: 1.3;
+  letter-spacing: 0.1em;
+  text-align: center;
+  color: var(--orange);
+  text-shadow: 2px 2px 0 #5a2400;
+}
+
+/* level buttons */
+.cc-title__menu {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(340px, 100%);
+}
+.cc-level {
+  justify-content: flex-start;
+  gap: 12px;
+  min-height: 66px;
+  padding: 3px 3px 6px;
+  text-align: left;
+}
+.cc-level.is-selected::after {
+  display: none;
+}
+.cc-level.is-selected {
+  --face: #4a3a26;
+  --face-hi: #7a5a30;
+  --face-lo: #2a1e12;
+  animation: cc-rim 1.2s steps(2) infinite;
+  filter: none;
+}
+@keyframes cc-rim {
+  50% {
+    background: var(--orange);
+  }
+}
+.cc-level__thumb {
+  margin-left: 10px;
+  padding: 3px;
+  background: var(--ink);
+  flex: none;
+}
+.cc-level__thumb svg {
+  width: 48px;
+  height: 30px;
+}
+.cc-level__text {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.cc-level__name {
+  font-family: var(--f-pixel);
+  font-weight: 400;
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-shadow: 2px 2px 0 var(--ink);
+}
+.cc-level__name b {
+  font-weight: 400;
+  color: var(--orange);
+}
+.cc-level__best {
+  font-family: var(--f-pixel);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--cream-lo);
+}
+.cc-level__best.is-new {
+  color: var(--grass);
+}
+.cc-level__go {
+  flex: none;
+  margin-right: 14px;
+  font-size: 16px;
+  color: var(--orange);
+  text-shadow: 2px 2px 0 var(--ink);
+}
+.cc-level.is-selected .cc-level__go {
+  animation: cc-nudge 0.7s steps(2) infinite;
+}
+.cc-title__menu .cc-keys {
+  margin-top: 6px;
+}
+
+/* runner strip (main.ts draws pixel Ciccio on the canvas) */
+.cc-runner {
+  flex: none;
+  width: 100%;
+  margin-top: 8px;
+}
+.cc-runner__canvas {
+  display: block;
+  width: 100%;
+  height: 80px;
+  image-rendering: pixelated;
+}
+.cc-runner__grass {
+  height: 10px;
+  background-repeat: repeat-x;
+  background-size: 32px 10px;
+  image-rendering: pixelated;
+}
+.cc-title__foot {
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: #6e6862;
+}
+
+@media (orientation: landscape) {
+  .cc-title__main {
+    flex-direction: row;
+    gap: clamp(18px, 5vw, 110px);
+  }
+  .cc-logo__face {
+    height: clamp(96px, 37vh, 420px);
+  }
+  .cc-logo__word {
+    height: clamp(26px, 8vh, 96px);
+  }
+  .cc-title__menu {
+    width: min(380px, 52vw);
+  }
+  .cc-title__sub {
+    font-size: clamp(9px, 1.55vw, 22px);
+  }
+}
+@media (orientation: landscape) and (max-height: 430px) {
+  .cc-title {
+    padding-top: calc(var(--safe-t) + 6px);
+  }
+  .cc-runner__canvas {
+    height: 64px;
+  }
+  .cc-title__brand {
+    gap: 8px;
+  }
+  .cc-level {
+    min-height: 60px;
+  }
+}
+@media (orientation: portrait) and (max-height: 700px) {
+  .cc-runner__canvas {
+    height: 68px;
+  }
+  .cc-title__main {
+    gap: 14px;
+  }
+}
+@media (min-width: 1100px) and (min-height: 650px) {
+  .cc-title__menu {
+    width: 440px;
+    gap: 16px;
+  }
+  .cc-level {
+    min-height: 80px;
+  }
+  .cc-level__name {
+    font-size: 14px;
+  }
+  .cc-level__best {
+    font-size: 11px;
+  }
+  .cc-level__thumb svg {
+    width: 64px;
+    height: 40px;
+  }
+  .cc-runner__canvas {
+    height: 96px;
+  }
+  .cc-title__sound {
+    width: 56px;
+    height: 56px;
+  }
+}
+@media (min-width: 1600px) and (min-height: 900px) {
+  .cc-title__menu {
+    width: 560px;
+    gap: 20px;
+  }
+  .cc-level {
+    min-height: 100px;
+  }
+  .cc-level__name {
+    font-size: 18px;
+  }
+  .cc-level__best {
+    font-size: 13px;
+  }
+  .cc-level__thumb svg {
+    width: 80px;
+    height: 50px;
+  }
+  .cc-title__menu .cc-keys {
+    font-size: 16px;
+  }
+  .cc-runner__canvas {
+    height: 144px;
+  }
+}

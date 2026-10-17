@@ -1,0 +1,212 @@
+/* Base tokens, stage layout (portrait bands / landscape overlay), shared pixel buttons. */
+.cc-root {
+  --ink: #141414;
+  --hud: #242424;
+  --hud-hi: #34343a;
+  --hud-lo: #18181a;
+  --cream: #fce4c0;
+  --cream-hi: #fcf0d8;
+  --cream-lo: #e4cca8;
+  --orange: #fc9000;
+  --orange-hi: #fcc060;
+  --orange-lo: #c45e00;
+  --red: #fc0c24;
+  --red-lo: #a8001a;
+  --yellow: #fcd400;
+  --yellow-lo: #c89600;
+  --sky: #60ccf0;
+  --grass: #a8cc00;
+  --grass-mid: #48b424;
+  --f-pixel: 'Press Start 2P', ui-monospace, monospace;
+  --f-ui: 'Pixelify Sans', system-ui, sans-serif;
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+  color: var(--cream);
+  font-family: var(--f-ui);
+  font-weight: 600;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+}
+.cc-root *,
+.cc-root *::before,
+.cc-root *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+.cc-root svg {
+  display: block;
+}
+.cc-root [hidden] {
+  display: none !important;
+}
+
+/* ------------------------------------------------------------------ stage */
+.cc-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+.cc-play {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background: #000;
+}
+.game-host {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.game-host canvas {
+  display: block;
+  image-rendering: pixelated;
+  touch-action: none;
+}
+
+@media (orientation: landscape) {
+  .cc-stage {
+    display: block;
+  }
+  .cc-play {
+    position: absolute;
+    inset: 0;
+  }
+}
+
+/* ------------------------------------------------------- pixel menu button */
+.cc-btn {
+  --face: var(--hud-hi);
+  --face-hi: #4a4a52;
+  --face-lo: #1e1e22;
+  --text: var(--cream);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 48px;
+  min-height: 52px;
+  margin: 0;
+  padding: 3px;
+  border: 0;
+  background: var(--ink);
+  color: var(--text);
+  font: inherit;
+  font-family: var(--f-ui);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  outline: none;
+  touch-action: manipulation;
+  transition: transform 90ms ease-out, filter 120ms;
+}
+.cc-btn::before {
+  /* face: light rim on top, darker 3D edge at the bottom */
+  content: '';
+  position: absolute;
+  inset: 3px;
+  background: var(--face);
+  box-shadow: inset 0 3px 0 var(--face-hi), inset 0 -6px 0 var(--face-lo);
+  clip-path: inherit;
+  z-index: 0;
+}
+.cc-btn > * {
+  position: relative;
+  z-index: 1;
+}
+.cc-btn {
+  clip-path: polygon(
+    0 6px, 3px 6px, 3px 3px, 6px 3px, 6px 0, calc(100% - 6px) 0, calc(100% - 6px) 3px, calc(100% - 3px) 3px,
+    calc(100% - 3px) 6px, 100% 6px, 100% calc(100% - 6px), calc(100% - 3px) calc(100% - 6px), calc(100% - 3px) calc(100% - 3px),
+    calc(100% - 6px) calc(100% - 3px), calc(100% - 6px) 100%, 6px 100%, 6px calc(100% - 3px), 3px calc(100% - 3px),
+    3px calc(100% - 6px), 0 calc(100% - 6px)
+  );
+}
+.cc-btn__label {
+  padding: 0 14px 3px;
+  font-family: var(--f-pixel);
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 2px 2px 0 var(--ink);
+}
+.cc-btn--primary {
+  --face: var(--orange);
+  --face-hi: var(--orange-hi);
+  --face-lo: var(--orange-lo);
+  --text: #fff8ec;
+}
+.cc-btn--primary .cc-btn__label {
+  text-shadow: 2px 0 0 var(--ink), -2px 0 0 var(--ink), 0 2px 0 var(--ink), 0 -2px 0 var(--ink), 2px 2px 0 var(--ink),
+    -2px 2px 0 var(--ink), 2px -2px 0 var(--ink), -2px -2px 0 var(--ink), 0 4px 0 var(--ink);
+}
+.cc-btn.is-selected {
+  background: var(--cream-hi);
+  filter: brightness(1.12);
+}
+.cc-btn.is-selected::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  width: 8px;
+  height: 12px;
+  margin-top: -8px;
+  background: var(--cream-hi);
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+  z-index: 1;
+  animation: cc-nudge 0.7s steps(2) infinite;
+}
+.cc-btn:active,
+.cc-btn.is-pressed {
+  transform: translateY(3px);
+}
+.cc-btn:active::before,
+.cc-btn.is-pressed::before {
+  box-shadow: inset 0 3px 0 var(--face-hi), inset 0 -2px 0 var(--face-lo);
+  filter: brightness(1.15);
+}
+@keyframes cc-nudge {
+  50% {
+    transform: translateX(3px);
+  }
+}
+
+/* Square icon button (sound toggle, HUD pause). */
+.cc-iconbtn {
+  min-width: 48px;
+  min-height: 48px;
+  width: 48px;
+  height: 48px;
+  padding: 3px;
+}
+.cc-iconbtn .cc-glyph {
+  width: 24px;
+  height: 20px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-root *,
+  .cc-root *::before,
+  .cc-root *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

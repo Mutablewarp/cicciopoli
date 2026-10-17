@@ -1,0 +1,156 @@
+/* Loading screen and the in-game banner. */
+/* ---------------------------------------------------------------- loading */
+.cc-loading {
+  z-index: 40;
+  gap: 14px;
+  background: #000;
+  transition: opacity 300ms ease-out;
+}
+.cc-loading.is-leaving {
+  opacity: 0;
+}
+.cc-loading__word {
+  width: auto;
+  height: 30px;
+  aspect-ratio: 176 / 51;
+  margin-bottom: 18px;
+  color: #fff;
+}
+.cc-loading__burger {
+  position: relative;
+  width: 96px;
+  height: 120px;
+}
+.cc-loading__burger svg {
+  width: 96px;
+  height: 108px;
+  animation: cc-hop 0.9s cubic-bezier(0.3, 0, 0.4, 1) infinite;
+}
+.cc-loading__shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 72px;
+  height: 6px;
+  margin-left: -36px;
+  background: #2a2a2a;
+  animation: cc-shadow 0.9s cubic-bezier(0.3, 0, 0.4, 1) infinite;
+}
+@keyframes cc-hop {
+  0%, 100% { transform: translateY(6px) scale(1.06, 0.94); }
+  45% { transform: translateY(-14px) scale(0.97, 1.03); }
+}
+@keyframes cc-shadow {
+  0%, 100% { transform: scaleX(1); }
+  45% { transform: scaleX(0.6); opacity: 0.6; }
+}
+.cc-loading__msg {
+  margin: 6px 0 0;
+  font-size: 20px;
+  color: var(--cream);
+}
+.cc-loading__bar {
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  background: var(--ink);
+  box-shadow: 0 0 0 3px #3a3a3a;
+}
+.cc-loading__bar i {
+  width: 14px;
+  height: 18px;
+  background: #262626;
+}
+.cc-loading__bar i.is-on {
+  background: linear-gradient(180deg, var(--orange-hi) 0 30%, var(--orange) 30% 75%, var(--orange-lo) 75%);
+}
+.cc-loading__pct {
+  margin: 0;
+  font-family: var(--f-pixel);
+  font-size: 12px;
+  color: var(--cream-lo);
+}
+
+/* -------------------------------------------------------------- banner */
+.cc-banner-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  /* upper third: the camera keeps Ciccio low in the view, so the banner never hides him */
+  place-items: start center;
+  padding-top: clamp(14px, 9%, 90px);
+  pointer-events: none;
+}
+@media (orientation: landscape) {
+  .cc-banner-layer {
+    /* clear the overlaid HUD bar */
+    padding-top: calc(var(--safe-t) + 62px);
+  }
+}
+.cc-banner {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 24px);
+  padding: 14px 22px 13px;
+  background: rgba(24, 24, 26, 0.9);
+  box-shadow: 0 0 0 3px var(--ink), inset 0 0 0 3px var(--tone-lo), 0 6px 0 3px var(--ink);
+  --tone: var(--cream);
+  --tone-lo: #4a4440;
+  animation: cc-banner-in 340ms cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+.cc-banner.is-out {
+  animation: cc-banner-out 240ms ease-in both;
+}
+@keyframes cc-banner-in {
+  from { transform: scale(0.4); opacity: 0; }
+}
+@keyframes cc-banner-out {
+  to { transform: translateY(-18px) scale(0.92); opacity: 0; }
+}
+.cc-banner__text {
+  font-family: var(--f-pixel);
+  font-size: clamp(18px, 6vw, 30px);
+  line-height: 1.2;
+  text-align: center;
+  color: var(--tone);
+  text-shadow: 2px 0 0 var(--ink), -2px 0 0 var(--ink), 0 2px 0 var(--ink), 0 -2px 0 var(--ink), 2px 2px 0 var(--ink),
+    -2px 2px 0 var(--ink), 2px -2px 0 var(--ink), -2px -2px 0 var(--ink), 0 4px 0 var(--ink);
+}
+.cc-banner__sub {
+  font-size: 16px;
+  letter-spacing: 0.05em;
+  text-align: center;
+  color: var(--cream);
+}
+.cc-banner--power {
+  --tone: var(--yellow);
+  --tone-lo: #7a6200;
+}
+.cc-banner--danger {
+  --tone: #ff4a4a;
+  --tone-lo: #7a0010;
+}
+.cc-banner--goal {
+  --tone: #ffb020;
+  --tone-lo: #b8280a;
+  background: linear-gradient(180deg, rgba(150, 20, 10, 0.92), rgba(70, 10, 6, 0.92));
+}
+.cc-banner--goal:not(.is-out) .cc-banner__text {
+  animation: cc-goal-pulse 0.5s steps(2) infinite;
+}
+@keyframes cc-goal-pulse {
+  50% { color: #fff1a8; transform: scale(1.06); }
+}
+
+@media (min-width: 1600px) and (min-height: 900px) {
+  .cc-banner__text {
+    font-size: 40px;
+  }
+  .cc-banner__sub {
+    font-size: 22px;
+  }
+}

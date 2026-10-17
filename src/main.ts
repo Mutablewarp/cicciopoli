@@ -30,7 +30,7 @@ const audio = createAudio();
 audio.setMuted(save.data.muted);
 
 const host = ui.gameHost;
-const viewport: ViewportInfo = { cssW: 0, cssH: 0, dpr: 1, portrait: false };
+const viewport: ViewportInfo = { cssW: 0, cssH: 0, dpr: 1, portrait: false, insetBottom: 0 };
 
 function measure(): boolean {
   const r = host.getBoundingClientRect();
@@ -41,6 +41,8 @@ function measure(): boolean {
   viewport.cssH = h;
   viewport.dpr = effectiveDpr(window.devicePixelRatio);
   viewport.portrait = window.innerHeight > window.innerWidth;
+  const inset = parseFloat(getComputedStyle(host).getPropertyValue('--play-inset-b'));
+  viewport.insetBottom = Number.isFinite(inset) ? Math.min(inset, h * 0.4) : 0;
   return true;
 }
 if (!measure()) {
@@ -83,7 +85,8 @@ let stopRunner: (() => void) | null = null;
 
 const app: AppControl = {
   startLevel(level: LevelId) {
-    audio.unlock();
+    // only inside a gesture: an AudioContext created without one stays blocked (and warns)
+    if (navigator.userActivation?.isActive ?? true) audio.unlock();
     stopRunner?.();
     stopRunner = null;
     ui.hideTitle();
@@ -148,13 +151,15 @@ function applyResize(): void {
     window.setTimeout(scheduleResize, 120);
     return;
   }
-  const key = `${viewport.cssW}x${viewport.cssH}@${viewport.dpr}`;
+  const key = `${viewport.cssW}x${viewport.cssH}@${viewport.dpr}+${viewport.insetBottom}`;
   if (key === lastKey || !game.isBooted) return;
   lastKey = key;
   const w = Math.round(viewport.cssW * viewport.dpr);
   const h = Math.round(viewport.cssH * viewport.dpr);
-  game.scale.setZoom(1 / viewport.dpr);
-  game.scale.resize(w, h);
+  if (w !== game.scale.width || h !== game.scale.height) {
+    game.scale.setZoom(1 / viewport.dpr);
+    game.scale.resize(w, h);
+  }
   game.canvas.style.width = `${viewport.cssW}px`;
   game.canvas.style.height = `${viewport.cssH}px`;
   game.events.emit('viewport-changed', viewport);
@@ -197,6 +202,8 @@ window.addEventListener('pageshow', () => {
 /* ------------------------------------------- audio unlock + page guards */
 const unlock = (): void => audio.unlock();
 window.addEventListener('pointerdown', unlock, { capture: true, passive: true });
+// the first touch switches the UI to touch mode (overlay controls): re-read the inset
+window.addEventListener('pointerdown', () => window.setTimeout(scheduleResize, 0), { passive: true });
 window.addEventListener('keydown', unlock, { capture: true });
 window.addEventListener('touchend', unlock, { capture: true, passive: true });
 // iOS Safari pinch / double-tap zoom and rubber-band scroll.

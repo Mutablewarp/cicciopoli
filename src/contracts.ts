@@ -224,6 +224,11 @@ export interface ViewportInfo {
   cssH: number;
   dpr: number;
   portrait: boolean;
+  /**
+   * CSS px at the bottom of the game host covered by overlay touch controls (landscape
+   * phones). The camera keeps the walking line above it. Read from `--play-inset-b`.
+   */
+  insetBottom: number;
 }
 
 export interface AppControl {

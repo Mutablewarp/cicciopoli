@@ -253,6 +253,27 @@ export function buildFrames(count: number, fw: number, fh: number, draw: (ctx: C
   return packSheet(frames, fw, fh);
 }
 
+/** Vertical per-row gradient (no dither) for textures that get stretched, e.g. skies. */
+export function smoothGradient(
+  ctx: Ctx,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  stops: readonly { at: number; color: string }[],
+): void {
+  for (let j = 0; j < h; j++) {
+    const t = h <= 1 ? 0 : j / (h - 1);
+    let k = 0;
+    while (k < stops.length - 2 && t > stops[k + 1].at) k++;
+    const a = stops[k];
+    const b = stops[Math.min(k + 1, stops.length - 1)];
+    const local = Math.max(0, Math.min(1, (t - a.at) / Math.max(0.0001, b.at - a.at)));
+    ctx.fillStyle = mix(a.color, b.color, local);
+    ctx.fillRect(x, y + j, w, 1);
+  }
+}
+
 /** Vertical dithered gradient through colour stops [{at:0..1,color}] into a rect. */
 export function ditherGradient(
   ctx: Ctx,
