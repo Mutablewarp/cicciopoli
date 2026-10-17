@@ -48,18 +48,20 @@ export const CICCIO_ANIMS = {
 /* ======================================================= [items] src/art/items.ts */
 /** Pickups, worn power-ups, projectiles and generic FX (shared by both levels). */
 export const ITEMS = {
-  fries: 'fries', //        sheet 16x16, frames 0-3 idle shine loop   (fries box, cup style)
+  fries: 'fries', //        sheet 16x16, frames 0-3 idle shine loop — Ciccio's RED paper tray (maroon boat,
+  //                         checkered liner) full of golden fries, see ref/photo_provola_fries_nuggets.jpg bottom
   burger: 'burger', //      sheet 16x16, frames 0-3 idle shine loop
   brie: 'brie', //          sheet 16x16, frames 0-3 idle shine loop   (brie wedge, white rind)
-  provola: 'provola', //    sheet 16x16, frames 0-3 — YELLOW SQUARE cheese block, very readable
+  provola: 'provola', //    sheet 16x16, frames 0-3 — PROVOLA GOAT: fried battered provola STICKS, rectangular,
+  //                         golden bumpy batter (photo top box); 2 sticks, very readable
   thai: 'thai', //          sheet 16x16, frames 0-3 — chicken wings in red-orange Thai glaze
   crunchy: 'crunchy', //    sheet 24x16, frames 0-3 — golden fried crunchy wings, flame flicker
-  cheeseShot: 'cheese-shot', //   sheet 12x8, frames 0-1 — rectangular cheese projectile
+  cheeseShot: 'cheese-shot', //   sheet 12x8, frames 0-1 — flying provola stick (rectangular, battered) + streak
   cheeseSplat: 'cheese-splat', // sheet 24x16, frames 0-5 — melted cheese splat + droplets (once)
   club: 'club', //          sheet 24x24, frame 0 — giant Thai-glazed wing used as club.
   //                         Grip point at (5,19) in frame; club points up-right at angle 0.
   flame: 'flame', //        sheet 16x24, frames 0-5 loop — fire (club swing trail, torches)
-  badge: 'provola-badge', //image 8x8 — little yellow cheese square pinned on the T-shirt
+  badge: 'provola-badge', //image 8x8 — mini battered provola stick pinned on the T-shirt
   wings: 'wings', //        sheet 32x24, frames 0-3 loop — two crunchy chicken wings worn as wings.
   //                         Attach point (16,12) = shoulder blades. Drawn BEHIND ciccio.
   shield: 'shield', //      sheet 48x48, frames 0-3 loop — translucent creamy brie aura around a
@@ -70,6 +72,12 @@ export const ITEMS = {
   hitStar: 'hit-star', //   sheet 16x16, frames 0-3 (once) — impact burst
   crateBits: 'crate-bits', // sheet 8x8, frames 0-3 — wooden splinters (static frames)
   digits: 'digits', //      sheet 6x8, frames 0-9 digits, 10 '+', 11 'x' — score popups (cream with dark outline)
+  nugget: 'nugget', //      sheet 12x12, frames 0-5 spin loop — crunchy chicken nugget used as the COIN
+  //                         (breaded golden-brown bumpy ball, see ref/photo_provola_fries_nuggets.jpg)
+  cheeseEngulf: 'cheese-engulf', // sheet 32x32, frames 0-7 once — melted provola blob swallows an enemy
+  //                         (centred on the enemy, bottom at y=31), then drips away to nothing
+  burn: 'burn', //          sheet 32x32, frames 0-7 once — enemy catches fire: flames rise around the
+  //                         silhouette, then a dark smoke/ash puff (bottom at y=31)
 } as const;
 
 export const ITEM_ANIMS = {
@@ -88,6 +96,9 @@ export const ITEM_ANIMS = {
   dust: 'dust-once',
   poof: 'poof-once',
   hitStar: 'hit-star-once',
+  nugget: 'nugget-spin', //       10 fps loop
+  cheeseEngulf: 'cheese-engulf-once', // 14 fps once
+  burn: 'burn-once', //            14 fps once
 } as const;
 
 /* ============================================ TILESET INDICES (both themes, same layout) */

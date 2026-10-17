@@ -10,7 +10,20 @@
  *   src/main.ts    -> boot, viewport/DPR sizing, app lifecycle
  */
 
-export type LevelId = 1 | 2;
+/** 1 Le Colline · 2 Alette Crunchy (platform) · 3 Ciccio's Invaders (shooter) · 4 Ciccio-Man (maze) */
+export type LevelId = 1 | 2 | 3 | 4;
+
+export const LEVEL_IDS: readonly LevelId[] = [1, 2, 3, 4];
+
+/** Phaser scene key that runs each level (main.ts starts it with data { level }). */
+export const LEVEL_SCENE: Readonly<Record<LevelId, 'game' | 'invaders' | 'maze'>> = {
+  1: 'game',
+  2: 'game',
+  3: 'invaders',
+  4: 'maze',
+};
+
+export type Dir4 = 'up' | 'down' | 'left' | 'right';
 
 /* ------------------------------------------------------------------ ART */
 
@@ -82,6 +95,13 @@ export type EdgeAction = 'jump' | 'fire' | 'club' | 'pause';
 export interface GameInput {
   /** -1 left, 0 none, +1 right. When both directions are held the LAST pressed wins. */
   readonly axisX: -1 | 0 | 1;
+  /** -1 up, 0 none, +1 down (keyboard ↑/W ↓/S, maze cross-pad). Last pressed wins. */
+  readonly axisY: -1 | 0 | 1;
+  /**
+   * Most recent direction PRESS (keys, d-pad, cross-pad or a swipe on the game area in
+   * maze mode) since the previous call, else null. Latched like consume().
+   */
+  consumeDir(): Dir4 | null;
   readonly upHeld: boolean;
   readonly downHeld: boolean;
   readonly jumpHeld: boolean;
@@ -105,6 +125,10 @@ export interface PowerState {
   goat: boolean;
   thai: boolean;
   wings: boolean;
+  /** level 3: FULMINE charges available */
+  bolt?: boolean;
+  /** level 4: provola power-stick active (ghosts can be eaten) */
+  pellet?: boolean;
 }
 
 export interface HudState {
@@ -120,15 +144,25 @@ export interface HudState {
 
 export type ButtonState = 'hidden' | 'disabled' | 'enabled';
 
+/**
+ * platform (L1-2): ◀▶ pad + SALTA/VOLA + GOAT/THAI or SCENDI.
+ * shooter  (L3):   ◀▶ pad + big FUOCO (fire action) + FULMINE (club action, shows `clubCount`).
+ * maze     (L4):   4-way cross pad + swipes on the game area; no action buttons.
+ */
+export type ControlsMode = 'platform' | 'shooter' | 'maze';
+
 export interface ControlsLayout {
   level: LevelId;
-  /** Provola Goat cheese shot (level 1) */
+  mode: ControlsMode;
+  /** Provola Goat cheese shot (level 1) · FUOCO (level 3) */
   fire: ButtonState;
-  /** Thai wing club (level 1) */
+  /** Thai wing club (level 1) · FULMINE lightning (level 3) */
   club: ButtonState;
   /** SCENDI / dive (level 2) */
   down: ButtonState;
   jumpLabel: 'SALTA' | 'VOLA';
+  /** small counter badge on the club/FULMINE button (lightning charges), omitted = none */
+  clubCount?: number;
 }
 
 export interface TitleInfo {
@@ -184,9 +218,15 @@ export interface GameUI {
 export type SfxName =
   | 'jump' | 'land' | 'fries' | 'burger' | 'powerup' | 'brie' | 'shoot' | 'club'
   | 'stomp' | 'hurt' | 'shieldBreak' | 'crate' | 'bump' | 'checkpoint' | 'lava'
-  | 'fall' | 'flap' | 'select' | 'pause' | 'enemyHit' | 'armorClang' | 'heal' | 'goal';
+  | 'fall' | 'flap' | 'select' | 'pause' | 'enemyHit' | 'armorClang' | 'heal' | 'goal'
+  // nugget coins, kill effects (cheese engulf / catch fire)
+  | 'coin' | 'melt' | 'ignite'
+  // level 3 shooter
+  | 'laser' | 'bolt' | 'explode' | 'transform' | 'ufo' | 'invaderStep'
+  // level 4 maze
+  | 'chomp' | 'pellet' | 'ghostEat' | 'ghostHome';
 
-export type MusicName = 'title' | 'hills' | 'inferno';
+export type MusicName = 'title' | 'hills' | 'inferno' | 'invaders' | 'maze';
 
 export interface GameAudio {
   /** Call from inside a user gesture handler; safe to call many times. */
@@ -229,6 +269,8 @@ export interface ViewportInfo {
    * phones). The camera keeps the walking line above it. Read from `--play-inset-b`.
    */
   insetBottom: number;
+  /** CSS px at the top covered by the overlaid HUD bar (landscape / desktop). `--play-inset-t`. */
+  insetTop: number;
 }
 
 export interface AppControl {

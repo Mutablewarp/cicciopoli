@@ -1,4 +1,5 @@
 import type { LevelId, SaveData, SaveStore } from '../contracts';
+import { LEVEL_IDS } from '../contracts';
 
 const KEY = 'cicciopoli.save.v1';
 
@@ -9,12 +10,12 @@ function load(): SaveData {
     if (!raw) return fallback;
     const parsed = JSON.parse(raw) as Partial<SaveData>;
     const best: SaveData['best'] = {};
-    for (const id of [1, 2] as LevelId[]) {
+    for (const id of LEVEL_IDS) {
       const v = parsed.best?.[id];
       if (typeof v === 'number' && Number.isFinite(v) && v >= 0) best[id] = Math.floor(v);
     }
     const completed = Array.isArray(parsed.completed)
-      ? parsed.completed.filter((v): v is LevelId => v === 1 || v === 2)
+      ? parsed.completed.filter((v): v is LevelId => LEVEL_IDS.includes(v))
       : [];
     return { best, completed, muted: parsed.muted === true };
   } catch {

@@ -145,3 +145,53 @@ Rules for every agent:
   (see header of scripts/shot.mjs for steps format; `--mobile` emulates a touch phone).
 - Write scratch files (screenshots, step files) under the scratchpad directory given in your
   prompt, never inside the project.
+
+---------------------------------------------------------------------------------------
+## 6. Expansion v2 (owner feedback) — source of truth for the new work
+
+### New references (ref/)
+| File | What it shows |
+|---|---|
+| `ref/logo_official.jpg` | The OFFICIAL logo sent by the owner: white face, black voluminous hair with thin white outline, black round glasses, black brows, nose and smile lines, condensed white wordmark "CICCIO'S". Transparent PNG ready: `public/brand/ciccios-logo.png` (607x1040, keyed from the dark background). |
+| `ref/photo_provola_fries_nuggets.jpg` | Real food photo. TOP box = **PROVOLA GOAT**: three **rectangular** fried battered provola sticks (golden-beige bumpy batter) in a maroon paper tray with black/white checkered liner. BOTTOM box = **fries tray** (Ciccio's red/maroon paper boat full of golden fries) with **nuggets** (round breaded golden-brown crunchy bites). Ciccio's printed tray paper shows the "CICCIO'S" wordmark. |
+| `ref/invaders_sprites.png` | Owner's art for **CICCIO'S INVADERS** (level 3): deep navy starfield with tiny warm speckles; Ciccio's light-blue jet fighter (Ciccio's round face with black round glasses in the cockpit) at the bottom; FOOD floating in space: cheese wheel, roast chicken, wheat ears, chicken drumstick, lettuce/greens, grey smoke puffs, cherry tomatoes on the vine, egg, cheese slices, half burger bun. |
+| `ref/invaders_title.png` | Level title art: bold white italic wide wordmark "CICCIO'S / INVADERS" (bottom line curved) on the starfield, the jet flying diagonally. |
+
+### Changes to levels 1–2
+- **Nuggets are the coins**: new `ITEMS.nugget` pickup (spinning crunchy nugget, +10). Coin arcs in L1/L2 use nuggets; the HUD coin icon becomes a nugget.
+- **Fries** = Ciccio's red paper tray of fries (photo bottom), rarer bonus: **+30**. Burger +25 and heals.
+- **Provola Goat** = rectangular battered provola sticks (pickup, T-shirt badge, the shot is a flying provola stick).
+- **Kill effects**: an enemy hit by Provola Goat is **swallowed by melted cheese** (`ITEMS.cheeseEngulf`: cheese blob grows over it, the enemy sprite turns yellow and is hidden under the blob, then it drips away — the enemy is gone). An enemy hit by the Thai-wing club **catches fire** (`ITEMS.burn`: the enemy sprite tints orange/black while flames rise, then a dark ash puff, gone). Stomp kills keep the squash + poof.
+- Level chain: L1 → L2 → L3 → L4 ("LIVELLO SUCCESSIVO ▶" on the victory card); L4 is the last.
+
+### LEVEL 3 — CICCIO'S INVADERS (shooter, scene key `invaders`)
+- Space-Invaders-style fixed playfield, **portrait-native** (≈ 224 x 288 world px), centred and scaled to fit any screen; the starfield fills the rest of the view (landscape gets starfield + the CICCIO'S INVADERS wordmark at the sides is fine).
+- Player: **Ciccio's light-blue jet** (from `ref/invaders_sprites.png`, Ciccio's face + round black glasses visible in the cockpit), moves left/right along the bottom, banks slightly while moving. **FUOCO** fires provola sticks upward (max 2 on screen, short cooldown).
+- Invaders: a marching formation (≈ 5 rows x 8) of **space things**: aliens (top rows), small ringed planets, asteroids (bottom rows) — 2-frame animated, step sideways, drop a row at the edges, speed up as they thin out; they drop meteor bits / alien goo. Destructible shields shaped like burgers (bun/patty layers that erode pixel by pixel). A UFO crosses the top now and then (bonus + drops a power-up capsule).
+- **FULMINE (lightning) skill**: capsules (from the UFO and from some invaders) give lightning charges. **FULMINE** fires a lightning bolt that strikes a target and chains to 2–3 neighbours: everything it touches (aliens, planets, asteroids) **turns into FOOD** with a grey smoke puff (the ingredients of the owner's art: cheese wheel, roast chicken, drumstick, wheat, lettuce, tomatoes, egg, cheese slices, bun). The food then drifts down: catching it with the jet = bonus points (+50) and fills the HUD (the transformed foods are the level's "collectibles").
+- Hearts (4), invulnerability blink after a hit, 3 waves of increasing difficulty, then a **black hole** opens ("VAI IN BUCA!") and the jet flies into it → victory "IN BUCA!" (+300 clear bonus). Game over at 0 hearts.
+- Controls: ◀▶ + FUOCO (big) + FULMINE (shows charges). Keyboard: ←/→ or A/D, Space/J/X = fuoco, K/C = fulmine, Esc/P pause.
+- Music `invaders`; sfx `laser`, `bolt`, `transform`, `explode`, `ufo`, `invaderStep`, `hurt`, `coin` (food caught).
+
+### LEVEL 4 — CICCIO-MAN (maze, scene key `maze`)
+(The owner asked for a "Ciccio's Pac-Man"; the level is called **CICCIO-MAN** because "Pac-Man" is a third-party trademark — easy to rename later.)
+- Original maze (NOT the Namco layout), symmetric, ≈ 28 x 31 cells of 8 px (224 x 248 world px), fits portrait phones; scaled to fit any screen. Walls styled like **Ciccio's maroon paper trays with the black/white checkered liner** on a dark charcoal floor.
+- Player: **Ciccio's round head** (logo face: black hair, round black glasses, smile) that chomps (mouth opens/closes); faces the movement direction without rotating the glasses upside down (left/right mirror, up/down dedicated frames).
+- Dots = **mini nuggets** (+10 coins). Power pellets = **provola sticks** (4, flashing): ghosts become "melted cheese" scared mode and can be eaten (+200, +400, +800, +1600), eaten ghosts return home as eyes.
+- Ghosts = enemies from levels 1–2, each with its own chase personality: **Sottaceto** (pickle, direct chase), **Peperoncino** (chili, ambush ahead), **Diavoletto** (demon, flanking), **Burger corazzato** (armoured burger, shy/random). Scatter/chase timer like the genre.
+- Bonus items appear twice: burger, fries tray, crunchy wings.
+- 4 hearts; when all nuggets are eaten a **golf hole** opens in the centre ("VAI IN BUCA!"): enter it → victory "IN BUCA!". Buffered turns + cornering forgiveness. Controls: 4-way cross pad + swipes on the game area; keyboard arrows/WASD.
+- Music `maze` (original bouncy chiptune — never copy the Pac-Man melody); sfx `chomp`, `pellet`, `ghostEat`, `ghostHome`, `hurt`.
+
+### v2 ownership
+```
+UI lane        src/ui/**, src/input/**, index.html (static splash only), public/**
+ITEMS lane     src/art/items.ts, src/art/items/**
+AUDIO lane     src/audio/**
+GAME-FIX lane  src/game/** except src/game/invaders/**, src/game/maze/**, BootScene/save/viewport;
+               src/config/**; may touch src/art/inferno/tiles.ts and src/art/ciccio/poses.ts for QA fixes
+L3 lane        src/art/space.ts, src/art/space/**, src/game/invaders/**
+L4 lane        src/art/maze.ts, src/art/maze/**, src/game/maze/**
+integrator     src/contracts.ts, src/art/keys.ts, src/main.ts, docs/**
+```
+Shared contracts (src/contracts.ts) already contain: LevelId 1–4, LEVEL_SCENE, Dir4, GameInput.axisY / consumeDir, ControlsLayout.mode + clubCount, PowerState.bolt/pellet, new SfxName / MusicName values, ViewportInfo.insetTop.

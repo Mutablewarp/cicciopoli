@@ -8,12 +8,14 @@
  */
 import Phaser from 'phaser';
 import type { AppControl, LevelId, Services, ViewportInfo } from './contracts';
-import { SERVICES_KEY } from './contracts';
+import { LEVEL_IDS, LEVEL_SCENE, SERVICES_KEY } from './contracts';
 import { createUI } from './ui';
 import { createAudio } from './audio';
 import { createSave } from './game/save';
 import { BootScene, BASE_PACKS_KEY } from './game/BootScene';
 import { GameScene } from './game/GameScene';
+import { InvadersScene } from './game/invaders/InvadersScene';
+import { MazeScene } from './game/maze/MazeScene';
 import { buildCiccioArt } from './art/ciccio';
 import { buildItemsArt } from './art/items';
 import { effectiveDpr } from './game/viewport';
@@ -30,7 +32,7 @@ const audio = createAudio();
 audio.setMuted(save.data.muted);
 
 const host = ui.gameHost;
-const viewport: ViewportInfo = { cssW: 0, cssH: 0, dpr: 1, portrait: false, insetBottom: 0 };
+const viewport: ViewportInfo = { cssW: 0, cssH: 0, dpr: 1, portrait: false, insetBottom: 0, insetTop: 0 };
 
 function measure(): boolean {
   const r = host.getBoundingClientRect();
@@ -41,8 +43,11 @@ function measure(): boolean {
   viewport.cssH = h;
   viewport.dpr = effectiveDpr(window.devicePixelRatio);
   viewport.portrait = window.innerHeight > window.innerWidth;
-  const inset = parseFloat(getComputedStyle(host).getPropertyValue('--play-inset-b'));
+  const style = getComputedStyle(host);
+  const inset = parseFloat(style.getPropertyValue('--play-inset-b'));
   viewport.insetBottom = Number.isFinite(inset) ? Math.min(inset, h * 0.4) : 0;
+  const top = parseFloat(style.getPropertyValue('--play-inset-t'));
+  viewport.insetTop = Number.isFinite(top) ? Math.min(top, h * 0.25) : 0;
   return true;
 }
 if (!measure()) {
@@ -77,11 +82,18 @@ const game = new Phaser.Game({
   input: { keyboard: false, mouse: false, touch: false, gamepad: false },
   audio: { noAudio: true },
   render: { antialias: false, powerPreference: 'high-performance' },
-  scene: [BootScene, GameScene],
+  scene: [BootScene, GameScene, InvadersScene, MazeScene],
 });
 
 let currentLevel: LevelId | null = null;
 let stopRunner: (() => void) | null = null;
+
+/** Stops whichever level scene is running (platform, shooter or maze). */
+function stopLevelScenes(): void {
+  for (const key of new Set(Object.values(LEVEL_SCENE))) {
+    if (game.scene.isActive(key) || game.scene.isPaused(key)) game.scene.stop(key);
+  }
+}
 
 const app: AppControl = {
   startLevel(level: LevelId) {
@@ -93,12 +105,12 @@ const app: AppControl = {
     ui.hideOverlays();
     input.reset();
     currentLevel = level;
-    if (game.scene.isActive('game') || game.scene.isPaused('game')) game.scene.stop('game');
-    game.scene.start('game', { level });
+    stopLevelScenes();
+    game.scene.start(LEVEL_SCENE[level], { level });
   },
   toMenu() {
     currentLevel = null;
-    if (game.scene.isActive('game') || game.scene.isPaused('game')) game.scene.stop('game');
+    stopLevelScenes();
     input.reset();
     input.enabled = false;
     ui.hideOverlays();
@@ -137,8 +149,8 @@ function showTitle(): void {
 
 game.events.once('boot-ready', () => {
   ui.setLoading(null);
-  const auto = Number(params.get('level'));
-  if (auto === 1 || auto === 2) app.startLevel(auto);
+  const auto = Number(params.get('level')) as LevelId;
+  if (LEVEL_IDS.includes(auto)) app.startLevel(auto);
   else showTitle();
 });
 
@@ -151,7 +163,7 @@ function applyResize(): void {
     window.setTimeout(scheduleResize, 120);
     return;
   }
-  const key = `${viewport.cssW}x${viewport.cssH}@${viewport.dpr}+${viewport.insetBottom}`;
+  const key = `${viewport.cssW}x${viewport.cssH}@${viewport.dpr}+${viewport.insetBottom}+${viewport.insetTop}`;
   if (key === lastKey || !game.isBooted) return;
   lastKey = key;
   const w = Math.round(viewport.cssW * viewport.dpr);
