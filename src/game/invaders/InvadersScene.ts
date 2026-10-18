@@ -25,6 +25,8 @@ export class InvadersScene extends Phaser.Scene {
   private battle: Battle | null = null;
   private hud: HudLink | null = null;
   private paused = false;
+  /** a pause request (blur, hidden, Esc) that arrived while the art was loading: honoured once the battle runs */
+  private pendingPause = false;
   private cleanups: Array<() => void> = [];
   /** bumped by every create() and teardown(): a boot() that sees another value is stale */
   private gen = 0;
@@ -37,6 +39,7 @@ export class InvadersScene extends Phaser.Scene {
     this.battle = null;
     this.hud = null;
     this.paused = false;
+    this.pendingPause = false;
   }
 
   create(): void {
@@ -103,6 +106,7 @@ export class InvadersScene extends Phaser.Scene {
     ui.setLoading(null);
     ui.showHud(true);
     this.svc.audio.music('invaders');
+    if (this.svc.input.consume('pause')) this.pendingPause = true; // Esc / P while loading
     this.svc.input.reset();
     story.intro();
   }
@@ -110,7 +114,8 @@ export class InvadersScene extends Phaser.Scene {
   override update(_time: number, delta: number): void {
     const { battle, hud } = this;
     if (!battle || !hud) return;
-    if (this.svc.input.consume('pause')) {
+    if (this.pendingPause || this.svc.input.consume('pause')) {
+      this.pendingPause = false;
       this.pause();
       return;
     }
@@ -134,7 +139,11 @@ export class InvadersScene extends Phaser.Scene {
 
   private pause(): void {
     const b = this.battle;
-    if (this.paused || !b || b.phase === 'over' || b.phase === 'won' || !this.sys.isActive()) return;
+    if (!b) {
+      this.pendingPause = true;
+      return;
+    }
+    if (this.paused || b.phase === 'over' || b.phase === 'won' || !this.sys.isActive()) return;
     this.paused = true;
     this.svc.audio.sfx('pause');
     this.scene.pause();
@@ -181,6 +190,7 @@ export class InvadersScene extends Phaser.Scene {
     this.battle = null;
     this.hud = null;
     this.paused = false;
+    this.pendingPause = false;
     uninstallInvadersDebug();
   }
 }

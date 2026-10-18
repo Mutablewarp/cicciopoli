@@ -95,6 +95,30 @@ export class Pickups {
     });
   }
 
+  /** A pickup thrown out of a smashed prop: arcs `dx` sideways, lands at height `y`, then waits to be collected. */
+  pop(kind: PickupKind, x: number, y: number, dx: number): void {
+    const p = this.spawn(kind, x, y);
+    const body = p.sprite.body as Phaser.Physics.Arcade.StaticBody;
+    const bob = p.bob;
+    body.enable = false;
+    p.bob = false;
+    const t = { v: 0 };
+    this.scene.tweens.add({
+      targets: t,
+      v: 1,
+      duration: 420,
+      onUpdate: () => p.sprite.setPosition(x + dx * t.v, y - 88 * t.v * (1 - t.v)),
+      onComplete: () => {
+        if (p.taken) return;
+        p.sprite.setPosition(x + dx, y);
+        p.baseY = y;
+        p.bob = bob;
+        body.enable = true;
+        body.updateFromGameObject();
+      },
+    });
+  }
+
   get(obj: Phaser.GameObjects.GameObject): Pickup | undefined {
     const p = this.items.get(obj);
     return p && !p.taken ? p : undefined;

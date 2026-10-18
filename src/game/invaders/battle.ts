@@ -211,7 +211,7 @@ export class Battle {
     const inv = this.swarm.bomber(this.jet.x, Math.random() < 0.5);
     if (!inv) return;
     const { x, y } = this.swarm.pos(inv);
-    this.shots.bomb(x, y + 7, inv.kind === 'alienA' || inv.kind === 'alienB', w.bombSpeed);
+    this.shots.bomb(x, y + 8, inv.kind === 'alienA' || inv.kind === 'alienB', w.bombSpeed);
   }
 
   /* ------------------------------------------------------------- pickups */
@@ -238,7 +238,7 @@ export class Battle {
     if (this.phase !== 'play' && this.phase !== 'waveBreak') return;
     this.hearts = Math.max(0, this.hearts - 1);
     this.svc.audio.sfx('hurt');
-    this.fx.boom(this.jet.x, JET.y - 2, 0.7);
+    this.fx.boom(this.jet.x, JET.y + 2, 1.4);
     this.shake();
     if (this.hearts <= 0) this.onDead();
     else this.jet.hurt();
@@ -266,7 +266,7 @@ export class Battle {
       const ur = this.ufo.rect();
       if (ur && hits(r, ur)) {
         const u = this.ufo.sprite as Phaser.GameObjects.Sprite;
-        this.fx.boom(u.x, u.y, 1.2);
+        this.fx.boom(u.x, u.y, 1.5);
         this.svc.audio.sfx('explode');
         this.addScore(Phaser.Utils.Array.GetRandom([...UFO_POINTS]), u.x, u.y);
         this.pickups.dropCapsule(u.x, u.y + 6);

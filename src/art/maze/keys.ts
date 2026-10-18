@@ -3,6 +3,8 @@
 export const MAZE_ART = {
   /** image 224x248 — floor + tray walls + ghost house, pre-rendered from the layout */
   board: 'maze-board',
+  /** image 100x52 — the official logo label, drawn at half size over the centre tray (see LOGO_LABEL) */
+  logo: 'maze-logo',
   /** image 64x64 seamless — tray paper with a faint printed wordmark (landscape side panels) */
   panel: 'maze-panel',
   /** image 4x4 — mini nugget dot */
@@ -22,7 +24,7 @@ export const MAZE_ART = {
   bonus: 'maze-bonus',
   /** image 24x12 — putting green with the golf hole (hole centre at 12,6) */
   hole: 'maze-hole',
-  /** sheet 16x24, frames 0-3 — waving red flag on an orange pole, pole base at (3,23) */
+  /** sheet 16x18, frames 0-3 — waving red flag on an orange pole, pole base at (3,17) */
   flag: 'maze-flag',
   /** image 12x22 — left tunnel mouth (corridor fading to dark under the paper); flipX for the right */
   mouth: 'maze-mouth',
@@ -30,6 +32,9 @@ export const MAZE_ART = {
   ready: 'maze-ready',
   goText: 'maze-go',
 } as const;
+
+/** Where the logo label sits on the board (world px, top-left): the inside of the big centre tray. */
+export const LOGO_LABEL = { x: 87, y: 55, scale: 0.5 } as const;
 
 export const CICCIO_FRAMES = {
   right: [0, 1, 2],

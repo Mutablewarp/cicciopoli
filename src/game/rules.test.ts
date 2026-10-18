@@ -71,7 +71,8 @@ describe('run rules', () => {
     expect(nextLevel(1)).toBe(2);
     expect(nextLevel(2)).toBe(3);
     expect(nextLevel(3)).toBe(4);
-    expect(nextLevel(4)).toBeNull();
+    expect(nextLevel(4)).toBe(5);
+    expect(nextLevel(5)).toBeNull();
   });
 });
 

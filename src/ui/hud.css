@@ -154,6 +154,9 @@
   justify-content: center;
   gap: 5px;
 }
+.cc-powers.is-empty {
+  display: none;
+}
 .cc-chip {
   display: block;
   padding: var(--u);

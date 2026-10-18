@@ -12,6 +12,7 @@ import { BONUS_POINTS, BoardView } from './boardView';
 import { poof, popup } from './fx';
 import { CENTRE_SPOT, DIRV, HOLE_SPOT, MAZE } from './layout';
 import { heldDir, type Axis } from './movement';
+import { nextLevel } from '../rules';
 
 export type Phase = 'ready' | 'play' | 'eat' | 'dying' | 'cleared' | 'hole' | 'won' | 'over';
 
@@ -40,6 +41,7 @@ const HIT_PX = 6;
 export interface MazeHooks {
   restart(): void;
   toMenu(): void;
+  next(): void;
 }
 
 function pressedDir(input: GameInput): Dir4 | null {
@@ -342,8 +344,8 @@ export class MazeRun {
         this.svc.audio.jingle('win');
         this.scene.time.delayedCall(900, () =>
           this.svc.ui.showVictory(
-            { level: 4, score: this.score, timeMs: this.timeMs, best: this.svc.save.data.best[4] ?? this.score, newBest, hasNext: false },
-            { onReplay: () => this.hooks.restart(), onMenu: () => this.hooks.toMenu() },
+            { level: 4, score: this.score, timeMs: this.timeMs, best: this.svc.save.data.best[4] ?? this.score, newBest, hasNext: nextLevel(4) !== null },
+            { onNext: () => this.hooks.next(), onReplay: () => this.hooks.restart(), onMenu: () => this.hooks.toMenu() },
           ),
         );
       },

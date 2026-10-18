@@ -3,7 +3,7 @@
  */
 import type Phaser from 'phaser';
 import type { Battle } from './battle';
-import { RULES } from './config';
+import { JET, RULES } from './config';
 import type { Story } from './story';
 
 export interface InvadersDebugState {
@@ -33,6 +33,8 @@ export interface InvadersDebugApi {
   clearWave(): void;
   win(): void;
   hurt(): void;
+  /** puts the jet at world x (clamped to its flight range) */
+  jetTo(x: number): void;
   /** fires FULMINE now (returns false when it could not) */
   bolt(): boolean;
   /** world position of every alive invader */
@@ -74,6 +76,9 @@ export function installInvadersDebug(scene: Phaser.Scene, b: Battle, story: Stor
     clearWave: () => story.clearWave(),
     win: () => story.win(),
     hurt: () => b.damage(true),
+    jetTo: (x) => {
+      b.jet.x = Math.max(JET.minX, Math.min(JET.maxX, x));
+    },
     bolt: () => b.fulmine(),
     invaders: () => b.swarm.alive().map((i) => ({ ...b.swarm.pos(i), kind: i.kind })),
     bombs: () => b.shots.bombs.map((x) => ({ x: x.sprite.x, y: x.sprite.y })),

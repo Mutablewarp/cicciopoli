@@ -25,6 +25,30 @@ export const HEAD_PAL = {
   k: K, h: '#1c1c1c', H: '#4a4c58', s: PAL.skin, d: PAL.skinShade, g: '#050505', w: '#ffffff', m: PAL.skinDark,
 };
 export const headSvg = (cls = ''): string => pixelSvg(HEAD_ROWS, HEAD_PAL, cls);
+/**
+ * Level 5 progress marker / fallback portrait (CICCIO SPACCA!): lime skin, a spiky black quiff, two round
+ * black lenses with skin between them and a small smirk, like the head of the pixel hero (src/art/hulk).
+ */
+export const HULK_HEAD_ROWS = [
+  '...k...k...k....',
+  '..khk.khk.khk...',
+  '.khhhkhhhkhhhk..',
+  '.khhhhhhhhhhhhk.',
+  'khhHHhhhhhhhhhhk',
+  'khhsssssssssshhk',
+  'khscccsssssssdhk',
+  'ksggggssssggggsk',
+  'kggwgggssggwgggk',
+  'kggggggssggggggk',
+  'ksggggssssggggsk',
+  'ksssssssdssssssk',
+  'ksssssssssmsssdk',
+  'kssssssmmmmssddk',
+  '.kssssssssssddk.',
+  '..kkkkkkkkkkkk..',
+];
+const HULK_HEAD_PAL = { ...HEAD_PAL, s: '#a6d62c', d: '#74a01a', c: '#d6f56c', m: '#2a0c10' };
+export const hulkHeadSvg = (cls = ''): string => pixelSvg(HULK_HEAD_ROWS, HULK_HEAD_PAL, cls);
 
 /** Crunchy nugget (the coins of v2): golden-brown bumpy breading, light from the top-left. */
 const NUGGET = [
@@ -145,6 +169,42 @@ const WINGS = [
   '............',
   '............',
 ];
+/** PUGNO: a lime fist, four curled fingers and the thumb across them (level 5 club action). */
+const FIST = [
+  '.kkk.kkk.kkk.kkk.',
+  'kLLGdLLGdLLGdLLGk',
+  'kLGGdLGGdLGGdLGGk',
+  'kGGGdGGGdGGGdGGGk',
+  'kGGGdGGGdGGGdGGGk',
+  'kGGgdGGgdGGgdGGgk',
+  'kGGGGGGGGGGGGGGGk',
+  'kGGGGGGGGGGGGGGGk',
+  'kLLLLLLLLLGGGGGGk',
+  'kLLLLLLLLLLGGGGgk',
+  'kGGGGGGGGGGGGGGgk',
+  'kGGGGGGGGGGGGGGgk',
+  '.kGGGGGGGGGGGGgk.',
+  '..kkgggggggggkk..',
+  '....kkkkkkkkk....',
+];
+const FIST_PAL = { k: K, L: '#e4fa7a', G: '#a6d62c', g: '#76a418', d: '#5e8a10' };
+
+/** SPACCA: a magenta comic burst with a white outline and a hot core (level 5 slam action). */
+function burstRows(n: number): string[] {
+  const c = (n - 1) / 2;
+  return Array.from({ length: n }, (_, y) =>
+    Array.from({ length: n }, (_, x) => {
+      const r = Math.hypot(x - c, y - c);
+      const t = (Math.atan2(y - c, x - c) * 8) / (Math.PI * 2);
+      const edge = c * (0.58 + 0.42 * Math.abs(2 * (t - Math.floor(t)) - 1));
+      if (r > edge + 0.5) return '.';
+      if (r > edge - 0.7) return 'w';
+      return r < c * 0.3 ? 'w' : r < c * 0.52 ? 'Y' : 'm';
+    }).join(''),
+  );
+}
+const BURST = burstRows(17);
+
 const FOOD_PAL = {
   k: K,
   w: PAL.creamLight,
@@ -169,6 +229,8 @@ export const fuocoSvg = (): string => pixelSvg(FUOCO, { ...STICK_PAL, r: '#e0441
 export const boltSvg = (): string => pixelSvg(BOLT, { k: K, Y: '#fffbd0', y: PAL.cheese });
 export const thaiSvg = (): string => pixelSvg(THAI, FOOD_PAL);
 export const wingsSvg = (): string => pixelSvg(WINGS, { ...FOOD_PAL, d: PAL.fryDark });
+export const fistSvg = (): string => pixelSvg(FIST, FIST_PAL);
+export const slamSvg = (): string => pixelSvg(BURST, { w: '#ffffff', Y: '#ffe94a', m: '#e8279c' });
 
 /** Smooth heart: red fill, dark outline, white glint top-left. Empty = dark socket. */
 export function heartSvg(): string {

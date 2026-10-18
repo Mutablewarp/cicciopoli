@@ -1,6 +1,6 @@
 # CICCIO'S — The Burger Adventure
 
-Demo concept di un platform 2D in pixel art ispirato al bicchiere e alla confezione
+Demo concept di un gioco 2D in pixel art (platform, sparatutto, labirinto, picchiaduro) ispirato al bicchiere e alla confezione
 delle alette di **Ciccio's Burger** (Palermo). Si gioca nel browser, da telefono
 (iOS / Android, verticale e orizzontale) o da computer. Nessuna installazione,
 nessun account.
@@ -13,6 +13,9 @@ nessun account.
 |---|---|---|---|
 | 01 | Le Colline | il bicchiere: cielo azzurro, colline a gradini, blocchi `???` | Brie, Provola Goat, Alette Thai |
 | 02 | Alette Crunchy | la confezione delle alette: vortice di fuoco, castelli, lava | Alette Crunchy (volo) |
+| 03 | Ciccio's Invaders | spazio: la navicella di Ciccio's contro hamburger, pianeti e asteroidi | FUOCO + FULMINE (trasforma i nemici in cibo) |
+| 04 | CICCIO-MAN | labirinto a vassoio con nuggets e provola | bastoncino di provola (mangia i fantasmi) |
+| 05 | Spacca Tutto | città demolita al tramonto: Ciccio in versione furia spacca muri e nemici | PUGNO + SPACCA (botta a terra), strappa la bandierina |
 
 Arriva alla bandierina e… **VAI IN BUCA!**
 
@@ -23,8 +26,8 @@ Arriva alla bandierina e… **VAI IN BUCA!**
 | Muoversi | ← → / A D | ◀ ▶ (si può scivolare tra i due) |
 | Saltare / volare | Spazio, ↑, W | SALTA / VOLA |
 | Scendere in volo | ↓, S | SCENDI |
-| Provola Goat | J, X | GOAT |
-| Alette Thai | K, C | THAI |
+| Provola Goat / fuoco / spacca | J, X | GOAT / FUOCO / SPACCA |
+| Alette Thai / fulmine / pugno | K, C | THAI / FULMINE / PUGNO |
 | Pausa | Esc, P | ‖ |
 
 ## Sviluppo

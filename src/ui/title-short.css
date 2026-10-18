@@ -1,0 +1,56 @@
+/* Short portrait phones (iPhone SE, any phone with its browser bars up: 480-620px): the brand block
+   gets a fixed size (full logo + tagline, below the sound button) and the cards, like in landscape,
+   take what is left - their thumbnails shrink first. */
+@media (orientation: portrait) and (max-height: 620px) {
+  .cc-title__main {
+    gap: 8px;
+  }
+  .cc-title__brand {
+    flex: none;
+    gap: 6px;
+  }
+  .cc-logo {
+    flex: none;
+    height: 70px;
+    min-height: 0;
+  }
+  .cc-title__levels {
+    flex: 1 1 0;
+    min-height: 0;
+    gap: 6px;
+  }
+  .cc-title__menu {
+    flex: 1 1 0;
+    min-height: 0;
+    gap: 6px;
+    grid-template-rows: 1fr 1fr auto;
+  }
+  .cc-level {
+    gap: 4px;
+    padding: 4px 4px 6px;
+  }
+  .cc-level__thumb {
+    flex: 1 1 0;
+    min-height: 24px;
+    aspect-ratio: auto;
+  }
+  .cc-level__text {
+    gap: 3px;
+  }
+  .cc-level--5 {
+    padding: 4px 8px 4px 4px;
+  }
+  .cc-level--5 .cc-level__thumb {
+    flex: 0 0 38%;
+    aspect-ratio: 16 / 9;
+  }
+  .cc-runner {
+    margin-top: 2px;
+  }
+  .cc-runner__canvas {
+    height: 48px;
+  }
+  .cc-title__foot {
+    margin-top: 4px;
+  }
+}

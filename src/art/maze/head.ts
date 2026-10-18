@@ -5,7 +5,6 @@
  * opens an O-mouth (up). Death squashes the front face flat (a poof follows in-game).
  */
 import { PAL, ctxOf, makeCanvas, outline, paintGrid } from '../pixel';
-import { MZ } from './palette';
 
 const F = 16;
 
@@ -170,12 +169,4 @@ export function deflateFrames(): HTMLCanvasElement[] {
     ctx.drawImage(src, 1, 1, 14, 14, Math.round((F - w) / 2), F - 2 - h, w, h);
     return finish(c);
   });
-}
-
-/** The face as printed on Ciccio's tray paper: cream face, black hair and glasses. */
-export function printedHead(): HTMLCanvasElement {
-  const pal = { ...SKIN, s: MZ.printCream, l: MZ.printCream, S: '#d8b896', H: SKIN.h, w: MZ.printCream, m: PAL.ink };
-  const c = makeCanvas(F, F);
-  paintGrid(ctxOf(c), DOWN, pal);
-  return finish(c);
 }

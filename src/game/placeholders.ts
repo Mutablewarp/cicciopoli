@@ -26,6 +26,11 @@ export interface AnimSpec {
   repeat: number;
 }
 
+/** Animation spec shorthands used by the theme tables. */
+export const loop = (key: string, sheet: string, frames: number[], frameRate: number): AnimSpec => ({ key, sheet, frames, frameRate, repeat: -1 });
+export const once = (key: string, sheet: string, frames: number[], frameRate: number): AnimSpec => ({ key, sheet, frames, frameRate, repeat: 0 });
+export const seq = (n: number): number[] => Array.from({ length: n }, (_, i) => i);
+
 function drawFrame(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, color: string, i: number): void {
   if (color === 'transparent') return;
   ctx.fillStyle = color;

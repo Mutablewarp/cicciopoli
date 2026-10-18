@@ -4,7 +4,7 @@
  */
 
 export const SPACE = {
-  /** sheet 32x32: 0-1 level (engine flicker), 2-3 banking left, 4-5 banking right. Nose up, centre x=16. */
+  /** sheet 43x40: 0-1 level (engine flicker), 2-3 banking left, 4-5 banking right. Nose up, centre column x=21. */
   jet: 'space-jet',
   /** sheet 16x16, 2-frame march each */
   alienA: 'space-alien-a',
@@ -13,18 +13,18 @@ export const SPACE = {
   planet: 'space-planet',
   /** sheet 16x16: [0,1] big asteroid, [2,3] small asteroid */
   asteroid: 'space-asteroid',
-  /** sheet 32x16, frames 0-3 running lights */
+  /** sheet 40x20, frames 0-3 running lights */
   ufo: 'space-ufo',
-  /** sheet 6x12, frames 0-1 — flying provola stick going up */
+  /** sheet 8x16, frames 0-1 — flying provola stick going up */
   shot: 'space-shot',
-  /** sheet 8x8, frames 0-3 — alien goo drop / tumbling meteor bit */
+  /** sheet 10x10, frames 0-3 — alien goo drop / tumbling meteor bit */
   goo: 'space-goo',
   rock: 'space-rock',
-  /** sheet 12x16, frames 0-3 — lightning capsule (glow pulse) */
+  /** sheet 14x20, frames 0-3 — lightning capsule (glow pulse) */
   capsule: 'space-capsule',
   /** sheet 16x16, frames 0-3 — electric impact spark (once) */
   spark: 'space-spark',
-  /** sheet 16x16, frames 0..FOOD_COUNT-1 — the owner's foods */
+  /** sheet 20x20, frames 0..FOOD_COUNT-1 — the owner's foods */
   food: 'space-food',
   /** sheet 24x24, frames 0-5 — grey smoke puff (once) */
   smoke: 'space-smoke',
@@ -34,8 +34,10 @@ export const SPACE = {
   hole: 'space-hole',
   /** image 32x20 — burger shield (copied per shield, then eroded) */
   shield: 'space-shield',
-  /** image — "CICCIO'S / INVADERS" wordmark */
+  /** image ~190x70 — "CICCIO'S / INVADERS" wordmark */
   title: 'space-title',
+  /** sheet 13x13, frames 0-3 — star twinkle on the wordmark (once) */
+  glint: 'space-glint',
   /** images 128x128, seamless star tiles (far / mid / near) */
   starsFar: 'space-stars-far',
   starsMid: 'space-stars-mid',
@@ -64,6 +66,7 @@ export const SPACE_ANIMS = {
   smoke: 'space-smoke-once',
   boom: 'space-boom-once',
   hole: 'space-hole-spin',
+  glint: 'space-glint-twinkle',
 } as const;
 
 /** cheese wheel, roast chicken, wheat, drumstick, lettuce, tomatoes, egg, cheese slices, half bun */

@@ -1,12 +1,13 @@
-/** Title screen: official Ciccio's logo, 2x2 level select, sound toggle, runner strip. */
+/** Title screen: official Ciccio's logo, level cards (4 + a wide one for level 5), sound toggle, runner strip. */
 import type { LevelId, TitleInfo } from '../contracts';
 import { LEVEL_IDS } from '../contracts';
 import { PAL } from '../art/pixel';
+import { cutoutReady } from './cutout';
 import { brandImage, el, onActivate, pixelSvg } from './dom';
 import { SPEAKER_OFF, SPEAKER_ON } from './icons';
 import { LOGO_URL } from './loading';
 import { Menu } from './menu';
-import { LEVEL_NAMES, keyLegend } from './screens';
+import { LEVEL_HEROES, LEVEL_NAMES, keyLegend } from './screens';
 import { levelThumb } from './thumbs';
 
 const GRASS_TILE = pixelSvg(
@@ -61,8 +62,12 @@ export function createTitle(onChange: () => void): Title {
     bests.set(lv, best);
     const thumb = el('span', 'cc-level__thumb', levelThumb(lv));
     thumb.append(el('span', 'cc-level__num', `0${lv}`), el('span', 'cc-level__go', '▶'));
+    // level 5: the owner's cut-out replaces the pixel stand-in once it has loaded
+    if (lv === 5) void cutoutReady().then((ok) => thumb.classList.toggle('has-cutout', ok));
     const text = el('span', 'cc-level__text');
-    text.append(el('span', 'cc-level__name', LEVEL_NAMES[lv]), best);
+    text.append(el('span', 'cc-level__name', LEVEL_NAMES[lv]));
+    if (LEVEL_HEROES[lv]) text.append(el('span', 'cc-level__hero', LEVEL_HEROES[lv]));
+    text.append(best);
     b.append(thumb, text);
     onActivate(b, menu.guard(() => handlers?.onStart(lv)));
     return b;
@@ -100,7 +105,7 @@ export function createTitle(onChange: () => void): Title {
       }
       root.hidden = false;
       isOpen = true;
-      menu.open(levelBtns, { armMs: 250, cols: 2 });
+      menu.open(levelBtns, { armMs: 250 });
       onChange();
     },
     hide() {

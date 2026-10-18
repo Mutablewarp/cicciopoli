@@ -162,7 +162,7 @@ Rules for every agent:
 - **Fries** = Ciccio's red paper tray of fries (photo bottom), rarer bonus: **+30**. Burger +25 and heals.
 - **Provola Goat** = rectangular battered provola sticks (pickup, T-shirt badge, the shot is a flying provola stick).
 - **Kill effects**: an enemy hit by Provola Goat is **swallowed by melted cheese** (`ITEMS.cheeseEngulf`: cheese blob grows over it, the enemy sprite turns yellow and is hidden under the blob, then it drips away — the enemy is gone). An enemy hit by the Thai-wing club **catches fire** (`ITEMS.burn`: the enemy sprite tints orange/black while flames rise, then a dark ash puff, gone). Stomp kills keep the squash + poof.
-- Level chain: L1 → L2 → L3 → L4 ("LIVELLO SUCCESSIVO ▶" on the victory card); L4 is the last.
+- Level chain: L1 → L2 → L3 → L4 → L5 ("LIVELLO SUCCESSIVO ▶" on the victory card); L5 is the last.
 
 ### LEVEL 3 — CICCIO'S INVADERS (shooter, scene key `invaders`)
 - Space-Invaders-style fixed playfield, **portrait-native** (≈ 224 x 288 world px), centred and scaled to fit any screen; the starfield fills the rest of the view (landscape gets starfield + the CICCIO'S INVADERS wordmark at the sides is fine).
@@ -195,3 +195,67 @@ L4 lane        src/art/maze.ts, src/art/maze/**, src/game/maze/**
 integrator     src/contracts.ts, src/art/keys.ts, src/main.ts, docs/**
 ```
 Shared contracts (src/contracts.ts) already contain: LevelId 1–4, LEVEL_SCENE, Dir4, GameInput.axisY / consumeDir, ControlsLayout.mode + clubCount, PowerState.bolt/pellet, new SfxName / MusicName values, ViewportInfo.insetTop.
+
+---------------------------------------------------------------------------------------
+## 7. Expansion v3 (owner feedback, 2026-10-18) — source of truth for this round
+Owner words (IT): "sistemassi il livello di Ciccio's Invaders mettendo tutto un pochino più zoomato in modo
+tale che si veda meglio la navicella, il logo di Ciccio's sopra la navicella e quant'altro" · "sistemassi
+il livello di Ciccioman mettendo al centro proprio il logo di Ciccio's, non la faccia che hai messo" ·
+"livello numero 5, che ci sarà Ciccio's in versione Hulk, in cui deve spaccare tutto e deve anche
+combattere con i vari avversari. E quando arriva alla fine del livello, dove c'è scritto vai in buca,
+metti un'animazione in cui Ciccio's in versione Hulk strappa la bandierina e la lancia via. Ti mando
+l'immagine che tu ritagli, scontorni e la fai bella sistemata."
+
+References (ref/, not shipped): hulk_screenshot.png (upright phone screenshot of the T-shirt, flat, 923x2000, best
+for the cut-out), hulk_photo.png (photo of the physical shirt, rotated upright, higher resolution but wrinkled).
+Palette of the shirt art: black, lime green skin (#a6d62c-ish with darker green shading), purple shorts, magenta
+"SPACCA!" starburst with white lettering and lime outline, the Ciccio's logo face (black hair + round black
+sunglasses) on the green head.
+
+**Naming (trademark): never print the word "Hulk" or "Pac-Man" in the UI.** The hero is "CICCIO SPACCA!"; level 5 is
+"SPACCA TUTTO" (subtitle "CICCIO SPACCA!"). Code identifiers may say hulk.
+
+### L3 CICCIO'S INVADERS — zoom
+Everything must read bigger on a phone: the jet, the Ciccio's face logo on the jet, shots, pickups, invaders.
+Target: on a 390x844 (DPR 3) portrait phone and on 844x390 landscape the jet is >= 1.5x its current on-screen size and the
+face is clearly recognisable (glasses, hair). Full formation, bombs, shields and the lightning must stay playable and
+visible. Options (lane decides with screenshots): scale the jet / shot / pickup art up, trim dead bands of the field,
+narrow the field so the framing zooms more (camera may follow the jet horizontally if the formation still reads).
+
+### L4 CICCIO-MAN — real logo in the centre
+The centre logo plaque of the board shows the OFFICIAL Ciccio's logo (public/brand/ciccios-logo.png: head with the
+round glasses + the CICCIO'S wordmark), not the pixel face made earlier. Faithful, big, crisp, on a plate that
+keeps contrast (the logo is white + black on transparent). The ghost house stays in the middle and stays readable.
+
+### L5 SPACCA TUTTO (platform brawler, scene key 'game', theme 'rampage', music 'rampage')
+- Hero: Ciccio in Hulk form (art pack `hulk`, keys HULK / HULK_FX in src/art/keys.ts). Bigger and heavier than Ciccio:
+  strong, slower run, big jump, heavy landing. 4 hearts, score starts at 161 like the other levels.
+- Controls (platform layout, ControlsLayout.mode 'platform'): SALTA, PUGNO (club action: fast melee punch in front,
+  short cooldown), SPACCA (fire action: ground slam; in the air = dive straight down; shockwave on impact breaks every
+  breakable and damages enemies in radius). Keyboard: J/X = SPACCA, K/C = PUGNO (same keys as GOAT / THAI).
+- Smash everything: bricks (3 hits, cracked sprite stages), crates, barrels break with debris + dust + hit-stop + shake;
+  some contain nuggets / fries / burgers. Tall brick walls block the path and MUST be smashed to proceed (never a
+  soft-lock; level must stay beatable, reach tests updated for the Hulk jump).
+- Enemies: pickle, chili, armour burger (from the hills pack, now one punch kills; armour = 2 punches) + `brute`
+  (3 HP, charges) + `megaburger` mini-boss (8 HP, slam attack with shockwave, in an arena just before the goal).
+  A punched enemy is LAUNCHED away spinning with a comic starburst; a slam crushes. Hurt on contact: -1 heart
+  (no Brie / Provola / Thai / Crunchy on this level; pickups: nugget coin, fries tray, burger heal).
+- Goal: banner "VAI IN BUCA!" as usual. At the flag the control is taken away: the hero walks to the pole, GRABS the
+  flag, RIPS it off (pole swaps to the ripped sprite, `rip` sfx, shake, burst), THROWS it (the cloth tumbles away in
+  an arc off-screen), roars / victory pose, then the "IN BUCA!" victory overlay (hasNext false: RIGIOCA / MENU).
+- Camera, checkpoints, pause, restart, resize, rotation, touch re-arm: all as in levels 1-2 (re-entry safe).
+
+### v3 ownership
+```
+L3 lane        src/art/space.ts, src/art/space/**, src/game/invaders/**
+L4 lane        src/art/maze.ts, src/art/maze/**, src/game/maze/**, scripts/logo-bits.mjs (new)
+HULK-ART lane  src/art/hulk.ts, src/art/hulk/**, public/brand/hulk-cutout.png
+WORLD-ART lane src/art/rampage.ts, src/art/rampage/**
+GAME lane      src/game/** except invaders/**, maze/** (levels/level5.ts, themes, enemies, player, goal, flow ...),
+               src/config/**
+UI lane        src/ui/**, src/input/**, index.html (static splash only), public/** except brand/hulk-cutout.png
+AUDIO lane     src/audio/**
+integrator     src/contracts.ts, src/art/keys.ts, src/main.ts, docs/**, scripts/e2e.mjs
+```
+Contracts already extended by the integrator: LevelId 1-5, LEVEL_SCENE[5]='game', SfxName punch/smash/slam/rubble/roar/rip,
+MusicName 'rampage', SCORE.clear[5], HULK / HULK_ANIMS / HULK_FX / HULK_FX_ANIMS / RAMPAGE / RAMPAGE_ANIMS in art/keys.ts.

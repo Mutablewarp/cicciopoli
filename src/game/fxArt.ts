@@ -18,6 +18,9 @@ export const FX_ART = {
   glow: 'fx-glow',
   /** image 32x64, molten lava body under the surface strip (seamless horizontally) */
   lavaDeep: 'fx-lava-deep',
+  /** sheet 26x14, frames 0-2: the boss's low ground shockwave, leading edge on the right */
+  wave: 'fx-wave',
+  waveLoop: 'fx-wave-loop',
 } as const;
 
 const TRAIL_PAL = { w: '#f4fcff', b: '#9edcfc', d: '#4aa8e8' };
@@ -95,19 +98,46 @@ function buildLavaDeep(): HTMLCanvasElement {
   return c;
 }
 
+const WAVE_W = 26;
+const WAVE_H = 14;
+const WAVE_TONES = { ink: '#2a0830', white: '#fff4fc', magenta: '#e0309c', purple: '#8a1a78' };
+
+/** Wedge of magenta shock with a white rim and ink outline; the three frames pulse its height. */
+function buildWave(): HTMLCanvasElement {
+  return buildFrames(3, WAVE_W, WAVE_H, (ctx, i) => {
+    const edge = WAVE_W - 5;
+    for (let x = 0; x <= edge; x++) {
+      const h = Math.max(2, Math.round((WAVE_H - 1 + (i === 1 ? -1 : 0)) * Math.pow((x + 1) / (edge + 1), 1.3)));
+      for (let y = 0; y < h; y++) {
+        const top = WAVE_H - h;
+        const row = top + y;
+        let tone = y === 0 ? WAVE_TONES.ink : y === 1 ? WAVE_TONES.white : WAVE_TONES.magenta;
+        if (y > 1 && (x + y + i) % 4 === 0 && row > WAVE_H - 5) tone = WAVE_TONES.purple;
+        if (x === edge) tone = WAVE_TONES.ink;
+        px(ctx, x, row, tone);
+      }
+      px(ctx, x, WAVE_H - 1, WAVE_TONES.ink);
+    }
+  });
+}
+
 function buildFxPack(): ArtPack {
   return {
     name: 'gameplay-fx',
     sheets: [
       { key: FX_ART.trail, canvas: buildFrames(TRAIL.length, 6, 6, (ctx, i) => paintGrid(ctx, TRAIL[i], TRAIL_PAL)), frameWidth: 6, frameHeight: 6 },
       { key: FX_ART.bubble, canvas: buildFrames(BUBBLE.length, 10, 8, (ctx, i) => paintGrid(ctx, BUBBLE[i], BUBBLE_PAL)), frameWidth: 10, frameHeight: 8 },
+      { key: FX_ART.wave, canvas: buildWave(), frameWidth: WAVE_W, frameHeight: WAVE_H },
     ],
     images: [
       { key: FX_ART.glow, canvas: buildGlow() },
       { key: FX_ART.lavaDeep, canvas: buildLavaDeep() },
     ],
     tilesets: [],
-    anims: [{ key: FX_ART.bubblePop, sheet: FX_ART.bubble, frames: [0, 1, 2, 3, 4], frameRate: 9, repeat: 0 }],
+    anims: [
+      { key: FX_ART.bubblePop, sheet: FX_ART.bubble, frames: [0, 1, 2, 3, 4], frameRate: 9, repeat: 0 },
+      { key: FX_ART.waveLoop, sheet: FX_ART.wave, frames: [0, 1, 2], frameRate: 14, repeat: -1 },
+    ],
   };
 }
 

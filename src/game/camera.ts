@@ -6,7 +6,7 @@
  * let it extend above / below the level so Ciccio is never drawn under them.
  */
 import type Phaser from 'phaser';
-import { CAMERA } from '../config/tuning';
+import { ARENA, CAMERA } from '../config/tuning';
 import type { ViewportInfo } from '../contracts';
 import { computeZoom } from './viewport';
 import type { ViewRect } from './parallax';
@@ -50,6 +50,8 @@ export class CameraRig {
    * only rise when the hero climbs into the top margin of the view.
    */
   preferBottom = false;
+  /** Px the hero may rise above the last grounded height before the view follows him up. */
+  deadUp: number = CAMERA.deadUp;
   /** World px the view may extend below the level bottom (overlay controls in landscape). */
   private extraBottom = 0;
   /** Feet position in the view (0 top … 1 bottom), lowered by overlay controls. */
@@ -60,6 +62,11 @@ export class CameraRig {
   private bannerPx = 0;
   private bannerBand = 0;
   private bannerLeftMs = 0;
+  /** horizontal clamp: the whole level, or the boss arena while it is shut (eased) */
+  private boundL = 0;
+  private boundR: number;
+  private goalL = 0;
+  private goalR: number;
 
   constructor(
     private readonly cam: Phaser.Cameras.Scene2D.Camera,
@@ -67,7 +74,16 @@ export class CameraRig {
     private readonly levelH: number,
     /** solid ground (or lava) between the main walking line and the level bottom */
     private readonly groundDepth = 0,
-  ) {}
+  ) {
+    this.boundR = levelW;
+    this.goalR = levelW;
+  }
+
+  /** Clamps the view to [left, right] (the boss arena); null frees it again. The clamp eases in and out. */
+  setBounds(left: number | null, right: number | null): void {
+    this.goalL = left ?? 0;
+    this.goalR = right ?? this.levelW;
+  }
 
   /** Re-reads the canvas size and recomputes the zoom (rotation / resize). */
   applyViewport(viewport: ViewportInfo, canvasW: number, canvasH: number): void {
@@ -103,6 +119,15 @@ export class CameraRig {
     return this.levelH - this.viewH + this.extraBottom;
   }
 
+  /**
+   * The camera top the background is drawn against: the resting top, but never above the highest
+   * the view may go. On a view taller than the level the camera is pinned at that limit, and
+   * measuring from the unreachable resting top pushed the whole skyline down, away from the sky.
+   */
+  get backdropTop(): number {
+    return Math.max(this.restTop, -this.topBand - CAMERA.maxExtraTop);
+  }
+
   view(): ViewRect {
     return { x: this.shownX, y: this.shownY, w: this.viewW, h: this.viewH };
   }
@@ -134,11 +159,12 @@ export class CameraRig {
 
   update(t: FollowTarget, dt: number): void {
     this.bannerLeftMs = Math.max(0, this.bannerLeftMs - dt * 1000);
+    this.easeBounds(dt);
     const band = this.bannerLeftMs > 0 ? this.bannerPx : 0;
     this.bannerBand += (band - this.bannerBand) * smooth(CAMERA.bannerRate, dt);
     this.look += (t.facing * this.lookAhead(t.flying ?? false) - this.look) * smooth(CAMERA.lookAheadRate, dt);
     if (t.onGround) this.focusY = t.bottom;
-    else if (t.bottom < this.focusY - CAMERA.deadUp) this.focusY = t.bottom + CAMERA.deadUp;
+    else if (t.bottom < this.focusY - this.deadUp) this.focusY = t.bottom + this.deadUp;
     else if (t.bottom > this.focusY + CAMERA.deadDown) this.focusY = t.bottom - CAMERA.deadDown;
     const tx = t.x + this.look - this.viewW / 2;
     const ty = this.targetY(t);
@@ -147,11 +173,18 @@ export class CameraRig {
     this.clampAndApply(t);
   }
 
+  private easeBounds(dt: number): void {
+    const k = smooth(ARENA.boundsRate, dt);
+    this.boundL = Math.abs(this.goalL - this.boundL) < 0.5 ? this.goalL : this.boundL + (this.goalL - this.boundL) * k;
+    this.boundR = Math.abs(this.goalR - this.boundR) < 0.5 ? this.goalR : this.boundR + (this.goalR - this.boundR) * k;
+  }
+
   /** Clamps to the level (plus the inset bands) and keeps the head below the HUD bar and banner. */
   private clampAndApply(t?: FollowTarget): void {
     const w = this.viewW;
     const h = this.viewH;
-    this.viewX = w >= this.levelW ? (this.levelW - w) / 2 : Math.max(0, Math.min(this.levelW - w, this.viewX));
+    const span = this.boundR - this.boundL;
+    this.viewX = w >= span ? this.boundL + (span - w) / 2 : Math.max(this.boundL, Math.min(this.boundR - w, this.viewX));
     const bottom = this.levelH + this.extraBottom;
     this.viewY = h >= this.levelH ? bottom - h : Math.max(-this.topBand, Math.min(bottom - h, this.viewY));
     if (t) {

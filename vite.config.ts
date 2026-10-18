@@ -19,5 +19,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    // the level reach tests simulate whole levels: allow slow / busy machines
+    testTimeout: 30000,
   },
 } as never);

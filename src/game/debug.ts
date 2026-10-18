@@ -7,6 +7,7 @@ import { TILE } from '../art/keys';
 import type { PowerState } from '../contracts';
 import type { Flow } from './flow';
 import type { Interactions } from './interactions';
+import type { EnemyKind } from './levels/types';
 import type { LevelRun } from './run';
 import type { PickupKind } from './rules';
 
@@ -28,7 +29,8 @@ export interface DebugState {
 export interface DebugApi {
   scene: Phaser.Scene;
   state(): DebugState;
-  teleport(tileX: number, tileY: number): void;
+  /** feet on tile (tileX, tileY); tileY defaults to the spawn row */
+  teleport(tileX: number, tileY?: number): void;
   /** pixel-precise teleport: feet at (x, bottom) */
   place(x: number, bottom: number): void;
   give(power: keyof PowerState | PickupKind): void;
@@ -40,6 +42,14 @@ export interface DebugApi {
   pose(frame: number | null): void;
   /** camera visible rect (world px) */
   view(): { x: number; y: number; w: number; h: number };
+  /** adds an enemy standing on tile (tileX, tileY); tileY defaults to the spawn row */
+  spawn(kind: EnemyKind, tileX: number, tileY?: number): boolean;
+  /** level 5: triggers PUGNO or SPACCA as if the button was pressed */
+  act(action: 'punch' | 'slam'): void;
+  /** level 5: a fist hit of `damage` on the first live enemy of `kind` */
+  strike(kind: EnemyKind, damage: number): boolean;
+  /** level 5: live smashable props and the boss (hit points, awake), null when absent */
+  rampage(): { props: number; gate: number; boss: { hp: number; awake: boolean } | null } | null;
 }
 
 const GIVE: Record<string, PickupKind> = { nugget: 'nugget', brie: 'brie', goat: 'goat', thai: 'thai', wings: 'crunchy', crunchy: 'crunchy', burger: 'burger', fries: 'fries' };
@@ -64,7 +74,7 @@ export function installDebug(r: LevelRun, ix: Interactions, flow: Flow): void {
       invulnMs: Math.round(r.player.invuln.remaining),
       mode: r.player.mode.id,
     }),
-    teleport: (tileX, tileY) => {
+    teleport: (tileX, tileY = r.level.spawn.row) => {
       r.player.teleport(tileX * TILE + TILE / 2, (tileY + 1) * TILE);
       r.rig.snapTo(r.followTarget());
     },
@@ -89,8 +99,25 @@ export function installDebug(r: LevelRun, ix: Interactions, flow: Flow): void {
       r.view.sprite.setFrame(frame).setVisible(true);
     },
     view: () => r.rig.view(),
+    spawn: (kind, tileX, tileY = r.level.spawn.row) => r.enemies.spawn(kind, tileX * TILE + TILE / 2, (tileY + 1) * TILE) !== null,
+    act: (action) => r.rampage?.brawl.act(action === 'punch', action === 'slam'),
+    strike: (kind, damage) => {
+      const e = r.enemies.alive().find((x) => x.kind === kind);
+      if (e && r.rampage) r.rampage.brawl.strike(e, damage, 1, 'punch', 0);
+      return e !== undefined;
+    },
+    rampage: () => {
+      if (!r.rampage) return null;
+      const boss = r.enemies.alive().find((e) => e.kind === 'megaburger');
+      return {
+        props: r.rampage.smash.live().length,
+        gate: r.rampage.smash.gate().length,
+        boss: boss ? { hp: boss.hpLeft, awake: boss.awake } : null,
+      };
+    },
     win: () => {
       r.player.teleport(r.goal.x, r.goal.surfaceY);
+      r.view.update(r.player, r.run.powers, 0); // the sprite follows at once: the level 5 finale walks from where it stands
       flow.win();
     },
   };

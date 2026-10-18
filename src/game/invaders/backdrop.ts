@@ -26,6 +26,11 @@ interface Drifter {
 }
 
 const STAR_SPEED = [5, 11, 22];
+/**
+ * Side wordmark centre as a share of the view height: below the "ONDATA n" banner (which spans
+ * the middle of the screen right under the HUD) and above the left-corner touch controls.
+ */
+const SIDE_Y = 0.5;
 
 export class Backdrop {
   private readonly sky: Phaser.GameObjects.Image;
@@ -76,11 +81,11 @@ export class Backdrop {
     this.side.setVisible(fits);
     if (fits) {
       const scale = Math.max(1, Math.min(2, Math.floor((panel - 16) / tw)));
-      this.side.setScale(scale).setPosition(Math.round(-panel / 2), Math.round(view.y + view.h * 0.3));
+      this.side.setScale(scale).setPosition(Math.round(-panel / 2), Math.round(view.y + view.h * SIDE_Y));
     }
     const legendFits = panel >= LEGEND_W + 16;
     this.legend.setVisible(legendFits);
-    if (legendFits) this.legend.setPosition(Math.round(FIELD.w + panel / 2 - LEGEND_W / 2), Math.round(view.y + view.h * 0.3 - 30));
+    if (legendFits) this.legend.setPosition(Math.round(FIELD.w + panel / 2 - LEGEND_W / 2), Math.round(view.y + view.h * 0.3 - 36));
     this.place();
   }
 
@@ -112,6 +117,7 @@ export class Backdrop {
 }
 
 const LEGEND_W = 40;
+const LEGEND_STEP = 24;
 
 /** Classic score table for the side panel: sprite + "= points" in the pixel digits. */
 function buildLegend(scene: Phaser.Scene): Phaser.GameObjects.Container {
@@ -123,14 +129,14 @@ function buildLegend(scene: Phaser.Scene): Phaser.GameObjects.Container {
     [SPACE.food, 3, FOOD_POINTS],
   ];
   rows.forEach(([key, frame, pts], i) => {
-    const y = i * 20;
+    const y = i * LEGEND_STEP;
     c.add(scene.add.image(8, y, key, frame));
     c.add(scene.add.rectangle(21, y, 4, 1, 0xfce4c0).setOrigin(0, 0.5));
     c.add(scene.add.rectangle(21, y + 2, 4, 1, 0xfce4c0).setOrigin(0, 0.5));
     String(pts).split('').forEach((d, k) => c.add(scene.add.image(28 + k * 5, y + 4, ITEMS.digits, Number(d)).setOrigin(0, 1)));
   });
   // capsule = one FULMINE charge
-  const y = rows.length * 20 + 2;
+  const y = rows.length * LEGEND_STEP + 2;
   c.add(scene.add.image(8, y, SPACE.capsule, 2));
   c.add(scene.add.rectangle(21, y, 4, 1, 0xfce4c0).setOrigin(0, 0.5));
   c.add(scene.add.rectangle(21, y + 2, 4, 1, 0xfce4c0).setOrigin(0, 0.5));

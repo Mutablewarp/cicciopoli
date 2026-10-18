@@ -18,7 +18,10 @@ export const MZ = {
   trayInnerShade: '#6e1f22',
   trayInnerLit: '#a8403b',
   print: '#a8423c',
-  printCream: '#f1d9b8',
+  // the official logo label on the centre tray (white face and wordmark, black hair and glasses)
+  labelPlate: '#a33c3a',
+  labelInk: '#0c0808',
+  labelWhite: '#fffaf0',
   linerWhite: '#efe7da',
   linerBlack: '#191414',
   doorLight: '#f6dcb0',

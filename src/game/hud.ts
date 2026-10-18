@@ -10,8 +10,14 @@ function samePowers(a: PowerState, b: PowerState): boolean {
   return a.brie === b.brie && a.goat === b.goat && a.thai === b.thai && a.wings === b.wings;
 }
 
-/** Touch layout per level: GOAT / THAI on level 1, SCENDI + SALTA→VOLA on level 2. */
+/** The touch layout is on (ui/layout.ts sets .is-touch on the shell). */
+export function touchLayout(): boolean {
+  return document.querySelector('.is-touch') !== null;
+}
+
+/** Touch layout per level: GOAT / THAI on level 1, SCENDI + SALTA→VOLA on level 2, PUGNO / SPACCA on level 5. */
 export function defaultControls(level: LevelId, p: PowerState): ControlsLayout {
+  if (level === 5) return { level, mode: 'platform', fire: 'enabled', club: 'enabled', down: 'hidden', jumpLabel: 'SALTA' };
   if (level === 2) {
     return { level, mode: 'platform', fire: 'hidden', club: 'hidden', down: 'enabled', jumpLabel: p.wings ? 'VOLA' : 'SALTA' };
   }

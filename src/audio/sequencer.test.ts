@@ -110,7 +110,7 @@ describe('tracks', () => {
   });
 
   it('loops have the requested length and form', () => {
-    const loops: SongName[] = ['title', 'hills', 'inferno', 'invaders', 'maze'];
+    const loops: SongName[] = ['title', 'hills', 'inferno', 'invaders', 'maze', 'rampage'];
     for (const n of loops) expect(SONGS[n].loop).toBe(true);
     const bars = (n: SongName): number => compileSong(SONGS[n]).total / SONGS[n].stepsPerBar;
     expect(bars('title')).toBeGreaterThanOrEqual(8);
@@ -120,9 +120,10 @@ describe('tracks', () => {
     expect(bars('invaders')).toBeGreaterThanOrEqual(16);
     expect(bars('maze')).toBeGreaterThanOrEqual(8);
     expect(bars('maze')).toBeLessThanOrEqual(16);
+    expect(bars('rampage')).toBe(16);
     expect(SONGS.invaders.bpm).toBeCloseTo(128, -1);
     expect(SONGS.maze.bpm).toBeCloseTo(140, -1);
-    for (const n of ['hills', 'inferno', 'invaders', 'maze'] as const) {
+    for (const n of ['hills', 'inferno', 'invaders', 'maze', 'rampage'] as const) {
       expect(new Set(SONGS[n].order).size).toBeGreaterThanOrEqual(2);
     }
   });

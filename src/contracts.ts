@@ -10,10 +10,10 @@
  *   src/main.ts    -> boot, viewport/DPR sizing, app lifecycle
  */
 
-/** 1 Le Colline · 2 Alette Crunchy (platform) · 3 Ciccio's Invaders (shooter) · 4 Ciccio-Man (maze) */
-export type LevelId = 1 | 2 | 3 | 4;
+/** 1 Le Colline · 2 Alette Crunchy (platform) · 3 Ciccio's Invaders (shooter) · 4 Ciccio-Man (maze) · 5 Ciccio Hulk (platform brawler) */
+export type LevelId = 1 | 2 | 3 | 4 | 5;
 
-export const LEVEL_IDS: readonly LevelId[] = [1, 2, 3, 4];
+export const LEVEL_IDS: readonly LevelId[] = [1, 2, 3, 4, 5];
 
 /** Phaser scene key that runs each level (main.ts starts it with data { level }). */
 export const LEVEL_SCENE: Readonly<Record<LevelId, 'game' | 'invaders' | 'maze'>> = {
@@ -21,6 +21,7 @@ export const LEVEL_SCENE: Readonly<Record<LevelId, 'game' | 'invaders' | 'maze'>
   2: 'game',
   3: 'invaders',
   4: 'maze',
+  5: 'game',
 };
 
 export type Dir4 = 'up' | 'down' | 'left' | 'right';
@@ -226,9 +227,11 @@ export type SfxName =
   // level 3 shooter
   | 'laser' | 'bolt' | 'explode' | 'transform' | 'ufo' | 'invaderStep'
   // level 4 maze
-  | 'chomp' | 'pellet' | 'ghostEat' | 'ghostHome';
+  | 'chomp' | 'pellet' | 'ghostEat' | 'ghostHome'
+  // level 5 Hulk: punch swing / heavy hit, ground slam, rubble, roar, flag ripped off the pole
+  | 'punch' | 'smash' | 'slam' | 'rubble' | 'roar' | 'rip';
 
-export type MusicName = 'title' | 'hills' | 'inferno' | 'invaders' | 'maze';
+export type MusicName = 'title' | 'hills' | 'inferno' | 'invaders' | 'maze' | 'rampage';
 
 export interface GameAudio {
   /** Call from inside a user gesture handler; safe to call many times. */

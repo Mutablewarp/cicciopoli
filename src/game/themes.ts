@@ -1,12 +1,14 @@
 /**
  * Theme configs: everything level-agnostic code needs to dress a level (art pack to
- * load lazily, texture keys, parallax stack, music, hazard). Level 2 adds INFERNO here.
+ * load lazily, texture keys, parallax stack, music, hazard). Level 2 adds INFERNO here,
+ * level 5 RAMPAGE (themeRampage.ts).
  */
 import { CICCIO, CICCIO_ANIMS, HILLS, HILLS_ANIMS, INFERNO, INFERNO_ANIMS, ITEM_ANIMS, ITEMS } from '../art/keys';
 import { PARALLAX } from '../config/tuning';
 import type { MusicName } from '../contracts';
 import type { DecorKind, ThemeId } from './levels/types';
-import type { AnimSpec, TexSpec } from './placeholders';
+import { type AnimSpec, loop, once, seq, type TexSpec } from './placeholders';
+import { RAMPAGE_THEME } from './themeRampage';
 
 export interface LayerDef {
   key: string;
@@ -52,7 +54,7 @@ export interface ThemeConfig {
    * Lazily imported art modules (path relative to src/game) and their build*Art export,
    * built in order. A theme may borrow props from another pack (e.g. hills ? blocks).
    */
-  art: { module: string; builder: string; skipIf?: string }[];
+  art: { module: string; builder: string }[];
   loadingText: string;
   music: MusicName;
   tileset: string;
@@ -76,15 +78,13 @@ export interface ThemeConfig {
    * the body must drop fully below the level.
    */
   hazardLine?: number;
+  /** level 5: the goal flag is ripped off and thrown away instead of the drop into the hole */
+  ripFinale?: { pole: string; cloth: string; clothAnim: string };
   /** textures the level cannot work without: placeholders are generated if missing */
   required: TexSpec[];
   /** animations gameplay plays; recreated from placeholder frames if the pack lacks them */
   anims: AnimSpec[];
 }
-
-const loop = (key: string, sheet: string, frames: number[], frameRate: number): AnimSpec => ({ key, sheet, frames, frameRate, repeat: -1 });
-const once = (key: string, sheet: string, frames: number[], frameRate: number): AnimSpec => ({ key, sheet, frames, frameRate, repeat: 0 });
-const seq = (n: number): number[] => Array.from({ length: n }, (_, i) => i);
 
 export const HILLS_THEME: ThemeConfig = {
   id: 'hills',
@@ -149,7 +149,7 @@ export const INFERNO_THEME: ThemeConfig = {
   id: 'inferno',
   // ? blocks are borrowed from the cup world: the box art shows the same orange ??? blocks
   art: [
-    { module: '../art/hills.ts', builder: 'buildHillsArt', skipIf: HILLS.qblock },
+    { module: '../art/hills.ts', builder: 'buildHillsArt' },
     { module: '../art/inferno.ts', builder: 'buildInfernoArt' },
   ],
   loadingText: 'Scaldo la lava…',
@@ -213,7 +213,7 @@ export const INFERNO_THEME: ThemeConfig = {
   ],
 };
 
-export const THEMES: Partial<Record<ThemeId, ThemeConfig>> = { hills: HILLS_THEME, inferno: INFERNO_THEME };
+export const THEMES: Partial<Record<ThemeId, ThemeConfig>> = { hills: HILLS_THEME, inferno: INFERNO_THEME, rampage: RAMPAGE_THEME };
 
 export function getTheme(id: ThemeId): ThemeConfig {
   return THEMES[id] ?? HILLS_THEME;

@@ -4,8 +4,10 @@
  */
 import type Phaser from 'phaser';
 import { TILE } from '../../art/keys';
-import { ENEMY, KILL_FX, MOVE } from '../../config/tuning';
+import { ENEMY, HULK, KILL_FX, MOVE } from '../../config/tuning';
 import type { GameAudio } from '../../contracts';
+import { enemyHp, hitResult } from '../brawl/rules';
+import type { Juice } from '../brawl/juice';
 import { DEPTH } from '../depths';
 import type { Fx } from '../fx';
 import type { ViewRect } from '../parallax';
@@ -20,6 +22,7 @@ export type StompResult = 'kill' | 'clang' | 'hurt';
 export interface EnemyHost {
   world: World;
   fx: Fx;
+  juice: Juice;
   audio: GameAudio;
   heroX(): number;
   heroY(): number;
@@ -59,6 +62,9 @@ export abstract class Enemy {
   protected dir: -1 | 1 = -1;
   protected timer = 0;
   protected wasAirborne = false;
+  /** level 5 fists: hit points left (-1 until the first hit) and the remaining stagger */
+  private hp = -1;
+  private stunMs = 0;
 
   constructor(
     protected readonly scene: Phaser.Scene,
@@ -96,6 +102,46 @@ export abstract class Enemy {
   /** Per-type state reset after sendHome. */
   protected onSentHome(): void {}
 
+  /** Staggered by a fist / slam: harmless and frozen until the time is up. */
+  get stunned(): boolean {
+    return this.stunMs > 0;
+  }
+
+  /** Hit points left against the fists. */
+  get hpLeft(): number {
+    return this.hp < 0 ? enemyHp(this.kind) : this.hp;
+  }
+
+  /** Fist / slam damage; true when it is dead. */
+  hurt(damage: number): boolean {
+    const out = hitResult(this.hpLeft, damage);
+    this.hp = out.hp;
+    return out.dead;
+  }
+
+  /** White flash on a hit that did not kill. */
+  flash(ms = 80): void {
+    this.sprite.setTintFill(0xffffff);
+    this.scene.time.delayedCall(ms, () => {
+      if (this.sprite.active) this.sprite.clearTint();
+    });
+  }
+
+  stun(ms: number): void {
+    this.stunMs = Math.max(this.stunMs, ms);
+    this.sprite.anims.pause();
+    const frame = this.dazedFrame();
+    if (frame !== null) this.sprite.setFrame(frame);
+  }
+
+  /** Frame shown while staggered (null = keep the current one and wobble). */
+  protected dazedFrame(): number | null {
+    return null;
+  }
+
+  /** Per-type reaction when a stagger ends. */
+  protected onStunEnd(): void {}
+
   /** Per-type behaviour while awake and alive. */
   protected abstract think(dtMs: number, host: EnemyHost): void;
 
@@ -124,6 +170,16 @@ export abstract class Enemy {
       return;
     }
     this.timer -= dtMs;
+    if (this.stunMs > 0) {
+      this.stunMs = Math.max(0, this.stunMs - dtMs);
+      if (this.onGround) this.body.setVelocityX(0);
+      this.sprite.setAngle(this.stunMs > 0 ? Math.sin(this.stunMs * 0.045) * 6 : 0);
+      if (this.stunMs === 0) {
+        this.sprite.anims.resume();
+        this.onStunEnd();
+      }
+      return;
+    }
     this.think(dtMs, host);
   }
 
@@ -167,21 +223,25 @@ export abstract class Enemy {
     return Math.abs(host.heroX() - this.sprite.x) < rangeX && Math.abs(host.heroY() - this.body.center.y) < rangeY;
   }
 
-  /** A walker killed mid-hop first drops onto the ground under it, so no defeat effect floats. */
-  private settle(host: EnemyHost, then: () => void): void {
+  /** A walker killed mid-hop first drops onto the ground under it (at most `maxPx`), so no defeat effect floats. */
+  protected settle(host: EnemyHost, then: () => void, maxPx: number = KILL_FX.dropMaxPx): void {
     // the sprite's feet, not the body: the body may already be a step ahead of the drawn sprite
-    const fall = this.body.allowGravity ? dropToGround(host.world, this.sprite.x, this.sprite.y, KILL_FX.dropMaxPx) : 0;
+    const fall = this.body.allowGravity ? dropToGround(host.world, this.sprite.x, this.sprite.y, maxPx) : 0;
     if (fall < 1) return then();
     const ms = Math.sqrt((2 * fall) / MOVE.gravity) * 1000; // free-fall time
     this.scene.tweens.add({ targets: this.sprite, y: this.sprite.y + fall, duration: ms, ease: 'Quad.easeIn', onComplete: then });
   }
 
-  kill(method: KillMethod, host: EnemyHost): void {
+  /** `dir` is the way a punched enemy is launched (level 5). */
+  kill(method: KillMethod, host: EnemyHost, dir: -1 | 1 = 1): void {
     if (!this.alive) return;
     this.alive = false;
     this.body.stop();
     this.body.enable = false;
-    const frame = method === 'stomp' ? this.squashFrame() : null;
+    this.sprite.clearTint().setAngle(0);
+    if (method === 'punch') return this.launch(dir);
+    const frame = method === 'stomp' || method === 'slam' ? this.squashFrame() : null;
+    if (method === 'slam' && frame === null) return this.flatten();
     if (frame !== null) {
       this.show(frame);
       this.settle(host, () => {
@@ -217,5 +277,34 @@ export abstract class Enemy {
       ease: 'Quad.easeIn',
       onComplete: () => this.sprite.destroy(),
     });
+  }
+
+  /** Punched away: spins off in an arc, fading as it goes. */
+  private launch(dir: -1 | 1): void {
+    const L = HULK.launch;
+    const s = this.sprite;
+    const cy = this.body.center.y;
+    const x0 = s.x;
+    s.anims.stop();
+    s.setOrigin(0.5, 0.5).setPosition(x0, cy);
+    const t = { v: 0 };
+    this.scene.tweens.add({
+      targets: t,
+      v: 1,
+      duration: L.ms,
+      onUpdate: () => {
+        s.setPosition(x0 + dir * L.dist * t.v, cy - L.rise * 4 * t.v * (1 - t.v) + 70 * t.v * t.v);
+        s.setAngle(dir * L.spin * t.v);
+        s.setAlpha(t.v < 0.6 ? 1 : 1 - (t.v - 0.6) / 0.4);
+      },
+      onComplete: () => s.destroy(),
+    });
+  }
+
+  /** Crushed by a slam with no squashed frame: flattened, then gone. */
+  private flatten(): void {
+    this.sprite.anims.stop();
+    this.scene.tweens.add({ targets: this.sprite, scaleY: 0.25, scaleX: 1.25, duration: 90, ease: 'Quad.easeOut' });
+    this.scene.tweens.add({ targets: this.sprite, alpha: 0, delay: 380, duration: 220, onComplete: () => this.sprite.destroy() });
   }
 }

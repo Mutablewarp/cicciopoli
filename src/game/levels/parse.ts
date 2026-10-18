@@ -106,11 +106,15 @@ export function parseLevel(def: LevelDef): ParsedLevel {
   return { cols, rows, terrain, entities, spawn: single(spawns, 'spawn (S)'), goal: single(goals, 'goal (G)') };
 }
 
-/** Cells that block movement like terrain: ? blocks and crates are sprites but solid. */
-export function solidEntityCells(level: ParsedLevel): Set<string> {
+/**
+ * Cells that block movement like terrain: ? blocks and crates are sprites but solid.
+ * Level 5 props (bricks, crates, barrels) are solid only until smashed, so they count
+ * only with `smash` set.
+ */
+export function solidEntityCells(level: ParsedLevel, smash = false): Set<string> {
   const out = new Set<string>();
   for (const e of level.entities) {
-    if (e.spec.type === 'qblock' || e.spec.type === 'crate') out.add(`${e.col},${e.row}`);
+    if (e.spec.type === 'qblock' || e.spec.type === 'crate' || (smash && e.spec.type === 'smash')) out.add(`${e.col},${e.row}`);
   }
   return out;
 }

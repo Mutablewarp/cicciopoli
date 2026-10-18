@@ -1,7 +1,7 @@
 /** Top HUD: hearts, coin + score, level progress, power chips, TIME and pause button. */
 import type { HudState, LevelId, PowerState } from '../contracts';
 import { el, onActivate, setText } from './dom';
-import { FLAG_SVG, PAUSE_GLYPH, boltSvg, brieSvg, goatSvg, headSvg, heartSvg, nuggetSvg, pelletSvg, thaiSvg, wingsSvg } from './icons';
+import { FLAG_SVG, PAUSE_GLYPH, boltSvg, brieSvg, goatSvg, headSvg, heartSvg, hulkHeadSvg, nuggetSvg, pelletSvg, thaiSvg, wingsSvg } from './icons';
 
 type PowerKey = keyof PowerState;
 
@@ -20,6 +20,7 @@ const LEVEL_CHIPS: Record<LevelId, readonly PowerKey[]> = {
   2: ['wings'],
   3: ['bolt'],
   4: ['pellet'],
+  5: [],
 };
 
 const POP: Keyframe[] = [{ transform: 'scale(1)' }, { transform: 'scale(1.35)' }, { transform: 'scale(1)' }];
@@ -115,16 +116,26 @@ export function createHud(): Hud {
   }
 
   function renderChips(level: LevelId, p: PowerState): void {
+    // level 5: the progress marker is the green head
+    const hulk = level === 5;
+    if (marker.classList.contains('is-hulk') !== hulk) {
+      marker.classList.toggle('is-hulk', hulk);
+      marker.innerHTML = hulk ? hulkHeadSvg() : headSvg();
+    }
+    let shown = 0;
     for (const c of CHIPS) {
       const chip = chipEls.get(c.key) as HTMLElement;
       const on = !!p[c.key];
       const hide = !on && !LEVEL_CHIPS[level].includes(c.key);
+      if (!hide) shown++;
       if (chip.hidden !== hide) chip.hidden = hide;
       if (chip.classList.contains('is-on') !== on) {
         chip.classList.toggle('is-on', on);
         if (on) chip.animate(POP, { duration: 320, easing: 'ease-out' });
       }
     }
+    // no chip at all (level 5): the row must not keep its flex gap
+    powers.classList.toggle('is-empty', shown === 0);
   }
 
   function update(s: Partial<HudState>): void {

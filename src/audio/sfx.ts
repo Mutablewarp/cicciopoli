@@ -3,10 +3,11 @@
  * multiplier (≈ ±3%) chosen by the caller so repeated sounds don't fatigue.
  */
 import type { SfxName } from '../contracts';
+import { RAMPAGE_SFX } from './sfx-rampage';
 import { hiss, tone, type ToneOpts, type Voice } from './synth';
 import { hz } from './theory';
 
-type Recipe = (v: Voice, t: number, p: number) => void;
+export type Recipe = (v: Voice, t: number, p: number) => void;
 type ArpOpts = Omit<ToneOpts, 't' | 'f'>;
 
 /** Plays `freqs` one after another, `gap` seconds apart. */
@@ -293,4 +294,6 @@ export const SFX: Readonly<Record<SfxName, Recipe>> = {
     hiss(v, { t, a: 0.04, hold: 0.1, d: 0.4, peak: 0.7, type: 'bandpass', f: 3500 * p, to: 260 * p, slide: 0.5, q: 1.2 });
     tone(v, { wave: 'sine', t, f: 1400 * p, to: 180 * p, slide: 0.5, a: 0.03, hold: 0.1, d: 0.4, peak: 0.1, vib: [40, 9] });
   },
+
+  ...RAMPAGE_SFX,
 };

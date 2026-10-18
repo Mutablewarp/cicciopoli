@@ -4,6 +4,7 @@
  */
 import type Phaser from 'phaser';
 import { SPACE, SPACE_ANIMS } from '../../art/space/keys';
+import { TITLE_GLINTS } from '../../art/space/title';
 import type { Battle } from './battle';
 import { CLEAR_BONUS, FIELD, HOLE, JET, RULES, WAVES } from './config';
 import { Z } from './fx';
@@ -13,6 +14,9 @@ export interface StoryHooks {
   toMenu(): void;
   next(): void;
 }
+
+/** centre of the intro wordmark in the field */
+const TITLE_Y = 96;
 
 const WAVE_SUB = ['FUOCO spara · FULMINE trasforma in cibo', 'Più veloci, più bombe!', 'Ultima ondata!'];
 
@@ -29,8 +33,16 @@ export class Story {
   intro(): void {
     const { b, scene } = this;
     b.phase = 'intro';
-    const title = scene.add.image(FIELD.w / 2, 112, SPACE.title).setDepth(Z.title).setScale(2.6).setAlpha(0);
-    scene.tweens.add({ targets: title, alpha: 1, scale: 2, duration: 520, ease: 'Back.easeOut' });
+    const title = scene.add.image(FIELD.w / 2, TITLE_Y, SPACE.title).setDepth(Z.title).setScale(1.5).setAlpha(0);
+    scene.tweens.add({ targets: title, alpha: 1, scale: 1, duration: 520, ease: 'Back.easeOut' });
+    // the wordmark lands, then two stars twinkle on it one after the other
+    TITLE_GLINTS.forEach(([dx, dy], i) =>
+      scene.time.delayedCall(640 + i * 330, () => {
+        const star = scene.add.sprite(Math.round(FIELD.w / 2 + dx), Math.round(TITLE_Y + dy), SPACE.glint, 0).setDepth(Z.title + 1);
+        star.play(SPACE_ANIMS.glint);
+        star.once('animationcomplete', () => star.destroy());
+      }),
+    );
     const jet = b.jet;
     jet.steer = false;
     jet.x = FIELD.w / 2;
@@ -48,7 +60,7 @@ export class Story {
     scene.tweens.add({
       targets: title,
       alpha: 0,
-      y: 92,
+      y: TITLE_Y - 18,
       delay: 1900,
       duration: 420,
       ease: 'Quad.easeIn',
@@ -109,7 +121,7 @@ export class Story {
     b.phase = 'ending';
     b.svc.ui.banner('VAI IN BUCA!', { tone: 'goal', sub: 'Il buco nero ti porta al livello 4', ms: 2200 });
     if (b.ufo.sprite) {
-      b.fx.boom(b.ufo.sprite.x, b.ufo.sprite.y);
+      b.fx.boom(b.ufo.sprite.x, b.ufo.sprite.y, 1.5);
       b.ufo.remove();
     }
     const hole = scene.add.sprite(HOLE.x, HOLE.y, SPACE.hole, 0).setDepth(Z.hole).setScale(0);
@@ -173,7 +185,7 @@ export class Story {
     b.jet.steer = false;
     b.svc.audio.sfx('explode');
     [0, 140, 300].forEach((ms, i) =>
-      scene.time.delayedCall(ms, () => b.fx.boom(x + (i - 1) * 6, JET.y - 2 + (i % 2) * 4, 1.1)),
+      scene.time.delayedCall(ms, () => b.fx.boom(x + (i - 1) * 10, JET.y + (i % 2) * 6, 1.6)),
     );
     scene.time.delayedCall(160, () => b.jet.sprite.setVisible(false));
     scene.time.delayedCall(450, () => b.svc.audio.jingle('gameover'));

@@ -1,7 +1,8 @@
 /** Modal end/pause screens: PAUSA, IN BUCA! (victory), GAME OVER. */
 import type { GameOverInfo, LevelId, VictoryInfo } from '../contracts';
 import { button, el, formatTime, seeded } from './dom';
-import { SPEAKER_OFF, SPEAKER_ON, headSvg } from './icons';
+import { heroHtml, mountHero } from './hero';
+import { SPEAKER_OFF, SPEAKER_ON } from './icons';
 import { Menu } from './menu';
 
 export const LEVEL_NAMES: Record<LevelId, string> = {
@@ -9,8 +10,21 @@ export const LEVEL_NAMES: Record<LevelId, string> = {
   2: 'ALETTE CRUNCHY',
   3: "CICCIO'S INVADERS",
   4: 'CICCIO-MAN',
+  5: 'SPACCA TUTTO',
 };
+/** Name of the hero of a level, shown under its title on the end screens. */
+export const LEVEL_HEROES: Partial<Record<LevelId, string>> = { 5: 'CICCIO SPACCA!' };
 export const levelTitle = (l: LevelId): string => `0${l} · ${LEVEL_NAMES[l]}`;
+const levelHero = (l: LevelId): string => (LEVEL_HEROES[l] ? `<p class="cc-levelhero">${LEVEL_HEROES[l]}</p>` : '');
+
+/**
+ * Card text. Level 5 groups it in one column next to the hero, so a landscape phone can put the big
+ * sprite beside the text instead of dropping it (levels 1-4 hide their small head there).
+ */
+const cardInner = (l: LevelId, mood: 'win' | 'over', extra: string, text: string): string =>
+  `${extra}${heroHtml(l, mood)}${l === 5 ? `<div class="cc-card__main">${text}</div>` : text}`;
+const cardClass = (l: LevelId, cls: string): string => (l === 5 ? `${cls} cc-card--hero` : cls);
+const buttonsHost = (c: HTMLElement): Element | null => c.querySelector('.cc-card__main') ?? c.firstElementChild;
 
 const CONFETTI = ['#fc9000', '#fcd400', '#fc0c24', '#60ccf0', '#a8cc00', '#fce4c0'];
 
@@ -20,11 +34,12 @@ const PAUSE_KEYS: [string[], string] = [['ESC', 'P'], 'pausa'];
 
 /** Desktop key legend per level (title: the platform keys plus the shooter extras). */
 export function keyLegend(level?: LevelId): string {
+  if (level === 5) return keys([['←', '→', 'A', 'D'], 'muovi'], [['↑', 'W', 'SPAZIO'], 'salta'], [['K', 'C'], 'pugno'], [['J', 'X'], 'spacca'], PAUSE_KEYS);
   if (level === 3) return keys([['←', '→', 'A', 'D'], 'muovi'], [['SPAZIO', 'J', 'X'], 'fuoco'], [['K', 'C'], 'fulmine'], PAUSE_KEYS);
   if (level === 4) return keys([['←', '↑', '→', '↓'], 'muovi'], [['W', 'A', 'S', 'D'], 'muovi'], PAUSE_KEYS);
   if (level === 2) return keys([['←', '→', 'A', 'D'], 'muovi'], [['↑', 'W', 'SPAZIO'], 'salta / vola'], [['↓', 'S'], 'scendi'], PAUSE_KEYS);
   if (level === 1) return keys([['←', '→', 'A', 'D'], 'muovi'], [['↑', 'W', 'SPAZIO'], 'salta'], [['J', 'X'], 'goat'], [['K', 'C'], 'thai'], PAUSE_KEYS);
-  return keys([['←', '→', '↑', '↓'], 'muovi'], [['SPAZIO'], 'salta / fuoco'], [['J', 'X'], 'goat'], [['K', 'C'], 'thai / fulmine'], PAUSE_KEYS);
+  return keys([['←', '→', '↑', '↓'], 'muovi'], [['SPAZIO'], 'salta / fuoco'], [['J', 'X'], 'goat / spacca'], [['K', 'C'], 'thai / fulmine / pugno'], PAUSE_KEYS);
 }
 
 export function audioLabel(muted: boolean): string {
@@ -135,10 +150,14 @@ export function createModal(onChange: () => void, level: () => LevelId): Modal {
         `<div><dt>RECORD</dt><dd>${info.best}</dd></div></dl>`;
       const badge = info.newBest ? '<p class="cc-record">NUOVO RECORD!</p>' : '';
       const c = card(
-        'cc-win-card',
-        `${confetti()}<div class="cc-hero cc-hero--win">${headSvg()}</div>` +
+        cardClass(info.level, 'cc-win-card'),
+        cardInner(
+          info.level,
+          'win',
+          confetti(),
           `<h2 class="cc-bigtitle cc-bigtitle--win">IN BUCA!</h2>` +
-          `<p class="cc-levelname">${levelTitle(info.level)}</p>${stats}${badge}`,
+            `<p class="cc-levelname">${levelTitle(info.level)}</p>${levelHero(info.level)}${stats}${badge}`,
+        ),
       );
       const btns: HTMLButtonElement[] = [];
       const onNext = h.onNext;
@@ -149,16 +168,21 @@ export function createModal(onChange: () => void, level: () => LevelId): Modal {
       btns.push(button('', '<span class="cc-btn__label">Menu</span>', menu.guard(h.onMenu)));
       const list = el('div', 'cc-card__btns cc-card__btns--row');
       list.append(...btns);
-      c.firstElementChild?.append(list);
+      buttonsHost(c)?.append(list);
       present('victory', c, btns, 650);
+      mountHero(c, info.level, 'win');
     },
     showGameOver(info, h) {
       const c = card(
-        'cc-over-card',
-        `<div class="cc-hero cc-hero--over">${headSvg()}</div>` +
+        cardClass(info.level, 'cc-over-card'),
+        cardInner(
+          info.level,
+          'over',
+          '',
           `<h2 class="cc-bigtitle cc-bigtitle--over">GAME OVER</h2>` +
-          `<p class="cc-levelname">${levelTitle(info.level)}</p>` +
-          `<dl class="cc-stats cc-stats--one"><div><dt>PUNTI</dt><dd>${info.score}</dd></div></dl>`,
+            `<p class="cc-levelname">${levelTitle(info.level)}</p>${levelHero(info.level)}` +
+            `<dl class="cc-stats cc-stats--one"><div><dt>PUNTI</dt><dd>${info.score}</dd></div></dl>`,
+        ),
       );
       const btns = [
         button('cc-btn--primary', '<span class="cc-btn__label">Riprova</span>', menu.guard(h.onRetry)),
@@ -166,8 +190,9 @@ export function createModal(onChange: () => void, level: () => LevelId): Modal {
       ];
       const list = el('div', 'cc-card__btns cc-card__btns--row');
       list.append(...btns);
-      c.firstElementChild?.append(list);
+      buttonsHost(c)?.append(list);
       present('over', c, btns, 650);
+      mountHero(c, info.level, 'over');
     },
     hide,
   };

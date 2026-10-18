@@ -1,12 +1,12 @@
 /**
  * Dev-only harness (ui-harness.html, not part of the build).
- * ?state=loading|loaddone|title|hud|pause|victory|gameover|banner|icons|logo &level=1|2|3|4
+ * ?state=loading|loaddone|title|hud|pause|victory|gameover|banner|icons|logo &level=1|2|3|4|5
  * &fire=&club=&down=enabled|disabled|hidden &bolts=N  &tone=goal|power|danger|info
  */
 import type { ButtonState, ControlsLayout, LevelId } from '../contracts';
 import { LEVEL_IDS } from '../contracts';
 import { startTitleRunner } from '../titleRunner';
-import { boltSvg, brieSvg, fuocoSvg, goatSvg, headSvg, nuggetSvg, pelletSvg, thaiSvg, wingsSvg } from './icons';
+import { boltSvg, brieSvg, fistSvg, fuocoSvg, goatSvg, headSvg, hulkHeadSvg, nuggetSvg, pelletSvg, slamSvg, thaiSvg, wingsSvg } from './icons';
 import { createUI } from './index';
 import { LOGO_FACE_VIEWBOX, WORDMARK_VIEWBOX, logoFaceSvg, wordmarkSvg } from './logo';
 
@@ -41,9 +41,9 @@ function fakeGame(host: HTMLElement): void {
   const c = document.createElement('canvas');
   host.appendChild(c);
   const ctx = c.getContext('2d') as CanvasRenderingContext2D;
-  const sky = { 1: ['#3aa8e0', '#60ccf0', '#a8e4f4'], 2: ['#4a0e1c', '#d82810', '#f0645a'], 3: ['#0b0d24', '#141a3e'], 4: ['#1e1a1e', '#1e1a1e'] }[level];
-  const hill = level === 1 ? '#489c30' : '#2a1018';
-  const ground = level === 1 ? '#a8cc00' : '#fc7a10';
+  const sky = { 1: ['#3aa8e0', '#60ccf0', '#a8e4f4'], 2: ['#4a0e1c', '#d82810', '#f0645a'], 3: ['#0b0d24', '#141a3e'], 4: ['#1e1a1e', '#1e1a1e'], 5: ['#2a0e4a', '#a81c7c', '#f08a3c'] }[level];
+  const hill = level === 1 ? '#489c30' : level === 5 ? '#3a1456' : '#2a1018';
+  const ground = level === 1 ? '#a8cc00' : level === 5 ? '#a6d62c' : '#fc7a10';
   const frame = (t: number): void => {
     const r = host.getBoundingClientRect();
     const s = 3;
@@ -100,6 +100,7 @@ function layoutFor(lv: LevelId): ControlsLayout {
     return { level: 3, mode: 'shooter', fire: pick('fire', 'enabled'), club: pick('club', bolts > 0 ? 'enabled' : 'disabled'), down: 'hidden', jumpLabel: 'SALTA', clubCount: bolts };
   }
   if (lv === 4) return { level: 4, mode: 'maze', fire: 'hidden', club: 'hidden', down: 'hidden', jumpLabel: 'SALTA' };
+  if (lv === 5) return { level: 5, mode: 'platform', fire: pick('fire', 'enabled'), club: pick('club', 'enabled'), down: 'hidden', jumpLabel: 'SALTA' };
   return lv === 1
     ? { level: 1, mode: 'platform', fire: pick('fire', 'enabled'), club: pick('club', 'disabled'), down: pick('down', 'hidden'), jumpLabel: 'SALTA' }
     : { level: 2, mode: 'platform', fire: pick('fire', 'hidden'), club: pick('club', 'hidden'), down: pick('down', 'enabled'), jumpLabel: 'VOLA' };
@@ -125,7 +126,7 @@ function mount(): void {
       level,
       hearts: 3,
       maxHearts: 4,
-      score: [161, 1240, 3150, 870][level - 1],
+      score: [161, 1240, 3150, 870, 2260][level - 1],
       timeMs: 96000,
       progress: 0.42,
       powers: { brie: level === 1, goat: level === 1, thai: false, wings: level === 2, bolt: level === 3, pellet: false },
@@ -169,7 +170,7 @@ function mount(): void {
     case 'victory':
       hudOn();
       ui.showVictory(
-        { level, score: 1735, timeMs: 92500, best: 1735, newBest: true, hasNext: level < 4 },
+        { level, score: 1735, timeMs: 92500, best: 1735, newBest: true, hasNext: level < LEVEL_IDS.length },
         { onNext: log('next'), onReplay: log('replay'), onMenu: log('menu') },
       );
       break;
@@ -192,7 +193,7 @@ function mount(): void {
 
 /** All HUD / control icons, big, for pixel review. */
 function showIcons(): void {
-  const all = [nuggetSvg(), goatSvg(), pelletSvg(), fuocoSvg(), boltSvg(), brieSvg(), thaiSvg(), wingsSvg(), headSvg()];
+  const all = [nuggetSvg(), goatSvg(), pelletSvg(), fuocoSvg(), boltSvg(), brieSvg(), thaiSvg(), wingsSvg(), headSvg(), hulkHeadSvg(), fistSvg(), slamSvg()];
   root.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:16px;padding:16px;background:#242424">${all
     .map((svg) => `<div style="width:120px;height:120px;background:#1a1a1c;padding:8px">${svg.replace('<svg ', '<svg style="width:100%;height:100%" ')}</div>`)
     .join('')}</div>`;

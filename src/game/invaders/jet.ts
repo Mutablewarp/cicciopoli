@@ -4,13 +4,13 @@
  */
 import type Phaser from 'phaser';
 import { SPACE, SPACE_ANIMS } from '../../art/space/keys';
-import { JET, RULES } from './config';
+import { FIELD, JET, RULES } from './config';
 import { Z } from './fx';
 import type { Rect } from './shields';
 
 export class Jet {
   readonly sprite: Phaser.GameObjects.Sprite;
-  x: number = 112;
+  x: number = FIELD.w / 2;
   vx = 0;
   invulnMs = 0;
   /** false while the intro / ending drive the sprite with tweens */
@@ -56,11 +56,11 @@ export class Jet {
   }
 
   rect(): Rect {
-    return { x: this.x - JET.hitW / 2, y: JET.y + 3 - JET.hitH / 2, w: JET.hitW, h: JET.hitH };
+    return { x: this.x - JET.hitW / 2, y: JET.y + JET.hitDy - JET.hitH / 2, w: JET.hitW, h: JET.hitH };
   }
 
   /** Wider catch box for falling food / capsules (wings included). */
   catchRect(): Rect {
-    return { x: this.x - 13, y: JET.y - 10, w: 26, h: 22 };
+    return { x: this.x - JET.catchW / 2, y: JET.y + JET.catchDy - JET.catchH / 2, w: JET.catchW, h: JET.catchH };
   }
 }

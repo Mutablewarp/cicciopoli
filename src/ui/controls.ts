@@ -3,27 +3,29 @@
  * (◀▶ + FUOCO, FULMINE with charges) and maze (4-way cross pad; swipes live in input).
  * Every pointer is captured by the control it started on and tracked by pointerId.
  */
-import type { ButtonState, ControlsLayout, ControlsMode } from '../contracts';
+import type { ButtonState, ControlsLayout, ControlsMode, LevelId } from '../contracts';
 import type { HoldAction, InputState } from '../input';
 import { el } from './dom';
 import { type Pad, capture, createCrossPad, createSlidePad, primary, touchSrc } from './dpad';
-import { ARROW_DOWN, ARROW_UP, LOCK_SVG, boltSvg, fuocoSvg, goatSvg, thaiSvg } from './icons';
+import { ARROW_DOWN, ARROW_UP, LOCK_SVG, boltSvg, fuocoSvg } from './icons';
 import { type DiscColors, pixelDisc } from './pixeldisc';
+import { type WeaponKey, actionSkin } from './skins';
 
 const POP: Keyframe[] = [{ transform: 'scale(0.6)' }, { transform: 'scale(1.18)' }, { transform: 'scale(1)' }];
 
 type ActKey = 'jump' | 'fire' | 'club' | 'down' | 'shoot' | 'bolt';
 
 const DARK = { base: '#3a3a42', hi: '#5c5c68', lo: '#26262c', side: '#101012', lip: '#08080a' };
-const FACES: Record<ActKey | 'fly', DiscColors> = {
+const FACES: Record<Exclude<ActKey, WeaponKey> | 'fly', DiscColors> = {
   jump: { base: '#fc9000', hi: '#fcc060', lo: '#d86c00', side: '#8a4400', lip: '#5a2a00' },
   fly: { base: '#4cc0ec', hi: '#a8e4f4', lo: '#2a90c8', side: '#14506e', lip: '#0c3448' },
   shoot: { base: '#ec2a1c', hi: '#ff8a6a', lo: '#b8140c', side: '#6a0806', lip: '#3a0404' },
-  fire: { ...DARK, ring: '#fcd400' },
-  club: { ...DARK, ring: '#f2541c' },
   down: { ...DARK, ring: '#60ccf0' },
   bolt: { ...DARK, ring: '#7ad8ff' },
 };
+/** The weapon discs take their accent ring from the level's skin (GOAT / THAI, SPACCA / PUGNO). */
+const faceFor = (key: ActKey, level: LevelId): DiscColors =>
+  key === 'fire' || key === 'club' ? { ...DARK, ring: actionSkin(level, key).ring } : FACES[key];
 /** Disc diameter in art pixels (the CSS size sets the on-screen size). */
 const DISC_N: Record<ActKey, number> = { jump: 26, shoot: 26, fire: 20, club: 20, down: 20, bolt: 20 };
 const DISC_DEPTH = 3;
@@ -61,8 +63,8 @@ export function createControls(input: InputState, onMode: (m: ControlsMode) => v
   badge.hidden = true;
   const buttons: Record<ActKey, ActButton> = {
     jump: makeAct('jump', 'jump', ARROW_UP, 'Salta'),
-    fire: makeAct('fire', 'fire', goatSvg(), 'GOAT'),
-    club: makeAct('club', 'club', thaiSvg(), 'THAI'),
+    fire: makeAct('fire', 'fire', actionSkin(1, 'fire').icon(), 'GOAT'),
+    club: makeAct('club', 'club', actionSkin(1, 'club').icon(), 'THAI'),
     down: makeAct('down', 'down', ARROW_DOWN, 'SCENDI'),
     shoot: makeAct('shoot', 'fire', fuocoSvg(), 'Fuoco'),
     bolt: makeAct('bolt', 'club', boltSvg(), 'FULMINE'),
@@ -77,7 +79,7 @@ export function createControls(input: InputState, onMode: (m: ControlsMode) => v
     const b = el('div', `cc-act cc-act--${key}`);
     b.setAttribute('role', 'button');
     b.setAttribute('aria-label', label);
-    const face = el('span', 'cc-act__face', discFaces(DISC_N[key], FACES[key]));
+    const face = el('span', 'cc-act__face', discFaces(DISC_N[key], faceFor(key, 1)));
     face.append(el('span', 'cc-act__icon', icon));
     b.append(face);
     if (key !== 'jump' && key !== 'shoot') b.append(el('span', 'cc-act__label', label));
@@ -127,13 +129,36 @@ export function createControls(input: InputState, onMode: (m: ControlsMode) => v
     }
   }
 
+  /** Replaces the disc art of a button (a new accent colour). */
+  function setDiscs(root: HTMLElement, n: number, c: DiscColors): void {
+    root.querySelectorAll('.cc-act__disc').forEach((d) => d.remove());
+    root.querySelector('.cc-act__face')?.insertAdjacentHTML('afterbegin', discFaces(n, c));
+  }
+
+  /** Level 5 renames GOAT / THAI to SPACCA / PUGNO (new icon and ring, same buttons and keys). */
+  let skinLevel: LevelId = 1;
+  function setWeaponSkins(level: LevelId): void {
+    const next: LevelId = level === 5 ? 5 : 1;
+    if (next === skinLevel) return;
+    skinLevel = next;
+    for (const key of ['fire', 'club'] as const) {
+      const skin = actionSkin(next, key);
+      const root = buttons[key].root;
+      setDiscs(root, DISC_N[key], faceFor(key, next));
+      const icon = root.querySelector('.cc-act__icon');
+      if (icon) icon.innerHTML = skin.icon();
+      const label = root.querySelector('.cc-act__label');
+      if (label) label.textContent = skin.label;
+      root.setAttribute('aria-label', skin.label);
+    }
+  }
+
   function setJumpLabel(label: ControlsLayout['jumpLabel'], animate: boolean): void {
     if (jumpLabel.textContent === label) return;
     jumpLabel.textContent = label;
     const fly = label === 'VOLA';
     const jump = buttons.jump.root;
-    jump.querySelectorAll('.cc-act__disc').forEach((d) => d.remove());
-    jump.querySelector('.cc-act__face')?.insertAdjacentHTML('afterbegin', discFaces(DISC_N.jump, fly ? FACES.fly : FACES.jump));
+    setDiscs(jump, DISC_N.jump, fly ? FACES.fly : FACES.jump);
     jump.setAttribute('aria-label', fly ? 'Vola' : 'Salta');
     jump.classList.toggle('is-fly', fly);
     if (animate) jump.animate(POP, { duration: 360 });
@@ -182,6 +207,7 @@ export function createControls(input: InputState, onMode: (m: ControlsMode) => v
       }
       root.classList.remove('is-off');
       root.dataset.level = String(layout.level);
+      setWeaponSkins(mode === 'platform' ? layout.level : 1);
       const states = statesFor(layout, mode);
       for (const k of Object.keys(buttons) as ActKey[]) setState(buttons[k], states[k]);
       setJumpLabel(layout.jumpLabel, !wasOff);

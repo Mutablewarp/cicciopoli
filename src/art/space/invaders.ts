@@ -164,20 +164,20 @@ const SAUCER: Tones = { hi: '#ffd0f2', base: '#f060c0', shade: '#a8308a', dark: 
 const DOME: Tones = { hi: '#ffffff', base: '#a8f0fc', shade: '#4cb8dc', dark: '#2a6ca8' };
 
 function ufo(b: Buf, f: number): void {
-  b.sphere(15.5, 7, 5, 4.5, DOME);
+  b.sphere(19.5, 8.5, 6.2, 5.6, DOME);
   // little green pilot silhouette in the dome
-  b.rect(14, 5, 3, 3, '#8cd42c');
-  b.set(14, 5, '#e0fc8a');
-  b.set(15, 6, PUPIL);
-  for (let y = 8; y < 16; y++) for (let x = 0; x < 32; x++) b.clear(x, y);
-  b.sphere(15.5, 10, 14, 3.6, SAUCER);
-  b.rect(4, 12, 24, 1, SAUCER.dark);
+  b.rect(17, 6, 4, 4, '#8cd42c');
+  b.set(17, 6, '#e0fc8a');
+  b.set(18, 7, PUPIL);
+  for (let y = 10; y < 20; y++) for (let x = 0; x < 40; x++) b.clear(x, y);
+  b.sphere(19.5, 12.5, 17.5, 4.5, SAUCER);
+  b.rect(5, 15, 30, 1, SAUCER.dark);
   // running lights
-  for (let i = 0; i < 6; i++) {
-    const x = 5 + i * 4.4;
+  for (let i = 0; i < 7; i++) {
+    const x = 6 + i * 4.8;
     const on = (i + f) % 3 === 0;
-    b.set(x, 10, on ? '#fff3a0' : '#c84a9c');
-    b.set(x + 1, 10, on ? '#fcd400' : '#a8308a');
+    b.set(x, 12, on ? '#fff3a0' : '#c84a9c');
+    b.set(x + 1, 12, on ? '#fcd400' : '#a8308a');
   }
   b.outline(INK);
 }
@@ -201,5 +201,5 @@ export function buildAsteroids(): HTMLCanvasElement {
 }
 
 export function buildUfo(): HTMLCanvasElement {
-  return sheetOf(4, 32, 16, (b, f) => ufo(b, f));
+  return sheetOf(4, 40, 20, (b, f) => ufo(b, f));
 }

@@ -19,8 +19,9 @@ export interface Grid {
   plat(col: number, row: number): boolean;
 }
 
-export function makeGrid(level: ParsedLevel): Grid {
-  const extra = solidEntityCells(level);
+/** `smashSolid`: level 5 bricks / crates / barrels still standing (false = already smashed). */
+export function makeGrid(level: ParsedLevel, smashSolid = false): Grid {
+  const extra = solidEntityCells(level, smashSolid);
   const at = (col: number, row: number): string => {
     if (col < 0 || col >= level.cols) return 'block'; // world bounds act as walls
     if (row < 0 || row >= level.rows) return 'air';

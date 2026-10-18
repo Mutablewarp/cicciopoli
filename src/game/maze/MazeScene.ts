@@ -8,6 +8,7 @@ import type { ArtPack, Services } from '../../contracts';
 import { SERVICES_KEY } from '../../contracts';
 import { registerArtPack } from '../../art/register';
 import { MAZE_ART } from '../../art/maze/keys';
+import { nextLevel } from '../rules';
 import { MAZE_H, MAZE_W } from './layout';
 import { MazeRun } from './run';
 import { installMazeDebug, uninstallMazeDebug } from './debug';
@@ -98,7 +99,14 @@ export class MazeScene extends Phaser.Scene {
       this.svc.app.toMenu();
       return;
     }
-    this.run = new MazeRun(this, this.svc, { restart: () => this.restartLevel(), toMenu: () => this.toMenu() });
+    this.run = new MazeRun(this, this.svc, {
+      restart: () => this.restartLevel(),
+      toMenu: () => this.toMenu(),
+      next: () => {
+        const next = nextLevel(4);
+        if (next) this.svc.app.startLevel(next);
+      },
+    });
     installMazeDebug(this.run);
     this.fit();
     this.svc.ui.setLoading(null);

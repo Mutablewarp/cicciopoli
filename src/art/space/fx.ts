@@ -7,62 +7,70 @@ import { Buf, sheetOf, type Tones } from './buf';
 
 const INK = '#1c120e';
 
-/** Vertical battered provola stick with a warm streak below (6x12). */
+/** Vertical battered provola stick with a warm streak below (8x16). */
 function shot(b: Buf, f: number): void {
-  b.rect(1, 1, 4, 7, '#f0b850');
-  b.rect(1, 1, 1, 6, '#fcdc90');
-  b.rect(4, 2, 1, 6, '#c88430');
-  b.set(2, 3, '#c88430');
-  b.set(3, 5, '#c88430');
-  b.set(2, 1, '#fff0c0');
+  b.rect(1, 1, 6, 9, '#f0b850');
+  b.rect(1, 1, 1, 8, '#fcdc90');
+  b.rect(6, 2, 1, 8, '#c88430');
+  b.rect(2, 1, 3, 1, '#fff0c0');
+  for (const [x, y] of [[3, 3], [4, 6], [2, 7], [5, 4]] as const) b.set(x, y, '#c88430');
+  b.set(3, 5, '#fcdc90');
   b.outline('#3a1c0a');
-  const tail = f === 0 ? ['#fcd070', '#f09030', '#c05a20'] : ['#fcd070', '#f09030'];
-  tail.forEach((c, i) => b.set(2 + (i % 2), 9 + i, c, 0.85 - i * 0.2));
+  const tail = f === 0 ? ['#fcd070', '#fcd070', '#f09030', '#f09030', '#c05a20'] : ['#fcd070', '#f09030', '#c05a20'];
+  tail.forEach((c, i) => {
+    b.set(3 + (i % 2), 11 + i, c, 0.9 - i * 0.16);
+    if (i < 2) b.set(4 - (i % 2), 11 + i, c, 0.7);
+  });
 }
 
 const GOO: Tones = { hi: '#e0fca0', base: '#7cd82c', shade: '#3a961c', dark: '#1a5a14' };
 
-/** Wobbling alien goo drop (8x8). */
+/** Wobbling alien goo drop (10x10). */
 function goo(b: Buf, f: number): void {
   const squash = [0, 0.5, 0, -0.5][f];
-  b.sphere(3.5, 4.5, 2.4 + squash * 0.5, 2.4 - squash * 0.5, GOO);
-  b.set(3, 1, GOO.base);
-  b.set(4, 1 + (f % 2), GOO.shade);
-  b.set(3, 0, GOO.hi);
+  b.sphere(4.5, 5.8, 3.3 + squash * 0.5, 3.3 - squash * 0.5, GOO);
+  b.set(4, 2, GOO.base);
+  b.set(5, 2 + (f % 2), GOO.shade);
+  b.set(4, 1, GOO.hi);
   b.outline('#0e2a0a');
 }
 
-/** Tumbling meteor bit with an ember tail above it (8x8). */
+/** Tumbling meteor bit with an ember tail above it (10x10). */
 function rock(b: Buf, f: number): void {
-  b.set(3, 0, '#fcd070', 0.6);
-  b.set(4, 1, '#f09030', 0.8);
-  b.set(3, 1, '#f09030', 0.7);
+  b.set(4, 0, '#fcd070', 0.6);
+  b.set(5, 1, '#f09030', 0.8);
+  b.set(4, 1, '#f09030', 0.7);
   const shapes = [
-    ['.ab.', 'abbc', 'bbcc', '.cc.'],
-    ['ab..', 'abbc', '.bcc', '.cc.'],
-    ['.ab.', 'abbc', 'bbcc', '..cc'],
-    ['.aa.', 'abbc', 'bbbc', '.cc.'],
+    ['..ab.', '.abbc', 'abbcc', 'bbbcc', '.bcc.'],
+    ['.ab..', 'abbbc', 'abbcc', '.bbcc', '..cc.'],
+    ['..aa.', 'abbbc', 'bbbcc', 'bbccc', '.ccc.'],
+    ['.abb.', 'abbcc', 'bbbcc', '.bbc.', '..cc.'],
   ];
   b.grid(shapes[f], { a: '#dccab4', b: '#a08a72', c: '#6a5848' }, 2, 3);
-  b.set(3, 4, '#fc9030');
+  b.set(4, 5, '#fc9030');
   b.outline(INK);
 }
 
-/** Lightning capsule: cyan glass pill with a yellow bolt inside, steel caps, pulsing halo (12x16). */
+/** Lightning capsule: cyan glass pill with a yellow bolt inside, steel caps, pulsing halo (14x20). */
 function capsule(b: Buf, f: number): void {
   const glow = [0.25, 0.45, 0.7, 0.45][f];
-  const core = new Buf(12, 16);
-  for (let y = 3; y <= 12; y++) for (let x = 2; x <= 9; x++) core.set(x, y, '#58c4f4');
-  core.sphere(5.5, 7.5, 4.2, 5.4, { hi: '#e8fcff', base: '#7ad8fc', shade: '#3a9ad8', dark: '#2464b0' }, true);
-  for (const y of [1, 2, 13, 14]) {
-    const inset = y === 1 || y === 14 ? 1 : 0;
-    for (let x = 2 + inset; x <= 9 - inset; x++) core.set(x, y, x <= 4 ? '#e4e8f0' : x <= 7 ? '#a8b0c0' : '#6c7486');
+  const core = new Buf(14, 20);
+  for (let y = 4; y <= 15; y++) for (let x = 2; x <= 11; x++) core.set(x, y, '#58c4f4');
+  core.sphere(6.5, 9.5, 5.2, 6.8, { hi: '#e8fcff', base: '#7ad8fc', shade: '#3a9ad8', dark: '#2464b0' }, true);
+  for (const y of [1, 2, 3, 16, 17, 18]) {
+    const inset = y === 1 || y === 18 ? 1 : 0;
+    for (let x = 2 + inset; x <= 11 - inset; x++) core.set(x, y, x <= 5 ? '#e4e8f0' : x <= 8 ? '#a8b0c0' : '#6c7486');
   }
-  core.grid(['...yy', '..yy.', '.yyyy', '..yy.', '.yy..', '.y...'], { y: f === 2 ? '#ffffff' : '#fcf070' }, 3, 5);
-  core.set(5, 6, '#ffffff');
+  core.grid(
+    ['.....yy', '....yy.', '...yy..', '..yyyyy', '.yyyyy.', '....yy.', '...yy..', '..yy...', '.yy....', '.y.....'],
+    { y: f === 2 ? '#ffffff' : '#fcf070' },
+    4,
+    5,
+  );
+  core.set(6, 6, '#ffffff');
   core.outline('#101634');
-  for (let y = 0; y < 16; y++) {
-    for (let x = 0; x < 12; x++) {
+  for (let y = 0; y < 20; y++) {
+    for (let x = 0; x < 14; x++) {
       if (core.alpha(x, y) > 0) continue;
       const near = core.alpha(x - 1, y) + core.alpha(x + 1, y) + core.alpha(x, y - 1) + core.alpha(x, y + 1);
       if (near > 0) b.set(x, y, '#a8f0ff', glow);
@@ -152,16 +160,16 @@ function boltIcon(b: Buf): void {
 }
 
 export function buildShot(): HTMLCanvasElement {
-  return sheetOf(2, 6, 12, shot);
+  return sheetOf(2, 8, 16, shot);
 }
 export function buildGoo(): HTMLCanvasElement {
-  return sheetOf(4, 8, 8, goo);
+  return sheetOf(4, 10, 10, goo);
 }
 export function buildRock(): HTMLCanvasElement {
-  return sheetOf(4, 8, 8, rock);
+  return sheetOf(4, 10, 10, rock);
 }
 export function buildCapsule(): HTMLCanvasElement {
-  return sheetOf(4, 12, 16, capsule);
+  return sheetOf(4, 14, 20, capsule);
 }
 export function buildSpark(): HTMLCanvasElement {
   return sheetOf(4, 16, 16, spark);

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Smoke test in a real browser (Playwright + in-process Vite dev server):
- * title renders 4 level cards; every level boots, accepts input and has debug hooks;
+ * title renders 5 level cards; every level boots, accepts input and has debug hooks;
  * every level can be entered twice in a row (restart / re-entry regressions);
  * no uncaught page errors. Desktop and phone (portrait + landscape).
  *
@@ -45,9 +45,9 @@ for (const view of VIEWS) {
   };
 
   await page.goto(base + '?debug=1', { waitUntil: 'load' });
-  check(await waitFor(page, () => document.querySelectorAll('.cc-title button, .cc-title [role="button"]').length >= 4, 8000), 'title shows 4 level cards');
+  check(await waitFor(page, () => document.querySelectorAll('.cc-title button, .cc-title [role="button"]').length >= 5, 8000), 'title shows 5 level cards');
 
-  for (const level of [1, 2, 3, 4]) {
+  for (const level of [1, 2, 3, 4, 5]) {
     for (const attempt of [1, 2]) {
       await page.evaluate((l) => window.__app.app.startLevel(l), level);
       const booted = await waitFor(page, () => !!window.__game, 12000);

@@ -1,5 +1,5 @@
 /**
- * [maze] art pack — level 4 CICCIO-MAN: tray-wall board, Ciccio's chomping head, the four
+ * [maze] art pack — level 4 CICCIO-MAN: tray-wall board with the official logo label, Ciccio's chomping head, the four
  * ghosts (+ cheese-scared and eyes), nugget dots, provola sticks, bonus food, hole + flag.
  * Keys and frame indices: src/art/maze/keys.ts.
  */
@@ -7,8 +7,9 @@ import type { AnimDef, ArtPack, SheetDef } from '../contracts';
 import { packSheet } from './pixel';
 import { buildBoard, buildPanel } from './maze/board';
 import { eyesFrames, ghostFrames } from './maze/ghosts';
-import { deflateFrames, headFrames, printedHead } from './maze/head';
+import { deflateFrames, headFrames } from './maze/head';
 import { MAZE_ANIMS, MAZE_ART } from './maze/keys';
+import { buildLogoLabel } from './maze/logo';
 import { bonusFrames, caption, flagFrames, holeImage, nuggetDot, stickFrames, tunnelMouth } from './maze/props';
 
 function sheet(key: string, frames: HTMLCanvasElement[], w: number, h: number): SheetDef {
@@ -28,10 +29,11 @@ export function buildMazeArt(): ArtPack {
       sheet(MAZE_ART.eyes, eyesFrames(), 16, 16),
       sheet(MAZE_ART.stick, stickFrames(), 8, 8),
       sheet(MAZE_ART.bonus, bonusFrames(), 16, 16),
-      sheet(MAZE_ART.flag, flagFrames(), 16, 24),
+      sheet(MAZE_ART.flag, flagFrames(), 16, 18),
     ],
     images: [
-      { key: MAZE_ART.board, canvas: buildBoard(printedHead()) },
+      { key: MAZE_ART.board, canvas: buildBoard() },
+      { key: MAZE_ART.logo, canvas: buildLogoLabel() },
       { key: MAZE_ART.panel, canvas: buildPanel() },
       { key: MAZE_ART.dot, canvas: nuggetDot() },
       { key: MAZE_ART.hole, canvas: holeImage() },

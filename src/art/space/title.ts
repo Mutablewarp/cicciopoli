@@ -1,108 +1,185 @@
 /**
- * "CICCIO'S / INVADERS" wordmark (ref/invaders_title.png): bold white italic wide letters,
- * the bottom line bigger and on a curved baseline, dark outline + navy drop shadow.
- * Hand-made glyphs so the art is identical on every device (no system fonts).
+ * "CICCIO'S / INVADERS" wordmark (ref/invaders_title.png): bold condensed white lettering, the
+ * first letters of INVADERS leaning hard and the line fanning into a gentle wave, "CICCIO'S"
+ * smaller and upright on top. Flat white with a thin navy edge and a faint deep-blue halo so it
+ * pops on the starfield without filling the counters of A, D, O and R. The vector glyphs
+ * (./lettering.ts) are sampled 3x3 per pixel and thresholded, so every letter is crisp and
+ * distinct at 1 art pixel per world unit.
  */
-import { Buf } from './buf';
+import { Buf, sheetOf } from './buf';
+import { makeFont, type Font, type Glyph } from './lettering';
 
-type Glyph = readonly string[];
-
-/* 10-row glyphs, stroke 3 */
-const SMALL: Readonly<Record<string, Glyph>> = {
-  C: ['..xxxxx.', '.xxxxxxx', 'xxx...xx', 'xxx.....', 'xxx.....', 'xxx.....', 'xxx.....', 'xxx...xx', '.xxxxxxx', '..xxxxx.'],
-  I: Array.from({ length: 10 }, () => 'xxx'),
-  O: ['..xxxx..', '.xxxxxx.', 'xxx..xxx', 'xxx..xxx', 'xxx..xxx', 'xxx..xxx', 'xxx..xxx', 'xxx..xxx', '.xxxxxx.', '..xxxx..'],
-  "'": ['xxx', 'xxx', '.xx', '.x.', '...', '...', '...', '...', '...', '...'],
-  S: ['.xxxxxx.', 'xxxxxxxx', 'xxx...x.', 'xxxxx...', '.xxxxxx.', '...xxxxx', '.....xxx', '.x...xxx', 'xxxxxxxx', '.xxxxxx.'],
-};
-
-const H = 13;
-
-function diagonalGlyph(w: number, at: (y: number) => [number, number][]): Glyph {
-  return Array.from({ length: H }, (_, y) => {
-    const row = Array.from({ length: w }, () => '.');
-    for (const [a, b] of at(y)) for (let x = Math.max(0, a); x <= Math.min(w - 1, b); x++) row[x] = 'x';
-    return row.join('');
-  });
+interface Line {
+  text: string;
+  font: Font;
+  /** cap height (px) and gap between letters (px) */
+  h: number;
+  gap: number;
+  /** extra px after a letter pair (V and A leave a hole between them) */
+  kern?: Readonly<Record<string, number>>;
+  /** shear (px of shift per px of height, + = leaning right) at 0..1 along the line */
+  lean: (n: number) => number;
+  /** top edge drop and bottom edge rise (px) at 0..1 along the line: the wave */
+  drop: (n: number) => number;
+  rise: (n: number) => number;
 }
 
-/* 13-row glyphs, stroke 4 */
-const BIG: Readonly<Record<string, Glyph>> = {
-  I: Array.from({ length: H }, () => 'xxxx'),
-  N: diagonalGlyph(11, (y) => {
-    const d = Math.round(1 + (y * 6) / 12);
-    return [[0, 3], [7, 10], [d, d + 3]];
-  }),
-  V: diagonalGlyph(11, (y) => {
-    const s = Math.round((y * 3.5) / 12);
-    return [[s, s + 3], [10 - s - 3, 10 - s]];
-  }),
-  A: diagonalGlyph(11, (y) => {
-    const s = Math.round(((12 - y) * 3.5) / 12);
-    const legs: [number, number][] = [[s, s + 3], [10 - s - 3, 10 - s]];
-    if (y === 8 || y === 9) legs.push([s, 10 - s]);
-    return legs;
-  }),
-  D: ['xxxxxxx...', 'xxxxxxxxx.', 'xxxx..xxxx', 'xxxx...xxx', 'xxxx...xxx', 'xxxx...xxx', 'xxxx...xxx', 'xxxx...xxx', 'xxxx...xxx', 'xxxx...xxx', 'xxxx..xxxx', 'xxxxxxxxx.', 'xxxxxxx...'],
-  E: ['xxxxxxxx', 'xxxxxxxx', 'xxxx....', 'xxxx....', 'xxxx....', 'xxxxxxx.', 'xxxxxxx.', 'xxxx....', 'xxxx....', 'xxxx....', 'xxxx....', 'xxxxxxxx', 'xxxxxxxx'],
-  R: ['xxxxxxx...', 'xxxxxxxxx.', 'xxxx..xxxx', 'xxxx...xxx', 'xxxx..xxxx', 'xxxxxxxxx.', 'xxxxxxxx..', 'xxxx.xxxx.', 'xxxx.xxxx.', 'xxxx..xxxx', 'xxxx..xxxx', 'xxxx...xxx', 'xxxx...xxx'],
-  S: ['..xxxxxx..', '.xxxxxxxxx', 'xxxx...xxx', 'xxxx......', 'xxxxx.....', '.xxxxxxx..', '..xxxxxxx.', '.....xxxxx', '......xxxx', '......xxxx', 'xxx...xxxx', 'xxxxxxxxx.', '.xxxxxxx..'],
+const INK = '#07102e';
+const GLOW = '#1a2a86';
+const PAD = 5;
+const LINE_GAP = 3;
+const SAMPLES = 3;
+/** room for the lean of INVADERS: the first letter overhangs to the left, the last one slightly to the right */
+const LEAN_MARGIN = 10;
+
+const BIG: Line = {
+  text: 'INVADERS',
+  font: makeFont(0.215, 0.205),
+  h: 33,
+  gap: 1.7,
+  kern: { VA: -3.2 },
+  lean: (n) => 0.05 + 0.25 * (1 - n) ** 2.5 + 0.1 * n ** 4,
+  drop: (n) => 6 * n ** 0.8,
+  rise: (n) => 5 * (1 - (2 * n - 1) ** 2),
 };
 
-interface Placed {
-  glyph: Glyph;
+const SMALL: Line = {
+  text: "CICCIO'S",
+  font: makeFont(0.225, 0.21),
+  h: 23,
+  gap: 2.4,
+  lean: () => 0,
+  drop: (n) => 2.2 * n,
+  rise: (n) => 1.6 * (1 - (2 * n - 1) ** 2),
+};
+
+interface Slot {
   x: number;
-  y: number;
+  w: number;
+  g: Glyph;
 }
 
-function layout(text: string, font: Readonly<Record<string, Glyph>>, gap: number, curve: number): { items: Placed[]; width: number } {
-  const items: Placed[] = [];
+function slotsOf(line: Line): { slots: Slot[]; width: number } {
+  const slots: Slot[] = [];
   let x = 0;
-  for (const ch of text) {
-    const g = font[ch];
-    items.push({ glyph: g, x, y: 0 });
-    x += g[0].length + gap;
-  }
-  const width = x - gap;
-  // curved baseline: the ends of the line sit lower than the middle
-  for (const it of items) {
-    const mid = it.x + it.glyph[0].length / 2;
-    const u = (mid - width / 2) / (width / 2);
-    it.y = Math.round(curve * u * u);
-  }
-  return { items, width };
+  [...line.text].forEach((ch, i) => {
+    const g = line.font[ch];
+    slots.push({ x, w: g.w * line.h, g });
+    x += g.w * line.h + line.gap + (line.kern?.[ch + (line.text[i + 1] ?? '')] ?? 0);
+  });
+  return { slots, width: x - line.gap };
 }
 
-/** Wordmark canvas (≈ 96x36). Shown at 2x in the playfield. */
-export function buildTitle(): HTMLCanvasElement {
-  const top = layout("CICCIO'S", SMALL, 1, 0);
-  const bottom = layout('INVADERS', BIG, 1, 3);
-  const pad = 3;
-  const shear = 0.27;
-  const w = Math.max(top.width, bottom.width) + Math.ceil(H * shear) + pad * 2 + 2;
-  const h = 10 + 2 + H + 3 + pad * 2 + 2;
-  const fill = new Buf(w, h);
-  const put = (lines: { items: Placed[]; width: number }, oy: number, rows: number): void => {
-    const ox = pad + Math.round((w - pad * 2 - 2 - lines.width) / 2);
-    for (const it of lines.items) {
-      it.glyph.forEach((row, y) => {
-        const slant = Math.round((rows - 1 - y) * shear);
-        for (let x = 0; x < row.length; x++) {
-          if (row[x] !== 'x') continue;
-          // white with a cool shade on the lowest rows (light from above)
-          fill.set(ox + it.x + x + slant, oy + it.y + y, y >= rows - 2 ? '#c8d6f4' : '#ffffff');
+/** Fills the line into `fill` with its top-left at (ox, oy): warp, then 3x3 coverage > 50%. */
+function rasterLine(fill: Buf, line: Line, ox: number, oy: number): void {
+  const { slots, width } = slotsOf(line);
+  const reach = Math.ceil(line.h * 0.4);
+  const x0 = Math.floor(ox - reach);
+  const x1 = Math.ceil(ox + width + reach);
+  for (let y = oy; y < oy + line.h; y++) {
+    for (let x = x0; x <= x1; x++) {
+      let cover = 0;
+      for (let j = 0; j < SAMPLES; j++) {
+        for (let i = 0; i < SAMPLES; i++) {
+          const sx = x + (i + 0.5) / SAMPLES;
+          const sy = y + (j + 0.5) / SAMPLES;
+          const rx = sx - ox;
+          const n = Math.max(0, Math.min(1, rx / width));
+          const top = oy + line.drop(n);
+          const v = (sy - top) / (oy + line.h - line.rise(n) - top);
+          if (v < 0 || v > 1) continue;
+          const fx = rx - line.lean(n) * (0.5 - v) * line.h;
+          const slot = slots.find((s) => fx >= s.x && fx < s.x + s.w);
+          if (slot && slot.g.inside((fx - slot.x) / line.h, v)) cover++;
         }
-      });
+      }
+      if (cover * 2 > SAMPLES * SAMPLES) fill.set(x, y, '#ffffff');
     }
-  };
-  put(top, pad, 10);
-  put(bottom, pad + 12, H);
+  }
+}
+
+/** Cool shade on the lowest row of every letter (light from above) and the glow rings. */
+function finish(fill: Buf): Buf {
+  const { w, h } = fill;
   const out = new Buf(w, h);
-  // navy drop shadow down-right, then the dark outline, then the letters
-  const shadow = new Buf(w, h);
-  shadow.stamp(fill, 0, 0);
-  shadow.outline('#0a0c24');
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (shadow.alpha(x, y) > 0) out.set(x + 1, y + 2, '#2c3a8a');
-  out.stamp(shadow, 0, 0);
-  return out.toCanvas();
+  const solid = (x: number, y: number): boolean => fill.alpha(x, y) > 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (!solid(x, y)) continue;
+      out.set(x, y, solid(x, y + 1) ? '#ffffff' : '#c6d6f8');
+    }
+  }
+  const edge = new Buf(w, h);
+  edge.stamp(out, 0, 0);
+  edge.outline(INK);
+  const ring = new Buf(w, h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (edge.alpha(x, y) > 0) continue;
+      let d = 9;
+      for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) if (edge.alpha(x + dx, y + dy) > 0) d = Math.min(d, Math.hypot(dx, dy));
+      }
+      if (d <= 1.5) ring.set(x, y, GLOW, 0.75);
+      else if (d <= 2.2) ring.set(x, y, GLOW, 0.3);
+    }
+  }
+  ring.stamp(edge, 0, 0);
+  return ring;
+}
+
+interface Layout {
+  w: number;
+  h: number;
+  smallX: number;
+  bigX: number;
+  bigY: number;
+}
+
+function layout(): Layout {
+  const w = Math.ceil(slotsOf(BIG).width + LEAN_MARGIN + PAD * 2);
+  const centre = (width: number): number => Math.round((w - width) / 2);
+  return {
+    w,
+    h: PAD * 2 + SMALL.h + LINE_GAP + BIG.h,
+    smallX: centre(slotsOf(SMALL).width),
+    bigX: centre(slotsOf(BIG).width) + 2,
+    bigY: PAD + SMALL.h + LINE_GAP,
+  };
+}
+
+const L = layout();
+
+/** Wordmark canvas size in px. */
+export const TITLE_SIZE = { w: L.w, h: L.h } as const;
+
+/** Where the two glints twinkle, in px from the wordmark centre: the end of "CICCIO'S" and the first I. */
+export const TITLE_GLINTS: readonly (readonly [number, number])[] = [
+  [L.smallX + slotsOf(SMALL).width + 1 - L.w / 2, PAD + 1 - L.h / 2],
+  [L.bigX + 7 - L.w / 2, L.bigY + 1 - L.h / 2],
+];
+
+/** Wordmark canvas (about 190 x 70), shown 1:1 in the playfield. */
+export function buildTitle(): HTMLCanvasElement {
+  const fill = new Buf(L.w, L.h);
+  rasterLine(fill, SMALL, L.smallX, PAD);
+  rasterLine(fill, BIG, L.bigX, L.bigY);
+  return finish(fill).toCanvas();
+}
+
+export const GLINT_SIZE = 13;
+
+/** Four-point star twinkle, 13x13 x 4 frames: small, medium, long arms, medium. */
+export function buildGlint(): HTMLCanvasElement {
+  const arms = [2, 4, 6, 4];
+  return sheetOf(4, GLINT_SIZE, GLINT_SIZE, (b, i) => {
+    const c = 6;
+    const a = arms[i];
+    for (let k = 1; k <= a; k++) {
+      const col = k <= a / 2 ? '#ffffff' : '#9fd8ff';
+      for (const [dx, dy] of [[k, 0], [-k, 0], [0, k], [0, -k]]) b.set(c + dx, c + dy, col);
+    }
+    b.set(c, c, '#ffffff');
+    if (i === 2) for (const [dx, dy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) b.set(c + dx, c + dy, '#ffffff');
+  });
 }

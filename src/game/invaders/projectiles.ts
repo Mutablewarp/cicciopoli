@@ -68,10 +68,11 @@ export class Projectiles {
   }
 }
 
-export function shotRect(s: Phaser.GameObjects.Sprite): Rect {
-  return { x: s.x - 2, y: s.y - 5, w: 4, h: 8 };
+/** The stick is drawn in the top 11 rows of its 16 px frame (the rest is its streak). */
+export function shotRect(s: { x: number; y: number }): Rect {
+  return { x: s.x - 2, y: s.y - 7, w: 4, h: 10 };
 }
 
-export function bombRect(b: Bomb): Rect {
-  return { x: b.sprite.x - 2, y: b.sprite.y - 3, w: 4, h: 6 };
+export function bombRect(b: { sprite: { x: number; y: number } }): Rect {
+  return { x: b.sprite.x - 2.5, y: b.sprite.y - 3.5, w: 5, h: 7 };
 }

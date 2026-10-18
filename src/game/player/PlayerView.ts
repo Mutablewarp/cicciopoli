@@ -1,15 +1,16 @@
 /**
- * Ciccio's look: 48x48 sprite with feet on the body bottom, pose / animation choice,
- * squash & stretch, invulnerability blink, dust puffs and the anchored attachments.
+ * The hero's look: a sprite (48x48 Ciccio, 64x64 rage form) with feet on the body bottom,
+ * pose / animation choice from its skin, squash & stretch, invulnerability blink, dust
+ * puffs and the anchored attachments.
  */
 import type Phaser from 'phaser';
-import { CICCIO, CICCIO_ANIMS } from '../../art/keys';
 import { CLUB, HERO } from '../../config/tuning';
 import type { CiccioFrameAnchors, PowerState } from '../../contracts';
 import { DEPTH } from '../depths';
 import type { Fx } from '../fx';
 import { Attachments, type HeroPose } from './attachments';
 import type { Player } from './Player';
+import { heroProfile, type HeroSkin } from './profile';
 
 const SPRING = 14;
 const RUN_DUST_MS = 170;
@@ -22,7 +23,10 @@ export class PlayerView {
   private landMs = 0;
   private shootMs = 0;
   private dustMs = 0;
-  private clubMs = 0;
+  /** one-shot action (club swing, punch, slam pose) that owns the pose for this long */
+  private actionMs = 0;
+  /** frame held by the action, null while its animation plays */
+  private actionFrame: number | null = null;
   private scale = 1;
   /** false while a cutscene (goal, death) drives the sprite directly */
   auto = true;
@@ -31,9 +35,10 @@ export class PlayerView {
     private readonly scene: Phaser.Scene,
     private readonly fx: Fx,
     anchors: readonly CiccioFrameAnchors[],
+    readonly skin: HeroSkin = heroProfile().skin,
   ) {
-    this.sprite = scene.add.sprite(0, 0, CICCIO.sheet, CICCIO.idle[0]).setOrigin(0.5, 1).setDepth(DEPTH.hero);
-    this.attachments = new Attachments(scene, anchors);
+    this.sprite = scene.add.sprite(0, 0, skin.sheet, 0).setOrigin(0.5, 1).setDepth(DEPTH.hero);
+    this.attachments = new Attachments(scene, anchors, skin.attachments, skin.frame);
   }
 
   pose(p: Player): HeroPose {
@@ -49,8 +54,8 @@ export class PlayerView {
     this.squash(1 + 0.28 * k, 1 - 0.24 * k);
     this.landMs = 90;
     if (speed > 160) {
-      this.fx.dust(p.x - 7, p.bottom, -1);
-      this.fx.dust(p.x + 7, p.bottom, 1);
+      this.fx.dust(p.x - this.skin.dustX, p.bottom, -1);
+      this.fx.dust(p.x + this.skin.dustX, p.bottom, 1);
     }
   }
 
@@ -63,10 +68,22 @@ export class PlayerView {
   }
 
   onClub(): void {
-    if (!this.scene.anims.exists(CICCIO_ANIMS.club)) return;
-    // a countdown, not an anim event: an interrupted swing can never lock the pose
-    this.clubMs = CLUB.swingMs + 20;
-    this.sprite.play(CICCIO_ANIMS.club);
+    if (this.skin.club) this.playAction(this.skin.club, CLUB.swingMs + 20);
+  }
+
+  /** Plays a one-shot animation (club swing, punch) that owns the pose for `ms`. */
+  playAction(anim: string, ms: number): void {
+    if (!this.scene.anims.exists(anim)) return;
+    // a countdown, not an anim event: an interrupted action can never lock the pose
+    this.actionMs = ms;
+    this.actionFrame = null;
+    this.sprite.play(anim);
+  }
+
+  /** Holds one sheet frame for `ms` (slam poses); call again every step to keep it. */
+  holdFrame(frame: number, ms: number): void {
+    this.actionMs = ms;
+    this.actionFrame = frame;
   }
 
   private squash(x: number, y: number): void {
@@ -85,18 +102,22 @@ export class PlayerView {
   }
 
   private choosePose(p: Player): void {
-    if (this.clubMs > 0) return;
-    if (p.hurtLock.active) return this.frame(CICCIO.hurt);
-    if (this.shootMs > 0) return this.frame(CICCIO.shoot);
-    if (p.mode.id === 'flight' && !p.onGround) return this.loop(CICCIO_ANIMS.fly, p.vy < -20 ? 1.4 : 0.7);
-    if (!p.onGround) {
-      if (p.vy < -70) return this.frame(CICCIO.jump);
-      return this.frame(p.vy > 70 ? CICCIO.fall : CICCIO.apex);
+    const k = this.skin;
+    if (this.actionMs > 0) {
+      if (this.actionFrame !== null) this.frame(this.actionFrame);
+      return;
     }
-    if (this.landMs > 0) return this.frame(CICCIO.land);
+    if (p.hurtLock.active) return this.frame(k.hurt);
+    if (this.shootMs > 0 && k.shoot !== undefined) return this.frame(k.shoot);
+    if (k.fly && p.mode.id === 'flight' && !p.onGround) return this.loop(k.fly, p.vy < -20 ? 1.4 : 0.7);
+    if (!p.onGround) {
+      if (p.vy < -70) return this.frame(k.jump);
+      return this.frame(p.vy > 70 ? k.fall : k.apex);
+    }
+    if (this.landMs > 0) return this.frame(k.land);
     const speed = Math.abs(p.vx);
-    if (speed > 12) return this.loop(CICCIO_ANIMS.run, 0.55 + 0.45 * (speed / 150));
-    this.loop(CICCIO_ANIMS.idle);
+    if (speed > 12) return this.loop(k.run, 0.55 + 0.45 * (speed / k.runRef));
+    this.loop(k.idle);
   }
 
   private runDust(p: Player, dtMs: number): void {
@@ -117,7 +138,7 @@ export class PlayerView {
     const dt = dtMs / 1000;
     this.landMs = Math.max(0, this.landMs - dtMs);
     this.shootMs = Math.max(0, this.shootMs - dtMs);
-    this.clubMs = Math.max(0, this.clubMs - dtMs);
+    this.actionMs = Math.max(0, this.actionMs - dtMs);
     const target = p.hasBrie ? HERO.brieScale : 1;
     this.scale += (target - this.scale) * Math.min(1, dt * 10);
     const k = Math.min(1, dt * SPRING);

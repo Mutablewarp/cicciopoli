@@ -6,7 +6,7 @@ import { LEVEL_IDS, type LevelId, type PowerState } from '../contracts';
 import { HERO, SCORE } from '../config/tuning';
 
 export type PickupKind = 'nugget' | 'fries' | 'burger' | 'brie' | 'goat' | 'thai' | 'crunchy';
-export type KillMethod = 'stomp' | 'club' | 'cheese';
+export type KillMethod = 'stomp' | 'club' | 'cheese' | 'punch' | 'slam';
 
 export interface RunState {
   level: LevelId;
@@ -80,7 +80,7 @@ export function pitFall(run: RunState): 'respawn' | 'dead' {
   return run.hearts > 0 ? 'respawn' : 'dead';
 }
 
-/** Level chain L1 → L2 → L3 → L4 (the last one has no next). */
+/** Level chain L1 → L2 → … → L5 (the last one has no next). */
 export function nextLevel(level: LevelId): LevelId | null {
   const i = LEVEL_IDS.indexOf(level);
   return i >= 0 && i + 1 < LEVEL_IDS.length ? LEVEL_IDS[i + 1] : null;

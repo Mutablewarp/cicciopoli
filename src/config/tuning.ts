@@ -9,6 +9,8 @@ export const MOVE = {
   gravity: 1100,
   /** terminal fall speed, px/s */
   maxFall: 520,
+  /** gravity multiplier while falling (1 = symmetric arc; the heavy hero falls faster than he rises) */
+  fallMul: 1,
   /** top running speed, px/s */
   runMax: 150,
   /** acceleration while holding a direction on the ground */
@@ -80,7 +82,13 @@ export const SCORE = {
   club: 40,
   cheese: 45,
   crate: 20,
-  clear: { 1: 100, 2: 200, 3: 300, 4: 400 },
+  /** level 5: fist kill, ground-slam kill, one brick smashed to rubble */
+  punch: 40,
+  slam: 45,
+  brick: 5,
+  /** the mega burger */
+  boss: 200,
+  clear: { 1: 100, 2: 200, 3: 300, 4: 400, 5: 500 },
 } as const;
 
 /** Kill effects (BRIEF §6): world freeze + shake on a weapon kill, cheese / fire timings. */
@@ -155,8 +163,107 @@ export const ENEMY = {
   demon: { walk: 30, chase: 60, senseX: 96, senseY: 28, hopVy: -170, hopMs: 1700 },
   /** hovering bob (not stompable) */
   spirit: { bob: 5, wy: 2.4, driftX: 6, wx: 0.7, track: 4 },
+  /** level 5 brute: walks, telegraphs, charges in a straight line, crashes dazed into walls */
+  brute: { walk: 26, charge: 170, senseX: 150, senseY: 40, telegraphMs: 520, chargeMs: 1100, restMs: 700, dazedMs: 900 },
+  /**
+   * level 5 mini-boss: walks at the hero, telegraphs, jumps and smashes the ground; the impact
+   * sends two low shockwaves (px/s, travel px, height px) that must be jumped over;
+   * stunGraceMs: after a slam stagger ends it cannot be staggered again for this long
+   */
+  megaburger: { walk: 30, walkMs: 1800, telegraphMs: 800, jumpVy: -430, jumpVx: 100, smashMs: 520, restMs: 900, waveSpeed: 130, waveRange: 440, waveH: 16, stunGraceMs: 2000 },
   /** enemies wake up when this close to the camera edge */
   wakeMargin: 48,
+} as const;
+
+/** Hit points against the level 5 fists (level 1-2 enemies die from their single weapon hit). */
+export const ENEMY_HP: Readonly<Record<string, number>> = {
+  pickle: 1,
+  chili: 1,
+  armor: 2,
+  bat: 1,
+  demon: 1,
+  spirit: 1,
+  brute: 3,
+  megaburger: 8,
+};
+
+/** Level 5 hero: Ciccio in rage form (BRIEF §7). Slower, higher jump, heavier fall, two fist actions. */
+export const HULK = {
+  bodyW: 22,
+  bodyH: 50,
+  move: {
+    ...MOVE,
+    gravity: 1250,
+    fallMul: 1.4,
+    maxFall: 640,
+    runMax: 120,
+    groundAccel: 1100,
+    groundDecel: 2200,
+    turnAccel: 2600,
+    airAccel: 900,
+    airDrag: 380,
+    jumpV0: 520,
+    jumpCutVy: 190,
+    coyoteMs: 70,
+    stompBounce: 330,
+    stompBounceHeld: 440,
+  } satisfies MoveParams,
+  /** PUGNO: hitbox in front of the body; vUp / vDown measured from the body centre */
+  punch: { reach: 30, vUp: 30, vDown: 24, cooldownMs: 350, activeFromMs: 50, activeToMs: 150, swingMs: 230 },
+  /** SPACCA: hop (ground) or straight dive (air), then a shockwave of `radius` around the feet */
+  slam: {
+    hopVy: 360,
+    hangMs: 60,
+    diveVy: 780,
+    radius: 48,
+    reachUp: 64,
+    reachDown: 10,
+    enemyDamage: 2,
+    brickDamage: 2,
+    stunMs: 1500,
+    cooldownMs: 650,
+    recoverMs: 220,
+    shake: 5,
+    shakeMs: 200,
+    hitStopMs: 70,
+  },
+  /** a landing faster than minSpeed (a full jump) dazes the enemies close to the feet */
+  landing: { minSpeed: 480, radius: 36, stunMs: 800, shake: 2.5, shakeMs: 90 },
+  /** a punched enemy that survives is staggered; a killed one is launched away spinning */
+  hit: { stunMs: 420, knockVx: 90 },
+  launch: { dist: 190, rise: 54, ms: 620, spin: 900 },
+  /** a brick takes this many hits (or slam damage points) to break */
+  brickHits: 3,
+  /** nuggets that burst out of a loaded crate */
+  nuggets: 3,
+} as const;
+
+/** Level 5 goal cinematic (flag ripped off the pole and thrown away), ms unless noted. */
+export const FINALE = {
+  /** hero walks to the pole at this speed, px/s */
+  walkSpeed: 95,
+  reachMs: 170,
+  gripMs: 200,
+  ripMs: 260,
+  windMs: 170,
+  releaseMs: 140,
+  followMs: 220,
+  roarMs: 800,
+  poseMs: 600,
+  /** the thrown cloth tumbles off screen this long */
+  flightMs: 1100,
+  /** share of the way to the cloth the camera drifts while it flies */
+  cameraShare: 0.35,
+  /** the finale starts this far (px) in front of the pole */
+  mouth: 44,
+} as const;
+
+/** Mini-boss arena: the view is clamped to it once the hero steps in. */
+export const ARENA = {
+  /** world px the camera bounds ease toward their target, 1/s */
+  boundsRate: 4,
+  /** invisible side wall thickness */
+  wall: 16,
 } as const;
 
 /** Camera framing. */
@@ -175,6 +282,12 @@ export const CAMERA = {
   lookAheadRate: 3,
   /** vertical dead zone around the last grounded height (px above / below) */
   deadUp: 52,
+  /**
+   * the rage hero's dead zone: just above his 108 px jump, so a normal jump never drags the view
+   * up (the walking line would sink behind the landscape touch controls); only the head-under-HUD
+   * limit lifts it
+   */
+  deadUpRage: 116,
   deadDown: 10,
   /** where the feet sit in the view (0 top … 1 bottom) */
   feetAt: 0.72,

@@ -35,7 +35,7 @@ export class Ufo {
 
   rect(): Rect | null {
     const s = this.sprite;
-    return s ? { x: s.x - 13, y: s.y - 5, w: 26, h: 11 } : null;
+    return s ? { x: s.x - 16, y: s.y - 6, w: 32, h: 14 } : null;
   }
 
   remove(): void {

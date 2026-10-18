@@ -31,6 +31,8 @@ export interface AttachmentSpec {
   /** follow squash & stretch (worn items) or only the power scale (auras) */
   squash: boolean;
   alpha?: number;
+  /** additive light (rage aura) */
+  blend?: 'ADD';
   visible(powers: PowerState): boolean;
 }
 
@@ -106,6 +108,8 @@ export class Attachments {
     private readonly scene: Phaser.Scene,
     private readonly anchors: readonly CiccioFrameAnchors[],
     specs: readonly AttachmentSpec[] = DEFAULT_ATTACHMENTS,
+    /** frame size of the hero sheet the anchors belong to */
+    private readonly frame = FRAME,
   ) {
     specs.forEach((s) => this.add(s));
   }
@@ -113,6 +117,7 @@ export class Attachments {
   add(spec: AttachmentSpec): void {
     const sprite = this.scene.add.sprite(0, 0, spec.key, 0).setDepth(spec.depth).setVisible(false);
     if (spec.alpha !== undefined) sprite.setAlpha(spec.alpha);
+    if (spec.blend) sprite.setBlendMode(spec.blend);
     if (spec.anim && this.scene.anims.exists(spec.anim)) sprite.play(spec.anim);
     this.live.push({ spec, sprite });
   }
@@ -138,8 +143,8 @@ export class Attachments {
     const sx = pose.scale * pose.sqX;
     const sy = pose.scale * pose.sqY;
     return {
-      x: pose.sprite.x + pose.facing * (a.x + 0.5 - FRAME / 2) * sx,
-      y: pose.sprite.y + (a.y + 0.5 - FRAME) * sy,
+      x: pose.sprite.x + pose.facing * (a.x + 0.5 - this.frame / 2) * sx,
+      y: pose.sprite.y + (a.y + 0.5 - this.frame) * sy,
       angle: a.angle ?? 0,
     };
   }

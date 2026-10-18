@@ -1,0 +1,96 @@
+/**
+ * Theme of level 5 "SPACCA TUTTO": the smashed-up Palermo street at a comic-book dusk
+ * (art pack `rampage`), the rage hero (pack `hulk`) and the pickle / chili / armour burger
+ * borrowed from the cup world (pack `hills`, like the inferno theme borrows the ? blocks).
+ */
+import { HILLS, HILLS_ANIMS, HULK, HULK_ANIMS, HULK_FX, HULK_FX_ANIMS, RAMPAGE, RAMPAGE_ANIMS } from '../art/keys';
+import { PARALLAX } from '../config/tuning';
+import { loop, once, seq } from './placeholders';
+import type { ThemeConfig } from './themes';
+
+export const RAMPAGE_THEME: ThemeConfig = {
+  id: 'rampage',
+  art: [
+    { module: '../art/hills.ts', builder: 'buildHillsArt' },
+    { module: '../art/rampage.ts', builder: 'buildRampageArt' },
+    { module: '../art/hulk.ts', builder: 'buildHulkArt' },
+  ],
+  loadingText: 'Preparo la demolizione…',
+  music: 'rampage',
+  tileset: RAMPAGE.tiles,
+  sky: RAMPAGE.sky,
+  layers: [
+    // a second, higher and slower cloud row: only tall portrait views reach it, and fills their sky
+    { key: RAMPAGE.clouds, factor: PARALLAX.clouds * 0.6, vFactor: 0.15, sink: -190, drift: PARALLAX.cloudDrift * 0.6 },
+    { key: RAMPAGE.clouds, factor: PARALLAX.clouds, vFactor: 0.15, sink: -90, drift: PARALLAX.cloudDrift },
+    { key: RAMPAGE.far, factor: PARALLAX.far, vFactor: 0.3, sink: 6 },
+    { key: RAMPAGE.near, factor: PARALLAX.near, vFactor: 0.5, sink: 8 },
+  ],
+  qblock: { key: HILLS.qblock, anim: HILLS_ANIMS.qblock, usedFrame: 4 },
+  crate: RAMPAGE.crate,
+  flag: { key: RAMPAGE.flag, anim: RAMPAGE_ANIMS.flag, baseX: 8, baseY: 63 },
+  hole: RAMPAGE.hole,
+  checkpoint: { key: RAMPAGE.checkpoint, anim: RAMPAGE_ANIMS.checkpointOn },
+  decor: {
+    lamp: { key: RAMPAGE.lamp, sink: 1 },
+    cone: { key: RAMPAGE.cone, sink: 1 },
+    dumpster: { key: RAMPAGE.dumpster, sink: 2 },
+    sign: { key: RAMPAGE.sign, sink: 1 },
+  },
+  hazard: 'pit',
+  ripFinale: { pole: RAMPAGE.poleRipped, cloth: RAMPAGE.flagCloth, clothAnim: RAMPAGE_ANIMS.flagCloth },
+  required: [
+    { key: RAMPAGE.tiles, w: 16, h: 16, frames: 16, kind: 'tileset' },
+    { key: RAMPAGE.sky, w: 16, h: 512, color: '#6a2a8a' },
+    { key: RAMPAGE.clouds, w: 512, h: 128, color: 'transparent' },
+    { key: RAMPAGE.far, w: 512, h: 160, color: '#7a3a8a' },
+    { key: RAMPAGE.near, w: 512, h: 192, color: '#3a2048' },
+    { key: RAMPAGE.brick, w: 16, h: 16, frames: 4, color: '#b0502c' },
+    { key: RAMPAGE.crate, w: 16, h: 16, color: '#a86c30' },
+    { key: RAMPAGE.barrel, w: 16, h: 16, color: '#6a7a8c' },
+    { key: RAMPAGE.flag, w: 32, h: 64, frames: 4, color: '#fc000c' },
+    { key: RAMPAGE.poleRipped, w: 32, h: 64, color: '#9a9aa8' },
+    { key: RAMPAGE.flagCloth, w: 32, h: 24, frames: 4, color: '#fc000c' },
+    { key: RAMPAGE.hole, w: 32, h: 10, color: '#141414' },
+    { key: RAMPAGE.checkpoint, w: 16, h: 32, frames: 4, color: '#a6d62c' },
+    { key: RAMPAGE.lamp, w: 16, h: 48, color: '#3a3a48' },
+    { key: RAMPAGE.cone, w: 8, h: 12, color: '#fc7a10' },
+    { key: RAMPAGE.dumpster, w: 32, h: 20, color: '#2f7a24' },
+    { key: RAMPAGE.sign, w: 16, h: 16, color: '#fcc000' },
+    { key: RAMPAGE.brute, w: 40, h: 40, frames: 8, color: '#8a2a8a' },
+    { key: RAMPAGE.megaburger, w: 64, h: 64, frames: 10, color: '#e0902c' },
+    { key: HILLS.pickle, w: 24, h: 24, frames: 7, color: '#5cc020' },
+    { key: HILLS.chili, w: 24, h: 24, frames: 5, color: '#e83020' },
+    { key: HILLS.armor, w: 32, h: 32, frames: 6, color: '#9a9aa8' },
+    { key: HULK.sheet, w: 64, h: 64, frames: HULK.frameCount, color: '#a6d62c' },
+    { key: HULK_FX.shock, w: 96, h: 32, frames: 6, color: 'transparent' },
+    { key: HULK_FX.burst, w: 64, h: 48, frames: 5, color: 'transparent' },
+    { key: HULK_FX.text, w: 64, h: 24, color: '#e0309c' },
+    { key: HULK_FX.rubble, w: 8, h: 8, frames: 6, color: '#a86c60' },
+    { key: HULK_FX.dust, w: 32, h: 24, frames: 6, color: 'transparent' },
+    { key: HULK_FX.aura, w: 64, h: 64, frames: 4, color: 'transparent' },
+  ],
+  anims: [
+    loop(RAMPAGE_ANIMS.flag, RAMPAGE.flag, seq(4), 8),
+    loop(RAMPAGE_ANIMS.flagCloth, RAMPAGE.flagCloth, seq(4), 12),
+    loop(RAMPAGE_ANIMS.checkpointOn, RAMPAGE.checkpoint, [1, 2, 3], 8),
+    loop(RAMPAGE_ANIMS.bruteWalk, RAMPAGE.brute, seq(4), 6),
+    loop(RAMPAGE_ANIMS.megaburgerWalk, RAMPAGE.megaburger, seq(4), 5),
+    loop(HILLS_ANIMS.pickleWalk, HILLS.pickle, [0, 1, 2, 3], 8),
+    loop(HILLS_ANIMS.pickleCharge, HILLS.pickle, [4, 5], 14),
+    loop(HILLS_ANIMS.chiliIdle, HILLS.chili, [0, 1], 8),
+    loop(HILLS_ANIMS.armorWalk, HILLS.armor, [0, 1, 2, 3], 6),
+    loop(HULK_ANIMS.idle, HULK.sheet, [...HULK.idle], 6),
+    loop(HULK_ANIMS.run, HULK.sheet, [...HULK.run], 12),
+    once(HULK_ANIMS.punch, HULK.sheet, [...HULK.punch], 22),
+    once(HULK_ANIMS.slam, HULK.sheet, [...HULK.slam], 14),
+    loop(HULK_ANIMS.roar, HULK.sheet, [...HULK.roar], 6),
+    once(HULK_ANIMS.grab, HULK.sheet, [...HULK.grab], 8),
+    once(HULK_ANIMS.throw, HULK.sheet, [...HULK.throw], 12),
+    loop(HULK_ANIMS.victory, HULK.sheet, [...HULK.victory], 4),
+    once(HULK_FX_ANIMS.shock, HULK_FX.shock, seq(6), 18),
+    once(HULK_FX_ANIMS.burst, HULK_FX.burst, seq(5), 18),
+    once(HULK_FX_ANIMS.dust, HULK_FX.dust, seq(6), 12),
+    loop(HULK_FX_ANIMS.aura, HULK_FX.aura, seq(4), 8),
+  ],
+};

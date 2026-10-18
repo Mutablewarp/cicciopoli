@@ -131,6 +131,12 @@
   height: calc(var(--size) * 0.58);
   filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.45));
 }
+/* level 5: the fist and the burst fill the disc more than GOAT / THAI do */
+.cc-controls[data-level='5'] .cc-act--fire .cc-act__icon > svg,
+.cc-controls[data-level='5'] .cc-act--club .cc-act__icon > svg {
+  width: calc(var(--size) * 0.68);
+  height: calc(var(--size) * 0.68);
+}
 .cc-act--down .cc-act__icon > svg {
   width: calc(var(--size) * 0.45);
   height: calc(var(--size) * 0.42);
@@ -316,6 +322,11 @@
   }
   .cc-act__label {
     opacity: 0.8;
+  }
+  /* "SPACCA" would touch "PUGNO" under two 56px discs */
+  .cc-controls[data-level='5'] .cc-act__label {
+    font-size: 8px;
+    padding: 3px 3px 2px;
   }
   .cc-act.is-down .cc-act__face,
   .cc-pad-zone:active .cc-dpad,

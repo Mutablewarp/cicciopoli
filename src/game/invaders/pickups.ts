@@ -4,9 +4,10 @@
  */
 import Phaser from 'phaser';
 import { FOOD_COUNT, SPACE, SPACE_ANIMS } from '../../art/space/keys';
-import { DROP, FIELD, TRAY } from './config';
+import { DROP, FIELD } from './config';
 import { Z } from './fx';
 import type { Rect } from './shields';
+import { Tray } from './tray';
 
 interface Food {
   sprite: Phaser.GameObjects.Image;
@@ -18,9 +19,11 @@ export class Pickups {
   capsules: Phaser.GameObjects.Sprite[] = [];
   foods: Food[] = [];
   caught = 0;
-  private tray: Phaser.GameObjects.Image[] = [];
+  private readonly tray: Tray;
 
-  constructor(private readonly scene: Phaser.Scene) {}
+  constructor(private readonly scene: Phaser.Scene) {
+    this.tray = new Tray(scene);
+  }
 
   dropCapsule(x: number, y: number): void {
     const s = this.scene.add.sprite(Math.round(x), Math.round(y), SPACE.capsule, 0).setDepth(Z.pickups);
@@ -58,7 +61,8 @@ export class Pickups {
       const s = f.sprite;
       if (catcher && inside(s.x, s.y, catcher)) {
         onFood(s.x, s.y, Number(s.frame.name));
-        this.toTray(Number(s.frame.name), s.x, s.y);
+        this.caught++;
+        this.tray.add(Number(s.frame.name), s.x, s.y);
         s.destroy();
         return false;
       }
@@ -74,20 +78,6 @@ export class Pickups {
     }
     this.capsules = [];
     this.foods = [];
-  }
-
-  private toTray(frame: number, x: number, y: number): void {
-    this.caught++;
-    const i = this.tray.length;
-    if (i >= TRAY.max) {
-      // full tray: the oldest icon drops out and the row shifts left
-      this.tray.shift()?.destroy();
-      this.tray.forEach((t, k) => t.setX(TRAY.x0 + k * TRAY.step));
-    }
-    const slot = Math.min(i, TRAY.max - 1);
-    const icon = this.scene.add.image(x, y, SPACE.food, frame).setDepth(Z.tray);
-    this.scene.tweens.add({ targets: icon, x: TRAY.x0 + slot * TRAY.step, y: TRAY.y, duration: 380, ease: 'Quad.easeOut' });
-    this.tray.push(icon);
   }
 }
 

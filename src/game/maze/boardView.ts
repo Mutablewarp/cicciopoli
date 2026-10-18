@@ -3,9 +3,9 @@
  * maze, nugget dots, blinking provola sticks, the bonus roulette, the golf hole + flag,
  * the in-maze captions, and the side covers that hide actors inside the tunnel.
  */
-import type Phaser from 'phaser';
+import Phaser from 'phaser';
 import { ITEM_ANIMS, ITEMS } from '../../art/keys';
-import { BONUS_FRAME, MAZE_ANIMS, MAZE_ART } from '../../art/maze/keys';
+import { BONUS_FRAME, LOGO_LABEL, MAZE_ANIMS, MAZE_ART } from '../../art/maze/keys';
 import { DEPTH } from './actors';
 import { CENTRE_SPOT, COLS, HOLE_SPOT, MAZE, MAZE_H, MAZE_W, TILE, TUNNEL_ROWS, centerOf } from './layout';
 
@@ -45,6 +45,8 @@ export class BoardView {
     this.backdrop = add.tileSprite(0, 0, 64, 64, MAZE_ART.panel).setOrigin(0).setDepth(DEPTH.board - 1).setTint(PAPER_TINT);
     add.rectangle(2, 3, MAZE_W, MAZE_H, 0x000000, 0.4).setOrigin(0).setDepth(DEPTH.board - 0.5); // sheet shadow
     add.image(0, 0, MAZE_ART.board).setOrigin(0).setDepth(DEPTH.board);
+    scene.textures.get(MAZE_ART.logo).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    add.image(LOGO_LABEL.x, LOGO_LABEL.y, MAZE_ART.logo).setOrigin(0).setScale(LOGO_LABEL.scale).setDepth(DEPTH.board + 0.1);
     this.flashRect = add.rectangle(0, 0, MAZE_W, MAZE_H, 0xfff4e0, 0.3).setOrigin(0).setDepth(DEPTH.dots + 0.5).setVisible(false);
     this.covers = [0, 1].map(() => add.tileSprite(0, 0, 64, 64, MAZE_ART.panel).setOrigin(0).setDepth(DEPTH.covers).setTint(PAPER_TINT));
     // tunnel mouths: the corridors run on under the tray paper and fade to dark
@@ -60,7 +62,7 @@ export class BoardView {
     }
     this.bonus = add.sprite(CENTRE_SPOT.x, CENTRE_SPOT.y, MAZE_ART.bonus, 0).setDepth(DEPTH.items).setVisible(false);
     this.hole = add.image(HOLE_SPOT.x, HOLE_SPOT.y, MAZE_ART.hole).setDepth(DEPTH.hole).setVisible(false);
-    this.flag = add.sprite(HOLE_SPOT.x, HOLE_SPOT.y + 1, MAZE_ART.flag, 0).setOrigin(3 / 16, 23 / 24).setDepth(DEPTH.hole + 0.5).setVisible(false);
+    this.flag = add.sprite(HOLE_SPOT.x, HOLE_SPOT.y + 1, MAZE_ART.flag, 0).setOrigin(3 / 16, 17 / 18).setDepth(DEPTH.hole + 0.5).setVisible(false);
     this.ready = add.image(CENTRE_SPOT.x, CENTRE_SPOT.y, MAZE_ART.ready).setDepth(DEPTH.text).setVisible(false);
     this.goText = add.image(CENTRE_SPOT.x, CENTRE_SPOT.y, MAZE_ART.goText).setDepth(DEPTH.text).setVisible(false);
   }

@@ -14,7 +14,7 @@ import { Interactions } from './interactions';
 import { getLevel } from './levels';
 import { nextLevel } from './rules';
 import { LevelRun } from './run';
-import { loadThemeArt } from './themeLoader';
+import { heroPackKey, loadThemeArt, needsArt } from './themeLoader';
 import { getTheme } from './themes';
 
 export interface GameSceneData {
@@ -32,13 +32,19 @@ export class GameScene extends Phaser.Scene {
   private pendingPause = false;
   private meter = new RefreshMeter(60);
   private cleanups: Array<() => void> = [];
+  /**
+   * Counts boots (and shutdowns): a boot that finds the number changed was cancelled while its
+   * art loaded (menu, restart, another level) and must not build or touch the loading screen.
+   * Never reset by init(), which runs again on every restart.
+   */
+  private bootGen = 0;
 
   constructor() {
     super({ key: 'game' });
   }
 
   init(data: GameSceneData): void {
-    this.levelId = data?.level === 2 ? 2 : 1;
+    this.levelId = data?.level === 2 || data?.level === 5 ? data.level : 1;
     this.run = null;
     this.ix = null;
     this.flow = null;
@@ -78,15 +84,22 @@ export class GameScene extends Phaser.Scene {
   private async boot(): Promise<void> {
     const def = getLevel(this.levelId);
     const theme = getTheme(def.theme);
+    const gen = ++this.bootGen;
+    const alive = (): boolean => gen === this.bootGen;
     // a restart reuses the registered art: no loading screen flash
-    if (!this.textures.exists(theme.tileset)) this.svc.ui.setLoading(0.2, theme.loadingText);
-    const missing = await loadThemeArt(this, theme, this.svc.ui);
-    // the scene may have been stopped (menu / restart) while the art was loading
-    if (!this.sys.isActive() || this.run) return;
-    if (missing.length > 0 && debugEnabled()) console.warn('[cicciopoli] placeholders for', missing.join(', '));
-    const ciccio = ((this.registry.get(BASE_PACKS_KEY) as CiccioArtPack[] | undefined) ?? []).find((p) => p.name === 'ciccio');
+    if (needsArt(this, theme)) this.svc.ui.setLoading(0.2, theme.loadingText);
+    const load = await loadThemeArt(this, theme, this.svc.ui, { alive });
+    // the scene may have been stopped (menu / restart / another level) while the art was loading
+    if (!alive()) return;
+    if (load.failed.length > 0) return this.artFailed();
+    if (load.missing.length > 0 && debugEnabled()) console.warn('[cicciopoli] placeholders for', load.missing.join(', '));
+    // the hero's per-frame anchors: Ciccio's from the base packs, the rage form's from its lazy pack
+    const heroPack =
+      def.hero === 'hulk'
+        ? (this.registry.get(heroPackKey('hulk')) as CiccioArtPack | undefined)
+        : ((this.registry.get(BASE_PACKS_KEY) as CiccioArtPack[] | undefined) ?? []).find((p) => p.name === 'ciccio');
     // def.id, not the requested id: a level without a map falls back to level 1 consistently
-    const run = new LevelRun(this, this.svc, def.id, def, theme, ciccio?.anchors ?? []);
+    const run = new LevelRun(this, this.svc, def.id, def, theme, heroPack?.anchors ?? []);
     const ix = new Interactions(run, () => flow.gameOver());
     const flow = new Flow(run, ix, {
       restart: () => this.restartLevel(),
@@ -108,7 +121,14 @@ export class GameScene extends Phaser.Scene {
     this.svc.audio.music(theme.music);
     if (this.svc.input.consume('pause')) this.pendingPause = true; // Esc / P while loading
     this.svc.input.reset();
-    run.banner(def.name, { tone: 'info', sub: `LIVELLO ${def.id}`, ms: 1800 });
+    run.banner(def.name, { tone: 'info', sub: def.subtitle ?? `LIVELLO ${def.id}`, ms: 1800 });
+  }
+
+  /** A level pack could not be built: say so and go back to the menu (a retry builds it again). */
+  private artFailed(): void {
+    this.svc.ui.setLoading(null);
+    this.svc.ui.banner('ERRORE GRAFICA', { tone: 'danger', ms: 2000 });
+    this.toMenu();
   }
 
   override update(time: number, delta: number): void {
@@ -181,6 +201,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private teardown(): void {
+    this.bootGen++;
+    this.svc.ui.setLoading(null); // a cancelled boot must not leave the loading screen up
     this.cleanups.forEach((fn) => fn());
     this.cleanups = [];
     this.run = null;

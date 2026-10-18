@@ -2,19 +2,17 @@
  * Pre-renders the CICCIO-MAN board (224x248): charcoal floor with soft wall shadows and
  * Ciccio's maroon paper trays as walls — dark edge, lit rim (light from the top-left),
  * black/white checkered liner, paper floor. The ghost house is a deeper tray with a
- * paper-ticket door; the big top block carries the printed logo.
+ * paper-ticket door. The official logo label (logo.ts) is laid over the big top block.
  */
 import { ctxOf, hexToRgb, makeCanvas, rng } from '../pixel';
 import { COLS, MAZE, MAZE_H, MAZE_W, ROWS, TILE, TUNNEL_ROWS } from '../../game/maze/layout';
 import { MZ } from './palette';
-import { PRINT, drawText, textWidth } from './font';
+import { PRINT, drawText } from './font';
 
 /** Floor visible inside a wall cell next to a corridor (px). */
 const INSET = 3;
 /** Ghost house cells (cols 10-17, rows 12-16): drawn by hand, excluded from the generic trays. */
 const HOUSE_RECT = { c0: 10, r0: 12, c1: 17, r1: 16 };
-/** Top-centre block that carries the printed logo (cols 10-17, rows 6-10). */
-const LOGO_RECT = { x0: 80, y0: 48, x1: 144, y1: 88 };
 
 type Rgb = [number, number, number];
 
@@ -190,18 +188,7 @@ function paintHouse(b: Buf): void {
   }
 }
 
-/** Printed logo on the big top-centre tray: the head (as on the paper) and the wordmark. */
-function paintLogo(canvas: HTMLCanvasElement, head: HTMLCanvasElement): void {
-  const ctx = ctxOf(canvas);
-  const word = "CICCIO'S";
-  const ww = textWidth(PRINT, word);
-  const cx = (LOGO_RECT.x0 + LOGO_RECT.x1) / 2;
-  const top = LOGO_RECT.y0 + 9;
-  ctx.drawImage(head, Math.round(cx - head.width / 2), top);
-  drawText(ctx, PRINT, word, Math.round(cx - ww / 2), top + head.height + 2, MZ.printCream);
-}
-
-export function buildBoard(logoHead: HTMLCanvasElement): HTMLCanvasElement {
+export function buildBoard(): HTMLCanvasElement {
   const mask = trayMask();
   const depth = depthMap(mask);
   const b = new Buf();
@@ -210,7 +197,6 @@ export function buildBoard(logoHead: HTMLCanvasElement): HTMLCanvasElement {
   paintHouse(b);
   const canvas = makeCanvas(MAZE_W, MAZE_H);
   ctxOf(canvas).putImageData(new ImageData(b.data, MAZE_W, MAZE_H), 0, 0);
-  paintLogo(canvas, logoHead);
   return canvas;
 }
 

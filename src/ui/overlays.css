@@ -192,8 +192,9 @@
   .cc-banner__text {
     font-size: clamp(12px, 2.2vw, 22px);
   }
+  /* Pixelify Sans reads C and O alike below 14px at 1x DPR; 16px keeps the hero name legible on desktop */
   .cc-banner__sub {
-    font-size: 13px;
+    font-size: 16px;
   }
 }
 @media (min-width: 1600px) and (min-height: 900px) {

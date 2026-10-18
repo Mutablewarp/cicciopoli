@@ -3,8 +3,8 @@
  * end-of-life flows: pit respawn, game over, the drop into the hole + victory.
  */
 import Phaser from 'phaser';
-import { CICCIO } from '../art/keys';
 import { CAMERA, FLOW, HERO } from '../config/tuning';
+import { RipFinale } from './brawl/finale';
 import { shakeWorld } from './camera';
 import { Enemy } from './enemies/Enemy';
 import type { Rect } from './combat/club';
@@ -42,6 +42,7 @@ export class Flow {
     const free = !player.hurtLock.active;
     if (fire && run.powers.goat && free) this.shoot();
     if (swing && run.powers.thai && free) this.swing();
+    this.r.rampage?.brawl.act(swing, fire); // level 5: PUGNO = club button, SPACCA = fire button
     const cp = this.r.checkpoints.update(player.x);
     if (cp) {
       svc.audio.sfx('checkpoint');
@@ -150,7 +151,7 @@ export class Flow {
     } else {
       const s = view.sprite;
       s.anims.stop();
-      s.setFrame(CICCIO.hurt).setVisible(true).setDepth(s.depth + 20);
+      s.setFrame(view.skin.hurt).setVisible(true).setDepth(s.depth + 20);
       scene.tweens.add({ targets: s, y: s.y - 30, duration: 260, ease: 'Quad.easeOut' });
       scene.tweens.add({ targets: s, y: s.y + 260, delay: 260, duration: 760, ease: 'Quad.easeIn' });
     }
@@ -161,9 +162,12 @@ export class Flow {
 
   /* -------------------------------------------------------------- victory */
 
-  /** Ciccio drops into the hole: bonus, best score, jingle, victory overlay. */
+  /**
+   * The goal is reached. Ciccio drops into the hole; the level 5 hero rips the flag off and
+   * throws it away (brawl/finale.ts). Then bonus, best score, jingle, victory overlay.
+   */
   win(): void {
-    const { player, view, goal, svc, run, levelId, scene, fx } = this.r;
+    const { player, view, goal, svc, theme } = this.r;
     if (this.r.phase !== 'play') return;
     this.r.phase = 'won';
     player.frozen = true;
@@ -171,24 +175,33 @@ export class Flow {
     player.body.enable = false;
     view.auto = false;
     view.sprite.anims.stop();
-    view.sprite.setFrame(CICCIO.fall).setVisible(true);
+    view.sprite.setVisible(true);
     svc.audio.sfx('goal');
-    goal.playDrop(view.sprite, () => {
-      const bonus = clearBonus(run);
-      fx.popup(goal.x, goal.surfaceY - 24, bonus);
-      const newBest = svc.save.recordWin(levelId, run.score);
-      svc.audio.jingle('win');
-      scene.time.delayedCall(FLOW.victoryDelayMs, () => {
-        const hasNext = nextLevel(levelId) !== null;
-        svc.ui.showVictory(
-          { level: levelId, score: run.score, timeMs: this.r.timeMs, best: svc.save.data.best[levelId] ?? run.score, newBest, hasNext },
-          {
-            onNext: hasNext ? () => this.hooks.next() : undefined,
-            onReplay: () => this.hooks.restart(),
-            onMenu: () => this.hooks.toMenu(),
-          },
-        );
-      });
+    if (theme.ripFinale) {
+      player.invuln.stop(); // no blinking aura during the cinematic
+      new RipFinale(this.r).play(() => this.finish());
+      return;
+    }
+    view.sprite.setFrame(view.skin.fall);
+    goal.playDrop(view.sprite, () => this.finish());
+  }
+
+  private finish(): void {
+    const { goal, svc, run, levelId, scene, fx } = this.r;
+    const bonus = clearBonus(run);
+    fx.popup(goal.x, goal.surfaceY - 24, bonus);
+    const newBest = svc.save.recordWin(levelId, run.score);
+    svc.audio.jingle('win');
+    scene.time.delayedCall(FLOW.victoryDelayMs, () => {
+      const hasNext = nextLevel(levelId) !== null;
+      svc.ui.showVictory(
+        { level: levelId, score: run.score, timeMs: this.r.timeMs, best: svc.save.data.best[levelId] ?? run.score, newBest, hasNext },
+        {
+          onNext: hasNext ? () => this.hooks.next() : undefined,
+          onReplay: () => this.hooks.restart(),
+          onMenu: () => this.hooks.toMenu(),
+        },
+      );
     });
   }
 }

@@ -1,6 +1,6 @@
 /**
- * Ciccio's physics side: an invisible Arcade body (16x34, Brie 18x38) driven by the
- * pure motor once per fixed physics step. Visuals live in PlayerView.
+ * The hero's physics side: an invisible Arcade body (Ciccio 16x34, Brie 18x38, rage form
+ * 22x50) driven by the pure motor once per fixed physics step. Visuals live in PlayerView.
  */
 import type Phaser from 'phaser';
 import { HERO, MOVE, type MoveParams } from '../../config/tuning';
@@ -21,7 +21,11 @@ export class Player {
   readonly motor: MotorState = createMotor();
   readonly invuln = new Timer();
   readonly hurtLock = new Timer();
+  /** input ignored while a heavy action (ground slam recovery) plays out */
+  readonly actionLock = new Timer();
   mode: MovementMode;
+  /** the regular way of moving, which `mode` returns to after a scripted move (slam) */
+  readonly walking: MovementMode;
   facing: 1 | -1 = 1;
   /** cutscene / death: ignore input */
   frozen = false;
@@ -29,13 +33,20 @@ export class Player {
   private airVy = 0;
   private brie = false;
 
-  constructor(scene: Phaser.Scene, x: number, bottom: number, params: MoveParams = MOVE) {
-    this.zone = scene.add.zone(x, bottom - HERO.bodyH / 2, HERO.bodyW, HERO.bodyH);
+  constructor(
+    scene: Phaser.Scene,
+    x: number,
+    bottom: number,
+    private readonly params: MoveParams = MOVE,
+    private readonly size: { w: number; h: number } = { w: HERO.bodyW, h: HERO.bodyH },
+  ) {
+    this.zone = scene.add.zone(x, bottom - size.h / 2, size.w, size.h);
     scene.physics.add.existing(this.zone);
     this.body = this.zone.body as Phaser.Physics.Arcade.Body;
     this.body.setAllowGravity(false);
     this.body.setCollideWorldBounds(true);
-    this.mode = new PlatformerMode(params);
+    this.walking = new PlatformerMode(params);
+    this.mode = this.walking;
   }
 
   get x(): number {
@@ -72,7 +83,7 @@ export class Player {
     const onGround = b.blocked.down;
     this.motor.vx = b.velocity.x;
     this.motor.vy = b.velocity.y;
-    const use = this.frozen || this.hurtLock.active ? NO_INPUT : inp;
+    const use = this.frozen || this.hurtLock.active || this.actionLock.active ? NO_INPUT : inp;
     const ev = this.mode.step(this.motor, use, onGround, dt);
     const ceil = this.mode.ceilingY;
     // the step that would cross the flight ceiling stops exactly on it
@@ -88,7 +99,7 @@ export class Player {
 
   /** Stomp bounce (higher while jump is held). */
   bounce(held: boolean): void {
-    bounce(this.motor, held, MOVE);
+    bounce(this.motor, held, this.params);
     this.body.setVelocityY(this.motor.vy);
     this.grounded = false;
   }
@@ -116,7 +127,7 @@ export class Player {
     this.brie = on;
     this.motor.jumpMul = on ? HERO.brieJumpMul : 1;
     const s = on ? HERO.brieScale : 1;
-    this.resize(Math.round(HERO.bodyW * s), Math.round(HERO.bodyH * s));
+    this.resize(Math.round(this.size.w * s), Math.round(this.size.h * s));
   }
 
   private resize(w: number, h: number): void {
@@ -143,5 +154,6 @@ export class Player {
   tick(dtMs: number): void {
     this.invuln.tick(dtMs);
     this.hurtLock.tick(dtMs);
+    this.actionLock.tick(dtMs);
   }
 }

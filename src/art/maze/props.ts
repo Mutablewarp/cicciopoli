@@ -110,12 +110,12 @@ export function holeImage(): HTMLCanvasElement {
   return c;
 }
 
-/** 16x24 frames: red golf flag waving on an orange pole (base at 3,23). */
+/** 16x18 frames: red golf flag waving on an orange pole (base at 3,17), short enough to clear the caption above the hole. */
 export function flagFrames(): HTMLCanvasElement[] {
   return [0, 1, 2, 3].map((i) => {
-    const c = makeCanvas(16, 24);
+    const c = makeCanvas(16, 18);
     const ctx = ctxOf(c);
-    for (let y = 2; y < 23; y++) {
+    for (let y = 2; y < 17; y++) {
       ctx.fillStyle = y % 5 === 0 ? PAL.poleLight : PAL.pole;
       ctx.fillRect(3, y, 1, 1);
     }

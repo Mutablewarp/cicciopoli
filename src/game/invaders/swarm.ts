@@ -4,7 +4,7 @@
  */
 import Phaser from 'phaser';
 import { SPACE } from '../../art/space/keys';
-import { FORM, HITBOX, WAVES, type InvaderKind, type WaveDef } from './config';
+import { FIELD, FORM, HITBOX, WAVES, type InvaderKind, type WaveDef } from './config';
 import { extentOf, nextMarch, stepInterval, type March } from './formation';
 import { Z } from './fx';
 import type { Rect } from './shields';
@@ -46,7 +46,7 @@ export class Swarm {
     this.clear();
     this.wave = WAVES[waveIndex];
     const width = (FORM.cols - 1) * FORM.dx;
-    this.march = { ox: Math.round(112 - width / 2), oy: this.wave.top, dir: 1, frame: 0 };
+    this.march = { ox: Math.round(FIELD.w / 2 - width / 2), oy: this.wave.top, dir: 1, frame: 0 };
     const carriers = new Set<number>();
     while (carriers.size < this.wave.carriers) carriers.add(Phaser.Math.Between(0, FORM.cols * 2 - 1));
     this.wave.rows.forEach((kind, row) => {

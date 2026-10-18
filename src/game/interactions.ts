@@ -5,8 +5,10 @@
 import Phaser from 'phaser';
 import type { PowerState } from '../contracts';
 import { CAMERA, ENEMY, HERO, KILL_FX, SCORE } from '../config/tuning';
+import { hitStop } from './brawl/juice';
 import { shakeWorld } from './camera';
 import type { Enemy } from './enemies/Enemy';
+import { touchLayout } from './hud';
 import { FlightMode } from './player/flight';
 import type { Pickup } from './items';
 import type { LevelRun } from './run';
@@ -29,10 +31,8 @@ const POWER_BANNERS: Partial<Record<keyof PowerState, { text: string; touch: str
   wings: { text: 'ALETTE CRUNCHY!', touch: 'Tieni premuto VOLA · SCENDI per picchiare', keys: 'Tieni premuto Spazio/↑ · ↓ per scendere' },
 };
 
-/** The touch layout is on (ui/layout.ts sets .is-touch on the shell). */
-function touchLayout(): boolean {
-  return document.querySelector('.is-touch') !== null;
-}
+/** A diving hero whose feet are within this many px of an enemy's top has landed on its head. */
+const DIVE_HEAD_PX = 20;
 
 export class Interactions {
   /** brief grace after a stomp / clang so a bounce never turns into a side hit */
@@ -58,6 +58,12 @@ export class Interactions {
     add.collider(cheese.group, blocks.qblocks, (a) => this.splat(a));
     add.overlap(cheese.group, blocks.crates, (a, b) => this.shotCrate(a, b));
     add.overlap(cheese.group, enemies.group, (a, b) => this.shotEnemy(a, b));
+    if (r.rampage) {
+      // level 5 props are solid until smashed, for the hero and for walkers alike
+      add.collider(player.zone, r.rampage.smash.group);
+      add.collider(enemies.group, r.rampage.smash.group, undefined, walker);
+    }
+    r.hurtHero = (fromX) => this.damage(fromX);
   }
 
   tick(dtMs: number): void {
@@ -123,10 +129,16 @@ export class Interactions {
     if (!e || !this.playing || this.grace.active) return;
     const hero = this.r.player.body;
     const eb = e.body;
+    const brawl = this.r.rampage?.brawl;
+    if (brawl?.diving) {
+      // a slam dive is not hurt by what it meets; landing on an enemy's head ends it right there
+      if (hero.bottom <= eb.top + DIVE_HEAD_PX) brawl.diveHit(eb.top);
+      return;
+    }
     const prevBottom = hero.prev.y + hero.height;
     const falling = hero.velocity.y > 0 || this.r.player.motor.vy > 0;
     const fromAbove = falling && (prevBottom <= eb.top + 3 || hero.bottom <= eb.top + eb.height * 0.5);
-    if (!fromAbove) return this.damage(eb.center.x);
+    if (!fromAbove) return e.stunned ? undefined : this.damage(eb.center.x); // a staggered enemy is harmless
     const res = e.onStomp(this.r.host);
     if (res === 'hurt') return this.damage(eb.center.x);
     const held = this.r.svc.input.jumpHeld;
@@ -145,7 +157,7 @@ export class Interactions {
   }
 
   /** Removes an enemy with score + sfx for the given method; weapon kills get a hit-stop. */
-  kill(e: Enemy, method: KillMethod): void {
+  kill(e: Enemy, method: Exclude<KillMethod, 'punch' | 'slam'>): void {
     if (!e.alive) return;
     const top = e.body.top;
     e.kill(method, this.r.host);
@@ -158,19 +170,8 @@ export class Interactions {
       return;
     }
     audio.sfx(method === 'cheese' ? 'melt' : 'ignite');
-    this.hitStop(KILL_FX.hitStopMs);
+    hitStop(this.r.scene, KILL_FX.hitStopMs);
     shakeWorld(this.r.scene.cameras.main, KILL_FX.shakeMs, KILL_FX.shake);
-  }
-
-  /** Freezes the physics for a few ms (the scene clock keeps running, so it always resumes). */
-  private hitStop(ms: number): void {
-    const { scene } = this.r;
-    const world = scene.physics.world;
-    if (world.isPaused) return;
-    world.pause();
-    scene.time.delayedCall(ms, () => {
-      if (scene.sys.isActive()) world.resume();
-    });
   }
 
   /** Enemy contact: Brie absorbs it, otherwise a heart (or game over). */

@@ -198,3 +198,108 @@ export const INFERNO_ANIMS = {
   demonWalk: 'demon-walk',
   spirit: 'spirit-flicker',
 } as const;
+
+/* ============================================== [hulk] src/art/hulk.ts (level 5 hero + FX) */
+/**
+ * `hulk` sheet, 64x64 frames, character faces RIGHT, feet touch the bottom pixel row (y = 63),
+ * body centred on x = 32. Ciccio in HULK form: green skin, huge arms and chest, the black
+ * hair and round black sunglasses of the logo on the green face, torn purple shorts (see
+ * ref/hulk_screenshot.png, ref/hulk_photo.png) but standing UPRIGHT and heroic: V-taper torso, thick neck,
+ * long legs. Character ~46 px wide, ~60 px tall.
+ * Pack type is CiccioArtPack: anchors[i] belongs to frame i (hand = fist impact point,
+ * chest, back, head = centre of the sunglasses).
+ */
+export const HULK = {
+  sheet: 'hulk',
+  frame: 64,
+  idle: [0, 1, 2, 3],
+  run: [4, 5, 6, 7, 8, 9, 10, 11],
+  jump: 12,
+  apex: 13,
+  fall: 14,
+  land: 15,
+  hurt: 16,
+  /** windup, strike, strike hold, recover */
+  punch: [17, 18, 19, 20],
+  /** crouch + leap, fists overhead at the apex, smash down, impact crouch */
+  slam: [21, 22, 23, 24],
+  /** chest-pounding roar, loops */
+  roar: [25, 26],
+  /** reach for the flag, grip it, rip it off the pole */
+  grab: [27, 28, 29],
+  /** windup, release (arm fully extended), follow-through */
+  throw: [30, 31, 32],
+  victory: [33, 34],
+  frameCount: 35,
+  /** 16x16 head icon (HUD, progress marker) */
+  headIcon: 'hulk-head',
+  /** 64x64 head portrait (victory / game over screens) */
+  portrait: 'hulk-portrait',
+} as const;
+
+export const HULK_ANIMS = {
+  idle: 'hulk-idle', //       6 fps loop
+  run: 'hulk-run', //        fps chosen by the pack so the feet do not slide at the game's run speed (~120 px/s)
+  punch: 'hulk-punch', //    22 fps once
+  slam: 'hulk-slam', //      14 fps once
+  roar: 'hulk-roar', //       6 fps loop
+  grab: 'hulk-grab', //       8 fps once
+  throw: 'hulk-throw', //    12 fps once
+  victory: 'hulk-victory', // 4 fps loop
+} as const;
+
+/** FX that belong to the Hulk pack (all comic-book style: thick outlines, lime / magenta / white). */
+export const HULK_FX = {
+  shock: 'hulk-shock', //    sheet 96x32, frames 0-5 once — ground shockwave ring, centre bottom (48,31)
+  burst: 'spacca-burst', //  sheet 64x48, frames 0-4 once — magenta comic starburst impact pop (no text)
+  text: 'spacca-text', //    image 64x24 — the word "SPACCA!" in white comic lettering, lime outline
+  rubble: 'rubble', //       sheet 8x8, frames 0-5 static — brick / stone chips (6 variations)
+  dust: 'rubble-dust', //    sheet 32x24, frames 0-5 once — big grey-brown dust cloud, bottom-centred
+  aura: 'hulk-aura', //      sheet 64x64, frames 0-3 loop — green rage glow behind the hero (ADD blend)
+} as const;
+
+export const HULK_FX_ANIMS = {
+  shock: 'hulk-shock-once',
+  burst: 'spacca-burst-once',
+  dust: 'rubble-dust-once',
+  aura: 'hulk-aura-loop',
+} as const;
+
+/* ======================================== [rampage] src/art/rampage.ts (level 5 world) */
+/**
+ * Theme 'rampage' — "SPACCA!" world: a smashed-up Palermo street / building site at a comic-book
+ * dusk (black, lime green, magenta, purple, white — the T-shirt palette). Tileset layout = T.
+ * Everything destructible is an entity drawn on top of the terrain (like crates).
+ */
+export const RAMPAGE = {
+  tiles: 'rampage-tiles', //   tileset (see T): cracked asphalt / concrete, steel girders as PLAT
+  sky: 'rampage-sky', //       image 16x512 gradient: deep purple (top) -> magenta -> orange (horizon)
+  clouds: 'rampage-clouds', // image 512x128 comic-book clouds / smoke puffs, transparent elsewhere
+  far: 'rampage-far', //       image 512x160 far skyline silhouettes (flat-roofed Palermo blocks, cranes)
+  near: 'rampage-near', //     image 512x192 nearer buildings, lit windows, half demolished
+  brick: 'rampage-brick', //   sheet 16x16 frames 0-3: 0 intact wall brick, 1-3 progressively cracked
+  crate: 'rampage-crate', //   image 16x16 wooden crate (breaks in one punch)
+  barrel: 'rampage-barrel', // image 16x16 steel drum (breaks in one punch, bigger debris)
+  flag: 'rampage-flag', //     sheet 32x64 frames 0-3 waving red flag on a steel pole, pole base at (8,63)
+  poleRipped: 'rampage-pole-ripped', // image 32x64 same pole after the flag was torn off: torn fabric
+  //                           scrap at the top, pole slightly bent, same base (8,63)
+  flagCloth: 'rampage-flag-cloth', //  sheet 32x24 frames 0-3 the red flag alone, torn edge, tumbling (loop)
+  hole: 'rampage-hole', //     image 32x10 dark hole in the asphalt with a broken-concrete lip, sits ON the ground
+  checkpoint: 'rampage-checkpoint', // sheet 16x32: 0 inactive, 1-3 active waving
+  lamp: 'deco-lamp', //        image 16x48 bent street lamp
+  cone: 'deco-cone', //        image 8x12 traffic cone
+  dumpster: 'deco-dumpster', // image 32x20 battered green dumpster
+  sign: 'deco-sign-r', //      image 16x16 road sign bent over
+  // Enemies (face LEFT by default; gameplay flips). The pickle / chili / armour burger of the hills pack
+  // are re-used on this level too.
+  brute: 'brute', //           sheet 40x40: 0-3 walk, 4 windup, 5 strike, 6 hit flash, 7 dazed
+  megaburger: 'megaburger', // sheet 64x64: 0-3 walk, 4 windup, 5 jump up, 6 smash, 7 hit flash, 8 dazed, 9 defeated
+} as const;
+
+export const RAMPAGE_ANIMS = {
+  flag: 'rampage-flag-wave',
+  flagCloth: 'rampage-flag-cloth-tumble',
+  checkpointOn: 'rampage-checkpoint-wave',
+  bruteWalk: 'brute-walk',
+  megaburgerWalk: 'megaburger-walk',
+} as const;

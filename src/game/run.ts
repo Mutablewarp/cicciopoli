@@ -6,8 +6,10 @@
 import type Phaser from 'phaser';
 import type { BannerTone, CiccioFrameAnchors, LevelId, PowerState, Services } from '../contracts';
 import { TILE } from '../art/keys';
-import { HERO } from '../config/tuning';
+import { CAMERA, FINALE, HERO } from '../config/tuning';
 import { Blocks } from './blocks';
+import { Juice } from './brawl/juice';
+import { Rampage } from './brawl/rampage';
 import { CameraRig, type FollowTarget } from './camera';
 import { Checkpoints } from './checkpoints';
 import { CheeseGun } from './combat/cheese';
@@ -27,6 +29,7 @@ import { FlightFx } from './player/flightFx';
 import { NO_INPUT } from './player/motor';
 import { Player } from './player/Player';
 import { PlayerView } from './player/PlayerView';
+import { heroProfile } from './player/profile';
 import { createRun, type RunState } from './rules';
 import type { ThemeConfig } from './themes';
 import { World } from './world';
@@ -56,9 +59,16 @@ export class LevelRun {
   readonly hud: HudSync;
   readonly run: RunState;
   readonly host: EnemyHost;
+  readonly juice: Juice;
+  /** level 5 brawler systems (props, fists, boss arena); null on the other levels */
+  readonly rampage: Rampage | null;
   readonly spawnX: number;
   phase: Phase = 'play';
   timeMs = 0;
+  /** a cinematic can point the camera somewhere else than the hero */
+  focus: (() => FollowTarget) | null = null;
+  /** the hero takes a hit from `fromX` (set by Interactions; waves and bosses call it) */
+  hurtHero: (fromX: number) => void = () => undefined;
 
   constructor(
     readonly scene: Phaser.Scene,
@@ -89,21 +99,26 @@ export class LevelRun {
     }
     this.enemies = new Enemies(scene, this.level.entities);
     this.checkpoints = new Checkpoints(scene, theme, this.level.entities, { x: this.spawnX, feetY: groundY });
-    this.goal = new Goal(scene, theme, this.level.goal, this.fx);
-    this.player = new Player(scene, this.spawnX, groundY);
-    this.view = new PlayerView(scene, this.fx, anchors);
+    this.goal = new Goal(scene, theme, this.level.goal, this.fx, theme.ripFinale ? FINALE.mouth : undefined);
+    const hero = heroProfile(def.hero);
+    if (hero.kind === 'hulk') this.rig.deadUp = CAMERA.deadUpRage;
+    this.player = new Player(scene, this.spawnX, groundY, hero.move, hero.body);
+    this.view = new PlayerView(scene, this.fx, anchors, hero.skin);
     this.cheese = new CheeseGun(scene, this.fx);
     this.club = new Club(scene, this.fx);
     this.flightFx = new FlightFx(scene, svc.audio);
     this.hud = new HudSync(svc.ui, (p) => defaultControls(levelId, p));
+    this.juice = new Juice(scene, this.fx);
     this.host = {
       world: this.world,
       fx: this.fx,
+      juice: this.juice,
       audio: svc.audio,
       heroX: () => this.player.x,
       heroY: () => this.player.centerY,
       view: () => this.rig.view(),
     };
+    this.rampage = hero.kind === 'hulk' ? new Rampage(this, def.hints ?? []) : null;
     this.applyViewport();
     this.view.update(this.player, this.run.powers, 0);
     this.parallax.update(this.rig.view(), 0);
@@ -115,6 +130,11 @@ export class LevelRun {
   }
 
   followTarget(): FollowTarget {
+    return this.focus ? this.focus() : this.heroTarget();
+  }
+
+  /** The camera target that is simply the hero. */
+  heroTarget(): FollowTarget {
     const p = this.player;
     return { x: p.x, bottom: p.bottom, top: p.top, facing: p.facing, onGround: p.onGround, flying: p.mode.id === 'flight' && !p.onGround };
   }
@@ -129,7 +149,7 @@ export class LevelRun {
   applyViewport(): void {
     const scale = this.scene.scale;
     this.rig.applyViewport(this.svc.viewport, scale.width, scale.height);
-    this.parallax.setReferenceTop(this.rig.restTop);
+    this.parallax.setReferenceTop(this.rig.backdropTop);
     this.rig.snapTo(this.followTarget()); // re-centre at once: the view size just changed
     this.parallax.update(this.rig.view(), 0);
   }
@@ -149,6 +169,7 @@ export class LevelRun {
     if (r.landed) {
       this.view.onLand(this.player, r.landSpeed);
       if (r.landSpeed > 220) this.svc.audio.sfx('land');
+      this.rampage?.brawl.onLand(r.landSpeed);
     }
   }
 
@@ -160,6 +181,7 @@ export class LevelRun {
     this.cheese.update(dtMs);
     this.enemies.update(dtMs, this.host);
     this.pickups.update(timeMs);
+    this.rampage?.update(dtMs);
     const cutscene = this.phase === 'won' || this.phase === 'over';
     this.view.update(this.player, cutscene ? NO_POWERS : this.run.powers, dtMs);
     if (this.phase !== 'respawning') this.rig.update(this.followTarget(), dt);

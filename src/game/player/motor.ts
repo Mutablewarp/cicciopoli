@@ -104,7 +104,7 @@ export function stepPlatformer(s: MotorState, inp: MotorInput, onGround: boolean
   horizontal(s, inp.axis, p, dt);
   const jumped = tryJump(s, p);
   jumpCut(s, inp, p, dt);
-  s.vy = Math.min(p.maxFall, s.vy + p.gravity * dt);
+  s.vy = Math.min(p.maxFall, s.vy + p.gravity * (s.vy > 0 ? p.fallMul : 1) * dt);
   return { jumped };
 }
 
