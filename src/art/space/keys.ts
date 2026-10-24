@@ -51,7 +51,20 @@ export const SPACE = {
   farMoon: 'space-far-moon',
   /** image 12x12 — lightning icon (food tray counter / side panel) */
   boltIcon: 'space-bolt-icon',
+  /** image ~167x239 — the owner's logo face (FACE_URL), loaded by the scene, not built by space.ts */
+  face: 'space-face',
 } as const;
+
+/** Ciccio's head cut out of the owner's logo (ref/ciccio_face_logo.jpg): the face on the jet and on the level card. */
+export const FACE_URL = `${import.meta.env.BASE_URL}brand/ciccio-face.png`;
+
+/**
+ * The face over the jet sheet, in frame pixels (level flight): centre and height. It covers the
+ * canopy and the fuselage down to the top of the engine bell; the nose tip, the wings with their
+ * red trim, the fins and the bell stay visible around it. The hit box (game/invaders/config.ts)
+ * lies inside it.
+ */
+export const JET_FACE = { x: 21.5, y: 19.5, h: 27 } as const;
 
 export const SPACE_ANIMS = {
   jetLevel: 'space-jet-level',

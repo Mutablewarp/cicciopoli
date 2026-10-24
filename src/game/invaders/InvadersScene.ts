@@ -7,7 +7,7 @@ import Phaser from 'phaser';
 import type { ArtPack, Services } from '../../contracts';
 import { SERVICES_KEY } from '../../contracts';
 import { registerArtPack } from '../../art/register';
-import { SPACE } from '../../art/space/keys';
+import { FACE_URL, SPACE } from '../../art/space/keys';
 import { Battle } from './battle';
 import { installInvadersDebug, uninstallInvadersDebug } from './debug';
 import { computeFraming } from './framing';
@@ -74,6 +74,8 @@ export class InvadersScene extends Phaser.Scene {
     // the scene may be stopped (menu) or restarted while the art loads. Not isActive(): when the
     // art is cached this runs synchronously inside create(), while the status is still CREATING
     const stale = (): boolean => gen !== this.gen;
+    // the logo face downloads while the art builds; if it fails the jet flies without it
+    const face = this.textures.exists(SPACE.face) ? null : this.loadFace();
     if (!this.textures.exists(SPACE.jet)) {
       ui.setLoading(0.3, 'Accendo i motori del jet…');
       await nextFrame();
@@ -92,6 +94,7 @@ export class InvadersScene extends Phaser.Scene {
         return;
       }
     }
+    if (face) await face;
     if (stale() || this.battle) return;
     const battle = new Battle(this, this.svc);
     const story = new Story(battle, {
@@ -109,6 +112,15 @@ export class InvadersScene extends Phaser.Scene {
     if (this.svc.input.consume('pause')) this.pendingPause = true; // Esc / P while loading
     this.svc.input.reset();
     story.intro();
+  }
+
+  /** Resolves when the loader is done, loaded or not (a scene shut down meanwhile never resolves: its boot is stale). */
+  private loadFace(): Promise<void> {
+    return new Promise((resolve) => {
+      this.load.image(SPACE.face, FACE_URL);
+      this.load.once(Phaser.Loader.Events.COMPLETE, () => resolve());
+      this.load.start();
+    });
   }
 
   override update(_time: number, delta: number): void {
@@ -130,6 +142,7 @@ export class InvadersScene extends Phaser.Scene {
     const f = computeFraming(this.svc.viewport);
     cam.setZoom(f.zoom);
     cam.centerOn(f.centerX, f.centerY);
+    this.battle?.jet.fitFace(f.zoom);
     const w = cam.width / f.zoom;
     const h = cam.height / f.zoom;
     this.battle?.backdrop.layout({ x: f.centerX - w / 2, y: f.centerY - h / 2, w, h });

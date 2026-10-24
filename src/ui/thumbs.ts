@@ -1,6 +1,7 @@
 /** 32x18 pixel thumbnails of the six levels for the title cards (deterministic; level 5 is 64x18, cropped to its centre). */
 import type { LevelId } from '../contracts';
 import { PAL } from '../art/pixel';
+import { FACE_URL } from '../art/space/keys';
 import { CUTOUT_URL } from './cutout';
 import { seeded } from './dom';
 import { Grid } from './grid';
@@ -78,10 +79,14 @@ function invaders(): string {
     'kkkbbbkkkkbbbkkk',
     '...kkkkGGkkkk...',
   ]);
-  return g.svg({
-    n: '#0b0d24', u: '#c8a060', v: '#e8eef8', g: '#7cd848', k: PAL.ink, p: '#c87adc', r: '#f0c870',
-    a: '#8a8a96', A: '#b4b4be', y: '#e9b864', Y: '#fbe3a6', b: '#a8dcf4', B: '#e4f6fe', G: '#8a8a96', w: '#f4d2a8', m: '#c0784c', q: '#050505',
-  });
+  // the owner's logo face rides on the jet as in the level; the pixel pilot under it shows only if the image fails
+  const face = `<image href="${FACE_URL}" x="13" y="9.4" width="6" height="8.6" preserveAspectRatio="xMidYMid meet"/>`;
+  return g
+    .svg({
+      n: '#0b0d24', u: '#c8a060', v: '#e8eef8', g: '#7cd848', k: PAL.ink, p: '#c87adc', r: '#f0c870',
+      a: '#8a8a96', A: '#b4b4be', y: '#e9b864', Y: '#fbe3a6', b: '#a8dcf4', B: '#e4f6fe', G: '#8a8a96', w: '#f4d2a8', m: '#c0784c', q: '#050505',
+    })
+    .replace('</svg>', `${face}</svg>`);
 }
 
 function maze(): string {

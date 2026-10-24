@@ -1,12 +1,11 @@
 /**
  * Ciccio's light-blue jet (ref/invaders_sprites.png): a slim pointed nose with a small glass
  * canopy, a wide delta wing with plain grey rounded pods and red trim, grey fins
- * and the engine bell under the trailing edge, and Ciccio's badge (./jetFace.ts: the official logo
- * face on a round white badge) from just under the nose tip to the trailing edge: the hit box sits
- * inside it. Sheet 43x40, nose up, centre column x = 21.
+ * and the engine bell under the trailing edge. Ciccio's face is not in the sheet: the owner's logo
+ * (public/brand/ciccio-face.png) is drawn over the jet at runtime at JET_FACE (./keys.ts), smooth
+ * and high resolution (game/invaders/jet.ts). Sheet 43x40, nose up, centre column x = 21.
  */
 import { Buf, sheetOf } from './buf';
-import { BADGE_SIZE, drawBadge } from './jetFace';
 
 const PAL: Record<string, string> = {
   k: '#0c1230',
@@ -28,18 +27,12 @@ const PAL: Record<string, string> = {
 const W = 41;
 const C = 20;
 const ROWS = 40;
-/** Columns removed from the wing that dips when banking (fins, bell and badge columns stay whole). */
+/** Columns removed from the wing that dips when banking (fins, bell and face columns stay whole). */
 const DROP_LEFT = [3, 6, 12];
 const INNER_FIN_X = 11;
 /** Frame row of the first flame pixel, just below the engine bell. */
 const FLAME_TOP = 35;
-/**
- * The badge in frame pixels, level flight: over the canopy with the nose tip showing above the
- * ring, the ring's bottom run over the trailing edge and the top of the engine bell (the bell and
- * fins stay visible below it). The hit box of the jet (game/invaders/config.ts) lies inside it.
- */
-export const JET_BADGE = { x: 8, y: 5, size: BADGE_SIZE } as const;
-/** Small glass canopy in the nose (its tip shows above the badge), centre column C, and its top row. */
+/** Small glass canopy in the nose (its tip shows above the face), centre column C, and its top row. */
 const CANOPY = ['..D..', '.DGD.', '.DGD.', 'DgGqD', 'DgGqD'];
 const CANOPY_TOP = 4;
 
@@ -82,7 +75,7 @@ function baseMatrix(): Grid {
     sym(g, x, TRAIL_Y, x === edge(TRAIL_Y) ? 'k' : 'r');
     sym(g, x, TRAIL_Y + 1, 'k');
   }
-  // dark panel line across the wing (ref; its claw marks would sit under the badge)
+  // dark panel line across the wing (ref; its claw marks would sit under the face)
   for (let x = 3; x <= 12; x++) sym(g, x, TRAIL_Y - 3, 'D');
   // grey fins under the trailing edge and the engine bell in the middle
   put(g, 1, TRAIL_Y + 2, FIN);
@@ -160,7 +153,6 @@ function drawJet(b: Buf, bank: Bank, frame: number): void {
       if (ch !== '.') b.set(x0 + x, y, PAL[ch]);
     }),
   );
-  drawBadge(b, JET_BADGE.x + bank, JET_BADGE.y);
   const long = frame === 0;
   const shift = (c: number): number => c - [...drop].filter((d) => d < c).length;
   flame(b, 21, FLAME_TOP, long ? 5 : 3, long ? 1 : -1);

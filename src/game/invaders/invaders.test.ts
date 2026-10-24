@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { JET_BADGE } from '../../art/space/jet';
+import faceData from '../../../public/brand/ciccio-face.png?inline';
+import { JET_FACE } from '../../art/space/keys';
 import { TITLE_SIZE } from '../../art/space/title';
 import { pickChain } from './chain';
 import { CHAIN, FIELD, FORM, HITBOX, JET, SHIELDS, SHOT, SPAN, TRAY, UFO, WAVES } from './config';
@@ -178,15 +179,23 @@ describe('playfield layout', () => {
     expect(TRAY.x0 + (TRAY.max - 1) * TRAY.step + 10).toBeLessThanOrEqual(FIELD.w);
   });
 
-  it('shows the wordmark inside the field and keeps the hit box on the logo badge of the jet', () => {
+  it('shows the wordmark inside the field and keeps the hit box on the logo face of the jet', () => {
     expect(TITLE_SIZE.w).toBeLessThanOrEqual(FIELD.w - 8);
-    // jet frame 43 x 40 drawn around its centre (21.5, 20)
+    // public/brand/ciccio-face.png: a small, sharp RGBA cut-out (PNG header: width / height at bytes 16 / 20)
+    const png = Uint8Array.from(atob(faceData.slice(faceData.indexOf(',') + 1)), (c) => c.charCodeAt(0));
+    const view = new DataView(png.buffer);
+    const [fw, fh] = [view.getUint32(16), view.getUint32(20)];
+    expect(png.length).toBeLessThanOrEqual(60 * 1024);
+    expect(fh).toBeGreaterThanOrEqual(192);
+    expect(fh).toBeLessThanOrEqual(256);
+    // jet frame 43 x 40 drawn around its centre (21.5, 20); the face box is JET_FACE.h tall, as wide as the image says
+    const faceW = (JET_FACE.h * fw) / fh;
     const left = 21.5 - JET.hitW / 2;
     const top = 20 + JET.hitDy - JET.hitH / 2;
-    expect(left).toBeGreaterThanOrEqual(JET_BADGE.x);
-    expect(left + JET.hitW).toBeLessThanOrEqual(JET_BADGE.x + JET_BADGE.size);
-    expect(top).toBeGreaterThanOrEqual(JET_BADGE.y);
-    expect(top + JET.hitH).toBeLessThanOrEqual(JET_BADGE.y + JET_BADGE.size);
+    expect(left).toBeGreaterThanOrEqual(JET_FACE.x - faceW / 2);
+    expect(left + JET.hitW).toBeLessThanOrEqual(JET_FACE.x + faceW / 2);
+    expect(top).toBeGreaterThanOrEqual(JET_FACE.y - JET_FACE.h / 2);
+    expect(top + JET.hitH).toBeLessThanOrEqual(JET_FACE.y + JET_FACE.h / 2);
   });
 
   it('stacks UFO, formation, shields and jet from the top without overlap', () => {
