@@ -1,4 +1,4 @@
-/** Modal end/pause screens: PAUSA, IN BUCA! (victory), GAME OVER. */
+/** Modal end/pause screens: PAUSA, IN BUCA! (victory), GAME OVER; level 6 brings its own cards (rush/*). */
 import type { GameOverInfo, LevelId, VictoryInfo } from '../contracts';
 import { button, el, formatTime, seeded } from './dom';
 import { heroHtml, mountHero } from './hero';
@@ -11,7 +11,10 @@ export const LEVEL_NAMES: Record<LevelId, string> = {
   3: "CICCIO'S INVADERS",
   4: 'CICCIO-MAN',
   5: 'SPACCA TUTTO',
+  6: "CICCIO'S RUSH",
 };
+/** Tagline under a level name on its title card. */
+export const LEVEL_TAGS: Partial<Record<LevelId, string>> = { 6: 'MISSIONE CONSEGNA A PALERMO' };
 /** Name of the hero of a level, shown under its title on the end screens. */
 export const LEVEL_HEROES: Partial<Record<LevelId, string>> = { 5: 'CICCIO SPACCA!' };
 export const levelTitle = (l: LevelId): string => `0${l} · ${LEVEL_NAMES[l]}`;
@@ -34,6 +37,7 @@ const PAUSE_KEYS: [string[], string] = [['ESC', 'P'], 'pausa'];
 
 /** Desktop key legend per level (title: the platform keys plus the shooter extras). */
 export function keyLegend(level?: LevelId): string {
+  if (level === 6) return keys([['←', '→', 'A', 'D'], 'corsia'], [['↓', 'S', 'SPAZIO'], 'frena'], PAUSE_KEYS);
   if (level === 5) return keys([['←', '→', 'A', 'D'], 'muovi'], [['↑', 'W', 'SPAZIO'], 'salta'], [['K', 'C'], 'pugno'], [['J', 'X'], 'spacca'], PAUSE_KEYS);
   if (level === 3) return keys([['←', '→', 'A', 'D'], 'muovi'], [['SPAZIO', 'J', 'X'], 'fuoco'], [['K', 'C'], 'fulmine'], PAUSE_KEYS);
   if (level === 4) return keys([['←', '↑', '→', '↓'], 'muovi'], [['W', 'A', 'S', 'D'], 'muovi'], PAUSE_KEYS);
@@ -46,7 +50,8 @@ export function audioLabel(muted: boolean): string {
   return `${muted ? SPEAKER_OFF : SPEAKER_ON}<span class="cc-btn__label">Audio ${muted ? 'off' : 'on'}</span>`;
 }
 
-function confetti(): string {
+/** Falling confetti + sparkles behind a winning card (deterministic layout). */
+export function confetti(): string {
   const rnd = seeded(161);
   let html = '<div class="cc-confetti" aria-hidden="true">';
   for (let i = 0; i < 34; i++) {
@@ -74,6 +79,8 @@ export interface Modal {
   showPause(h: { onResume(): void; onRestart(): void; onMenu(): void; onToggleMute(): boolean }, muted: boolean): void;
   showVictory(info: VictoryInfo, h: { onNext?(): void; onReplay(): void; onMenu(): void }): void;
   showGameOver(info: GameOverInfo, h: { onRetry(): void; onMenu(): void }): void;
+  /** Shows a custom card (level 6 setup / results) whose `buttons` the menu navigates. */
+  present(kind: string, card: HTMLElement, buttons: HTMLElement[], armMs: number, onBack?: () => void): void;
   hide(): void;
 }
 
@@ -85,7 +92,7 @@ export function createModal(onChange: () => void, level: () => LevelId): Modal {
   const menu = new Menu();
   let isOpen = false;
 
-  function present(kind: string, card: HTMLElement, buttons: HTMLButtonElement[], armMs: number, onBack?: () => void): void {
+  function present(kind: string, card: HTMLElement, buttons: HTMLElement[], armMs: number, onBack?: () => void): void {
     root.className = `cc-screen cc-modal cc-modal--${kind}`;
     root.replaceChildren(card);
     root.hidden = false;
@@ -194,6 +201,7 @@ export function createModal(onChange: () => void, level: () => LevelId): Modal {
       present('over', c, btns, 650);
       mountHero(c, info.level, 'over');
     },
+    present,
     hide,
   };
 }

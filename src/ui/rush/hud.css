@@ -1,0 +1,202 @@
+/* Level 6 HUD: countdown, delivery pins on the progress rail, truck marker, and the row with the
+   FRESCHEZZA meter, the power chips and the combo badge (full width in portrait, inline in landscape). */
+.cc-hud__rush {
+  display: none;
+}
+.cc-hud.is-rush {
+  row-gap: 6px;
+}
+.cc-hud.is-rush .cc-hud__rush {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: calc(var(--u) * 12 + 8px);
+  padding: 4px 8px;
+  background: #1a1a1c;
+  box-shadow: inset 0 0 0 2px #0e0e0e;
+}
+
+/* countdown: last 10 seconds */
+.cc-time.is-low .cc-time__num {
+  color: #ff3a3a;
+  animation: cc-time-low 0.5s steps(2) infinite;
+}
+.cc-time.is-low .cc-time__label {
+  color: #ff8a7a;
+}
+@keyframes cc-time-low {
+  50% {
+    color: #ffb0a0;
+  }
+}
+
+/* truck marker + checkered finish */
+.cc-progress__marker[data-skin='truck'] {
+  width: calc(var(--u) * 15);
+  height: calc(var(--u) * 9);
+}
+
+/* delivery pins: tip on the track; done = green, next = orange and bouncing, later = dim */
+.cc-pins {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.cc-pin {
+  position: absolute;
+  top: calc(50% - var(--u) * 10);
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 10);
+  margin-left: calc(var(--u) * -3.5);
+  color: #8a8278;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.55));
+}
+.cc-pin svg {
+  width: 100%;
+  height: 100%;
+}
+.cc-pin.is-next {
+  color: var(--orange);
+  animation: cc-pin-bob 0.8s steps(2) infinite;
+}
+.cc-pin.is-done {
+  color: #5cc020;
+}
+@keyframes cc-pin-bob {
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+/* FRESCHEZZA */
+.cc-fresh {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+/* no order on board: an empty, dimmed meter, so the portrait row never shows an empty frame */
+.cc-fresh.is-off {
+  opacity: 0.35;
+}
+.cc-fresh__label {
+  font-size: calc(var(--u) * 4);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--cream);
+  text-shadow: 1px 1px 0 var(--ink);
+}
+.cc-fresh__icon {
+  flex: none;
+  width: calc(var(--u) * 11);
+  height: calc(var(--u) * 9);
+}
+.cc-fresh__bar {
+  display: flex;
+  /* whole css px: a fractional gap (--u 1.75px) fuses two segments at some sub-pixel offsets */
+  gap: 1px;
+  gap: max(1px, round(down, calc(var(--u) * 0.5), 1px));
+  padding: 2px;
+  background: var(--ink);
+  box-shadow: 0 0 0 1px #3a3a3a;
+}
+.cc-fresh__bar i {
+  width: calc(var(--u) * 3);
+  height: calc(var(--u) * 5);
+  background: #2c2c30;
+}
+.cc-fresh[data-tone='good'] i.is-on {
+  background: linear-gradient(180deg, #a8f070 0 30%, #5cc020 30% 75%, #3c8a14 75%);
+}
+.cc-fresh[data-tone='warn'] i.is-on {
+  background: linear-gradient(180deg, #fff07a 0 30%, var(--yellow) 30% 75%, var(--yellow-lo) 75%);
+}
+.cc-fresh[data-tone='bad'] i.is-on {
+  background: linear-gradient(180deg, #ff8a8a 0 30%, var(--red) 30% 75%, var(--red-lo) 75%);
+}
+.cc-fresh[data-tone='bad'] .cc-fresh__icon {
+  animation: cc-time-low 0.6s steps(2) infinite;
+}
+
+/* power chips with the time left of the timed power */
+.cc-rchips {
+  display: flex;
+  gap: 5px;
+  margin-left: auto;
+}
+.cc-chip__left {
+  position: absolute;
+  left: var(--u);
+  right: var(--u);
+  bottom: 1px;
+  height: var(--u);
+  background: var(--yellow);
+  transform-origin: 0 50%;
+}
+.cc-chip.is-expiring {
+  animation: cc-chip-blink 0.3s steps(2) infinite;
+}
+@keyframes cc-chip-blink {
+  50% {
+    box-shadow: inset 0 0 0 2px #ff4a4a;
+  }
+}
+
+/* combo multiplier */
+.cc-combo {
+  flex: none;
+  padding: 5px 6px 4px;
+  font-size: calc(var(--u) * 5);
+  line-height: 1;
+  color: var(--ink);
+  background: var(--orange);
+  box-shadow: 0 0 0 2px var(--ink), inset 0 -2px 0 var(--orange-lo), inset 0 2px 0 var(--orange-hi);
+}
+
+@media (orientation: landscape) {
+  .cc-hud.is-rush .cc-hud__rush {
+    flex: none;
+    min-height: 0;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .cc-rchips {
+    margin-left: 0;
+  }
+}
+/* narrow landscape phones: hearts + score keep their width (a 5-digit score never runs under the rail);
+   tighter gaps and a shorter rail leave room for the meter, a power chip and the combo badge */
+@media (orientation: landscape) and (max-width: 700px) {
+  .cc-hud.is-rush {
+    gap: 10px;
+  }
+  .cc-hud.is-rush .cc-hud__left {
+    flex: none;
+    gap: 10px;
+  }
+  .cc-hud.is-rush .cc-progress {
+    min-width: 64px;
+  }
+  .cc-hud.is-rush .cc-hud__rush {
+    gap: 6px;
+  }
+}
+/* 568x320-class: smaller icons too */
+@media (orientation: landscape) and (max-width: 600px) {
+  .cc-hud.is-rush {
+    --u: 1.75px;
+    gap: 8px;
+  }
+  .cc-hud.is-rush .cc-hud__left {
+    gap: 8px;
+  }
+}
+/* short landscape phones: the burger icon alone names the meter */
+@media (orientation: landscape) and (max-width: 1000px) {
+  .cc-fresh__label {
+    display: none;
+  }
+}

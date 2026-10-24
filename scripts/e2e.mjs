@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Smoke test in a real browser (Playwright + in-process Vite dev server):
- * title renders 5 level cards; every level boots, accepts input and has debug hooks;
+ * title renders 6 level cards; every level boots, accepts input and has debug hooks;
  * every level can be entered twice in a row (restart / re-entry regressions);
  * no uncaught page errors. Desktop and phone (portrait + landscape).
  *
@@ -25,9 +25,9 @@ const VIEWS = [
   { name: 'phone-landscape', viewport: { width: 844, height: 390 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
 ];
 
-async function waitFor(page, expr, ms) {
+async function waitFor(page, expr, ms, arg = null) {
   try {
-    await page.waitForFunction(expr, null, { timeout: ms });
+    await page.waitForFunction(expr, arg, { timeout: ms });
     return true;
   } catch {
     return false;
@@ -45,9 +45,9 @@ for (const view of VIEWS) {
   };
 
   await page.goto(base + '?debug=1', { waitUntil: 'load' });
-  check(await waitFor(page, () => document.querySelectorAll('.cc-title button, .cc-title [role="button"]').length >= 5, 8000), 'title shows 5 level cards');
+  check(await waitFor(page, () => document.querySelectorAll('.cc-title button, .cc-title [role="button"]').length >= 6, 8000), 'title shows 6 level cards');
 
-  for (const level of [1, 2, 3, 4, 5]) {
+  for (const level of [1, 2, 3, 4, 5, 6]) {
     for (const attempt of [1, 2]) {
       await page.evaluate((l) => window.__app.app.startLevel(l), level);
       const booted = await waitFor(page, () => !!window.__game, 12000);
@@ -59,6 +59,27 @@ for (const view of VIEWS) {
       await page.evaluate(() => window.__app.app.toMenu());
       await waitFor(page, () => !window.__game, 4000);
     }
+  }
+  if (view.name === 'phone-portrait') {
+    // level 6 end paths: menu during the finale, finale -> results -> RIPROVA -> menu
+    const session = (st) => waitFor(page, (want) => window.__game?.state?.().session === want, 15000, st);
+    await page.evaluate(() => window.__app.app.startLevel(6));
+    check(await session('setup'), 'level 6 setup panel');
+    await page.evaluate(() => { window.__game.play(); });
+    check(await session('run'), 'level 6 run starts');
+    await page.evaluate(() => window.__game.finale());
+    check(await session('finale'), 'level 6 finale plays');
+    const quit = await page.evaluate(() => { try { window.__app.app.toMenu(); return true; } catch { return false; } });
+    check(quit && (await waitFor(page, () => !window.__game, 4000)), 'menu during the finale');
+    await page.evaluate(() => window.__app.app.startLevel(6));
+    await session('setup');
+    await page.evaluate(() => { window.__game.play(); window.__game.finale(); });
+    check(await waitFor(page, () => window.__game?.state?.().session === 'results' && !!document.querySelector('.cc-modal .cc-btn--go'), 30000), 'level 6 results after the finale');
+    await page.waitForTimeout(1500); // end screens ignore taps for a moment (ui/menu.ts guard)
+    await page.click('.cc-modal .cc-btn--go');
+    check(await session('run'), 'RIPROVA restarts the run');
+    await page.evaluate(() => window.__app.app.toMenu());
+    await waitFor(page, () => !window.__game, 4000);
   }
   check(errors.length === 0, `no page errors${errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''}`);
   await context.close();

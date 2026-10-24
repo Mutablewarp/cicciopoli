@@ -10,7 +10,7 @@ export interface Mixer {
   sfx: GainNode;
 }
 
-export function createMixer(ctx: BaseAudioContext, muted: boolean): Mixer {
+export function createMixer(ctx: BaseAudioContext, muted: boolean, musicMuted: boolean): Mixer {
   const limiter = ctx.createDynamicsCompressor();
   limiter.threshold.value = -8;
   limiter.knee.value = 4;
@@ -24,7 +24,7 @@ export function createMixer(ctx: BaseAudioContext, muted: boolean): Mixer {
   master.connect(limiter);
 
   const music = ctx.createGain();
-  music.gain.value = MUSIC_LEVEL;
+  music.gain.value = musicMuted ? 0 : MUSIC_LEVEL;
   music.connect(master);
 
   const sfx = ctx.createGain();
@@ -33,11 +33,20 @@ export function createMixer(ctx: BaseAudioContext, muted: boolean): Mixer {
   return { master, music, sfx };
 }
 
-/** Quick click-free fade of the master gain (mute / unmute). */
-export function rampMaster(ctx: BaseAudioContext, mixer: Mixer, on: boolean): void {
-  const g = mixer.master.gain;
+/** Quick click-free fade of a bus gain. */
+function fade(ctx: BaseAudioContext, g: AudioParam, to: number): void {
   const now = ctx.currentTime;
   g.cancelScheduledValues(now);
   g.setValueAtTime(g.value, now);
-  g.setTargetAtTime(on ? MASTER_LEVEL : 0, now, 0.02);
+  g.setTargetAtTime(to, now, 0.02);
+}
+
+/** Global mute / unmute. */
+export function rampMaster(ctx: BaseAudioContext, mixer: Mixer, on: boolean): void {
+  fade(ctx, mixer.master.gain, on ? MASTER_LEVEL : 0);
+}
+
+/** Music on / off; the sfx bus keeps playing. */
+export function rampMusic(ctx: BaseAudioContext, mixer: Mixer, on: boolean): void {
+  fade(ctx, mixer.music.gain, on ? MUSIC_LEVEL : 0);
 }

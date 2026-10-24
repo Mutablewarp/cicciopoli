@@ -10,18 +10,22 @@
  *   src/main.ts    -> boot, viewport/DPR sizing, app lifecycle
  */
 
-/** 1 Le Colline · 2 Alette Crunchy (platform) · 3 Ciccio's Invaders (shooter) · 4 Ciccio-Man (maze) · 5 Ciccio Hulk (platform brawler) */
-export type LevelId = 1 | 2 | 3 | 4 | 5;
+/**
+ * 1 Le Colline · 2 Alette Crunchy (platform) · 3 Ciccio's Invaders (shooter) · 4 Ciccio-Man (maze) ·
+ * 5 Spacca Tutto (platform brawler) · 6 Ciccio's Rush (burger-truck delivery driving)
+ */
+export type LevelId = 1 | 2 | 3 | 4 | 5 | 6;
 
-export const LEVEL_IDS: readonly LevelId[] = [1, 2, 3, 4, 5];
+export const LEVEL_IDS: readonly LevelId[] = [1, 2, 3, 4, 5, 6];
 
 /** Phaser scene key that runs each level (main.ts starts it with data { level }). */
-export const LEVEL_SCENE: Readonly<Record<LevelId, 'game' | 'invaders' | 'maze'>> = {
+export const LEVEL_SCENE: Readonly<Record<LevelId, 'game' | 'invaders' | 'maze' | 'rush'>> = {
   1: 'game',
   2: 'game',
   3: 'invaders',
   4: 'maze',
   5: 'game',
+  6: 'rush',
 };
 
 export type Dir4 = 'up' | 'down' | 'left' | 'right';
@@ -130,6 +134,12 @@ export interface PowerState {
   bolt?: boolean;
   /** level 4: provola power-stick active (ghosts can be eaten) */
   pellet?: boolean;
+  /** level 6: Scudo Nuggets, Waffle Radar, Popcorn Sprint, Cheddar Grip, Propulsore (flying truck) */
+  shield?: boolean;
+  radar?: boolean;
+  sprint?: boolean;
+  grip?: boolean;
+  jet?: boolean;
 }
 
 export interface HudState {
@@ -143,6 +153,16 @@ export interface HudState {
   powers: PowerState;
   /** level 3: FULMINE charges, shown as a digit on the bolt chip (desktop has no touch badge) */
   boltCount?: number;
+  /** level 6: timeMs is the time LEFT, shown as a countdown */
+  countdown?: boolean;
+  /** level 6: freshness of the order on board, 0..100; null hides the meter */
+  fresh?: number | null;
+  /** level 6: deliveries done / total, drawn as pins on the progress bar */
+  deliveries?: { done: number; total: number };
+  /** level 6: 0..1 time left of the active timed power (expiry cue on its chip) */
+  powerLeft?: number;
+  /** level 6: clean-driving combo multiplier; 1 or less hides it */
+  combo?: number;
 }
 
 export type ButtonState = 'hidden' | 'disabled' | 'enabled';
@@ -151,8 +171,13 @@ export type ButtonState = 'hidden' | 'disabled' | 'enabled';
  * platform (L1-2): ◀▶ pad + SALTA/VOLA + GOAT/THAI or SCENDI.
  * shooter  (L3):   ◀▶ pad + big FUOCO (fire action) + FULMINE (club action, shows `clubCount`).
  * maze     (L4):   4-way cross pad + swipes on the game area; no action buttons.
+ * driver   (L6):   ◀ ▶ lane buttons (each tap = one consumeDir press) + big FRENA held = downHeld;
+ *                  swipes on the game area also change lane when `swipe` is not false.
  */
-export type ControlsMode = 'platform' | 'shooter' | 'maze';
+export type ControlsMode = 'platform' | 'shooter' | 'maze' | 'driver';
+
+/** Swipe sensitivity on the game area (maze / driver); false = swipes off, buttons only. */
+export type SwipeSetting = false | 'low' | 'mid' | 'high';
 
 export interface ControlsLayout {
   level: LevelId;
@@ -166,6 +191,8 @@ export interface ControlsLayout {
   jumpLabel: 'SALTA' | 'VOLA';
   /** small counter badge on the club/FULMINE button (lightning charges), omitted = none */
   clubCount?: number;
+  /** maze / driver: swipe sensitivity, omitted = 'mid' */
+  swipe?: SwipeSetting;
 }
 
 export interface TitleInfo {
@@ -189,6 +216,9 @@ export interface GameOverInfo {
 
 export type BannerTone = 'info' | 'power' | 'danger' | 'goal';
 
+export * from './contracts-rush';
+import type { RushDriverId, RushResultInfo, RushSettings, RushSetupInfo } from './contracts-rush';
+
 export interface GameUI {
   /** Full-screen loading indicator. progress 0..1, null hides it. */
   setLoading(progress: number | null, message?: string): void;
@@ -208,6 +238,13 @@ export interface GameUI {
   showVictory(info: VictoryInfo, h: { onNext?(): void; onReplay(): void; onMenu(): void }): void;
   showGameOver(info: GameOverInfo, h: { onRetry(): void; onMenu(): void }): void;
   hideOverlays(): void;
+  /** Level 6 pre-run panel. onSettings fires on every change (the game persists it). */
+  showRushSetup(
+    info: RushSetupInfo,
+    h: { onPlay(driver: RushDriverId, daily: boolean): void; onSettings(s: RushSettings): void; onMenu(): void },
+  ): void;
+  /** Level 6 results: breakdown, stars, tip, RIPROVA, CONDIVIDI RISULTATO, SCOPRI IL MENÙ CICCIO'S, MENU. */
+  showRushResults(info: RushResultInfo, h: { onRetry(): void; onMenu(): void }): void;
   /** HUD pause button pressed (touch or click). */
   onPauseButton(cb: () => void): void;
   /** Element the Phaser canvas must exactly fill. */
@@ -229,9 +266,12 @@ export type SfxName =
   // level 4 maze
   | 'chomp' | 'pellet' | 'ghostEat' | 'ghostHome'
   // level 5 Hulk: punch swing / heavy hit, ground slam, rubble, roar, flag ripped off the pole
-  | 'punch' | 'smash' | 'slam' | 'rubble' | 'roar' | 'rip';
+  | 'punch' | 'smash' | 'slam' | 'rubble' | 'roar' | 'rip'
+  // level 6 truck: lane change whoosh, brake squeal, cartoon crash, delivery cha-ching, combo up,
+  // power expiring, traffic horn, rocket booster, new personal record
+  | 'lane' | 'brake' | 'crash' | 'deliver' | 'combo' | 'expire' | 'horn' | 'jet' | 'record';
 
-export type MusicName = 'title' | 'hills' | 'inferno' | 'invaders' | 'maze' | 'rampage';
+export type MusicName = 'title' | 'hills' | 'inferno' | 'invaders' | 'maze' | 'rampage' | 'rush';
 
 export interface GameAudio {
   /** Call from inside a user gesture handler; safe to call many times. */
@@ -242,6 +282,9 @@ export interface GameAudio {
   jingle(name: 'win' | 'gameover'): void;
   readonly muted: boolean;
   setMuted(muted: boolean): void;
+  /** Music only (sfx keep playing); independent of the global mute. */
+  readonly musicMuted: boolean;
+  setMusicMuted(muted: boolean): void;
   /** Page hidden / visible. */
   suspend(): void;
   resume(): void;

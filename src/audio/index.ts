@@ -4,7 +4,7 @@
  * Every entry point swallows errors: audio must never break the game.
  */
 import type { GameAudio, MusicName, SfxName } from '../contracts';
-import { createMixer, rampMaster, type Mixer } from './mixer';
+import { createMixer, rampMaster, rampMusic, type Mixer } from './mixer';
 import { compileSong, Sequencer, type Song } from './sequencer';
 import { SFX } from './sfx';
 import { SONGS, type SongName } from './tracks';
@@ -44,12 +44,15 @@ export function createAudio(): GameAudio {
   let mixer: Mixer | null = null;
   let seq: Sequencer | null = null;
   let muted = false;
+  let musicMuted = false;
   let hidden = false;
   /** Track the game wants; remembered before unlock so the title theme starts on the first tap. */
   let wanted: MusicName | null = null;
   let vary = 0;
   const lastHit = new Map<SfxName, number>();
   const compiled = new Map<SongName, Song>();
+  /** No new music notes while muted, music-muted or hidden (the song position is kept). */
+  const musicHeld = (): boolean => muted || musicMuted || hidden;
 
   function song(name: SongName): Song {
     let s = compiled.get(name);
@@ -65,7 +68,7 @@ export function createAudio(): GameAudio {
     if (wanted !== null && seq.current !== wanted) seq.play(wanted, song(wanted));
     // music(null) stops the track but lets a running jingle finish
     if (wanted === null && seq.current !== null && !isJingle(seq.current)) seq.stop();
-    seq.setPaused(muted || hidden);
+    seq.setPaused(musicHeld());
   }
 
   return {
@@ -75,7 +78,7 @@ export function createAudio(): GameAudio {
           const Ctor = audioCtor();
           if (!Ctor) return;
           ctx = new Ctor();
-          mixer = createMixer(ctx, muted);
+          mixer = createMixer(ctx, muted, musicMuted);
           seq = new Sequencer(ctx, mixer.music);
         }
         // retried on every gesture: older iOS ignores pointerdown and only unlocks on touchend
@@ -110,7 +113,7 @@ export function createAudio(): GameAudio {
       guard(() => {
         wanted = null;
         if (!seq) return;
-        if (muted || hidden) seq.stop();
+        if (musicHeld()) seq.stop();
         else seq.play(name, song(name));
       });
     },
@@ -123,7 +126,19 @@ export function createAudio(): GameAudio {
       muted = m;
       guard(() => {
         if (ctx && mixer) rampMaster(ctx, mixer, !m);
-        seq?.setPaused(muted || hidden);
+        seq?.setPaused(musicHeld());
+      });
+    },
+
+    get musicMuted() {
+      return musicMuted;
+    },
+
+    setMusicMuted(m) {
+      musicMuted = m;
+      guard(() => {
+        if (ctx && mixer) rampMusic(ctx, mixer, !m);
+        seq?.setPaused(musicHeld());
       });
     },
 
@@ -139,7 +154,7 @@ export function createAudio(): GameAudio {
       hidden = false;
       guard(() => {
         if (ctx && ctx.state !== 'running') ctx.resume().catch(ignore);
-        seq?.setPaused(muted);
+        seq?.setPaused(musicHeld());
       });
     },
   };

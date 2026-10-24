@@ -1,0 +1,56 @@
+/* Level 6 driver controls: the ◀▶ pill of levels 1–5 (pads.css; its zone is a .cc-pad-zone, so it sits where
+   theirs does) with each half a lane button, and a big red FRENA disc on the right.
+   Portrait: inside the dark controls band, under the banner slot (play.css). Landscape: bottom corners over
+   the game (controls.css). */
+.cc-controls:not([data-mode='driver']) .cc-lane-zone,
+.cc-controls[data-mode='driver'] .cc-pad-zone:not(.cc-lane-zone) {
+  display: none;
+}
+/* the halves themselves take the fingers (the slide pad's zone does it for levels 1–5) */
+.cc-lane {
+  pointer-events: auto;
+  touch-action: none;
+  cursor: pointer;
+}
+.cc-lane::before {
+  /* hit slop outwards, plus half of the seam: a fingertip slightly off the edge still counts */
+  content: '';
+  position: absolute;
+  top: -8px;
+  bottom: -8px;
+}
+.cc-lane.is-l::before {
+  left: -6px;
+  right: -2px;
+}
+.cc-lane.is-r::before {
+  left: -2px;
+  right: -6px;
+}
+
+/* FRENA: the only action button of the mode */
+.cc-controls[data-mode='driver'] .cc-act-zone {
+  width: calc(112px * var(--k));
+  height: calc(104px * var(--k));
+}
+.cc-act--brake {
+  --s: 104;
+  --x: 4;
+  --y: 0;
+}
+.cc-act--brake .cc-act__name {
+  margin-top: calc(var(--size) * 0.02);
+  font-size: calc(15px * var(--k));
+}
+
+@media (orientation: landscape) {
+  .cc-controls[data-mode='driver'] .cc-act-zone {
+    width: calc(104px * var(--k));
+    height: calc(100px * var(--k));
+  }
+  .cc-act--brake {
+    --s: 96;
+    --x: 4;
+    --y: 0;
+  }
+}

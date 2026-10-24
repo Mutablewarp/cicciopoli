@@ -31,6 +31,8 @@
   color: var(--cream);
   font-family: var(--f-ui);
   font-weight: 600;
+  /* Press Start 2P squeezes fi / fl into one 8x8 cell ("traffco"): no ligatures anywhere */
+  font-variant-ligatures: none;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;

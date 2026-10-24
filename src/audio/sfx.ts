@@ -4,6 +4,7 @@
  */
 import type { SfxName } from '../contracts';
 import { RAMPAGE_SFX } from './sfx-rampage';
+import { RUSH_SFX } from './sfx-rush';
 import { hiss, tone, type ToneOpts, type Voice } from './synth';
 import { hz } from './theory';
 
@@ -296,4 +297,5 @@ export const SFX: Readonly<Record<SfxName, Recipe>> = {
   },
 
   ...RAMPAGE_SFX,
+  ...RUSH_SFX,
 };

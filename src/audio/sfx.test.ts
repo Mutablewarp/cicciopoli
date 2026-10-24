@@ -41,6 +41,19 @@ const RAMPAGE: Readonly<Record<string, readonly [number, number]>> = {
   rip: [0.4, 0.46],
 };
 
+/** Level 6 sounds: lane and combo fire every few seconds, so they must stay very short. */
+const RUSH: Readonly<Record<string, readonly [number, number]>> = {
+  lane: [0.15, 0.22],
+  brake: [0.3, 0.4],
+  crash: [0.5, 0.6],
+  deliver: [0.8, 0.95],
+  combo: [0.12, 0.2],
+  expire: [0.25, 0.35],
+  horn: [0.28, 0.36],
+  jet: [0.85, 0.98],
+  record: [0.8, 0.95],
+};
+
 describe('sfx recipes', () => {
   const names = Object.keys(SFX) as SfxName[];
 
@@ -56,8 +69,11 @@ describe('sfx recipes', () => {
     });
   });
 
-  it('has a recipe for every level 5 sound, layered and bounded in time', () => {
-    for (const [name, [min, max]] of Object.entries(RAMPAGE)) {
+  it.each([
+    ['level 5', RAMPAGE],
+    ['level 6', RUSH],
+  ] as const)('has a recipe for every %s sound, layered and bounded in time', (_level, table) => {
+    for (const [name, [min, max]] of Object.entries(table)) {
       expect(typeof SFX[name as SfxName], name).toBe('function');
       const { starts, stops } = record(name as SfxName, 5);
       expect(starts.length, name).toBeGreaterThanOrEqual(3);

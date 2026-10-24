@@ -15,13 +15,14 @@ export interface MenuOptions {
 }
 
 export class Menu {
-  private items: HTMLButtonElement[] = [];
+  private items: HTMLElement[] = [];
   private sel = 0;
   private armedAt = 0;
   private done = false;
   private onBack: (() => void) | undefined;
 
-  open(items: HTMLButtonElement[], opts: MenuOptions = {}): void {
+  /** Buttons (or links) in reading order; Enter / Space click the selected one. */
+  open(items: HTMLElement[], opts: MenuOptions = {}): void {
     this.items = items;
     this.armedAt = performance.now() + (opts.armMs ?? 0);
     this.done = false;

@@ -1,7 +1,7 @@
-import type { ControlsMode } from '../contracts';
+import type { ControlsMode, SwipeSetting } from '../contracts';
 import { bindKeyboard, type KeyInterceptor } from './keyboard';
 import { InputState } from './state';
-import { SwipeTracker } from './swipe';
+import { LaneSwipe, SwipeTracker, swipeMin } from './swipe';
 
 export { InputState, type HoldAction } from './state';
 export type { KeyInterceptor } from './keyboard';
@@ -11,9 +11,12 @@ export interface InputHub {
   readonly state: InputState;
   /** While set, every keydown goes to the menu first (overlays, title screen). */
   setInterceptor(fn: KeyInterceptor | null): void;
-  /** Current controls mode: keyboard mapping (Space = fire in the shooter) and maze swipes. */
-  setMode(mode: ControlsMode): void;
-  /** Swipes on this element steer in maze mode (one finger at a time). */
+  /**
+   * Current controls mode: keyboard mapping (Space = fire in the shooter, brake in the driver)
+   * and game-area swipes (maze, driver) at the given sensitivity (false = off).
+   */
+  setMode(mode: ControlsMode, swipe?: SwipeSetting): void;
+  /** Swipes on this element steer in maze mode and change lane in driver mode (one finger at a time). */
   bindSwipe(area: HTMLElement): void;
 }
 
@@ -21,6 +24,7 @@ export function createInput(): InputHub {
   const state = new InputState();
   let interceptor: KeyInterceptor | null = null;
   let mode: ControlsMode = 'platform';
+  let swipe: SwipeSetting = 'mid';
   bindKeyboard(state, () => interceptor, () => mode);
   window.addEventListener('blur', () => state.reset());
   document.addEventListener('visibilitychange', () => {
@@ -31,16 +35,19 @@ export function createInput(): InputHub {
     setInterceptor(fn) {
       interceptor = fn;
     },
-    setMode(m) {
+    setMode(m, s = 'mid') {
       mode = m;
+      swipe = s;
     },
     bindSwipe(area) {
-      const swipe = new SwipeTracker();
+      let tracker: SwipeTracker | LaneSwipe | null = null;
       let finger: number | null = null;
       area.addEventListener('pointerdown', (e) => {
-        if (mode !== 'maze' || finger !== null || (e.pointerType === 'mouse' && e.button !== 0)) return;
+        const min = swipeMin(swipe);
+        if ((mode !== 'maze' && mode !== 'driver') || min === null || finger !== null || (e.pointerType === 'mouse' && e.button !== 0)) return;
         finger = e.pointerId;
-        swipe.start(e.clientX, e.clientY);
+        tracker = mode === 'maze' ? new SwipeTracker(min) : new LaneSwipe(min);
+        tracker.start(e.clientX, e.clientY);
         try {
           area.setPointerCapture(e.pointerId);
         } catch {
@@ -48,8 +55,8 @@ export function createInput(): InputHub {
         }
       });
       area.addEventListener('pointermove', (e) => {
-        if (e.pointerId !== finger) return;
-        const d = swipe.move(e.clientX, e.clientY);
+        if (e.pointerId !== finger || !tracker) return;
+        const d = tracker.move(e.clientX, e.clientY);
         if (d) state.pushDir(d);
       });
       const end = (e: PointerEvent): void => {

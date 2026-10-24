@@ -20,9 +20,11 @@ export const KEYMAP: Readonly<Record<string, HoldAction>> = {
   KeyP: 'pause',
 };
 
-/** Space fires in the shooter (BRIEF §6: Space/J/X = fuoco). */
+/** Space fires in the shooter (BRIEF §6: Space/J/X = fuoco) and brakes in the driver (§8: ↓/S/Space). */
 export function actionFor(code: string, mode: ControlsMode): HoldAction | undefined {
-  return mode === 'shooter' && code === 'Space' ? 'fire' : KEYMAP[code];
+  if (code === 'Space' && mode === 'shooter') return 'fire';
+  if (code === 'Space' && mode === 'driver') return 'down';
+  return KEYMAP[code];
 }
 
 /**
@@ -34,7 +36,8 @@ export function keyDown(state: InputState, code: string, repeat: boolean, mode: 
   const action = actionFor(code, mode);
   if (!action) return false;
   const src = `k:${code}`;
-  if (!repeat) state.press(src, action);
+  // the driver's brake is a hold, not a direction press: it must not replace a lane press in the same frame
+  if (!repeat) state.press(src, action, !(mode === 'driver' && action === 'down'));
   else if (action !== 'pause' && !state.has(src)) state.press(src, action, false);
   return true;
 }

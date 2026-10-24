@@ -17,7 +17,7 @@ export const JET = {
   /** the 41 px wide jet may touch the field edges */
   minX: 21,
   maxX: 183,
-  /** hitbox (the face + cockpit, not the wing tips) around (x, y + hitDy) */
+  /** hitbox (inside Ciccio's badge, not the wing tips) around (x, y + hitDy) */
   hitW: 14,
   hitH: 12,
   hitDy: 2,

@@ -196,3 +196,40 @@ describe('keyDown', () => {
     expect(keyDown(s, 'KeyQ', false, 'platform')).toBe(false);
   });
 });
+
+describe('driver mode', () => {
+  it('Space brakes (downHeld) instead of jumping; ↓ / S brake too', () => {
+    const s = new InputState();
+    keyDown(s, 'Space', false, 'driver');
+    expect([s.downHeld, s.jumpHeld]).toEqual([true, false]);
+    s.reset();
+    keyDown(s, 'KeyS', false, 'driver');
+    expect(s.downHeld).toBe(true);
+  });
+
+  it('braking with the keyboard never replaces a lane press of the same frame', () => {
+    const s = new InputState();
+    keyDown(s, 'ArrowRight', false, 'driver');
+    keyDown(s, 'Space', false, 'driver');
+    expect([s.consumeDir(), s.downHeld]).toEqual(['right', true]);
+  });
+
+  it('a held ← is one lane press: auto-repeat never fires a second one', () => {
+    const s = new InputState();
+    keyDown(s, 'ArrowLeft', false, 'driver');
+    expect(s.consumeDir()).toBe('left');
+    keyDown(s, 'ArrowLeft', true, 'driver');
+    keyDown(s, 'ArrowLeft', true, 'driver');
+    expect(s.consumeDir()).toBe(null);
+  });
+
+  it('a lane tap (pushDir) is one press with no held axis, while the brake stays held', () => {
+    const s = new InputState();
+    s.press('t:1', 'down'); // FRENA finger
+    s.pushDir('right'); // ▶ tap with another finger
+    expect([s.axisX, s.downHeld]).toEqual([0, true]);
+    expect(s.consumeDir()).toBe('right');
+    expect(s.consumeDir()).toBe(null);
+    expect(s.downHeld).toBe(true);
+  });
+});

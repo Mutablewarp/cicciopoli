@@ -1,7 +1,8 @@
 /**
  * Dev-only harness (ui-harness.html, not part of the build).
- * ?state=loading|loaddone|title|hud|pause|victory|gameover|banner|icons|logo &level=1|2|3|4|5
- * &fire=&club=&down=enabled|disabled|hidden &bolts=N  &tone=goal|power|danger|info
+ * ?state=loading|loaddone|title|hud|pause|victory|gameover|banner|icons|logo|rushsetup|rushresults
+ * &level=1..6 &fire=&club=&down=enabled|disabled|hidden &bolts=N  &tone=goal|power|danger|info
+ * level 6: &low=1 (last 10 s) &win=0 (CORSA TERMINATA) &daily=1 &calm=1 &panel=help|settings|trophies
  */
 import type { ButtonState, ControlsLayout, LevelId } from '../contracts';
 import { LEVEL_IDS } from '../contracts';
@@ -9,6 +10,7 @@ import { startTitleRunner } from '../titleRunner';
 import { boltSvg, brieSvg, fistSvg, fuocoSvg, goatSvg, headSvg, hulkHeadSvg, nuggetSvg, pelletSvg, slamSvg, thaiSvg, wingsSvg } from './icons';
 import { createUI } from './index';
 import { LOGO_FACE_VIEWBOX, WORDMARK_VIEWBOX, logoFaceSvg, wordmarkSvg } from './logo';
+import { RUSH_HUD, rushResults, rushSetup } from './rush/samples';
 
 const params = new URLSearchParams(location.search);
 const root = document.getElementById('app') as HTMLElement;
@@ -41,7 +43,14 @@ function fakeGame(host: HTMLElement): void {
   const c = document.createElement('canvas');
   host.appendChild(c);
   const ctx = c.getContext('2d') as CanvasRenderingContext2D;
-  const sky = { 1: ['#3aa8e0', '#60ccf0', '#a8e4f4'], 2: ['#4a0e1c', '#d82810', '#f0645a'], 3: ['#0b0d24', '#141a3e'], 4: ['#1e1a1e', '#1e1a1e'], 5: ['#2a0e4a', '#a81c7c', '#f08a3c'] }[level];
+  const sky = {
+    1: ['#3aa8e0', '#60ccf0', '#a8e4f4'],
+    2: ['#4a0e1c', '#d82810', '#f0645a'],
+    3: ['#0b0d24', '#141a3e'],
+    4: ['#1e1a1e', '#1e1a1e'],
+    5: ['#2a0e4a', '#a81c7c', '#f08a3c'],
+    6: ['#5a4a52', '#6a5a5e'],
+  }[level];
   const hill = level === 1 ? '#489c30' : level === 5 ? '#3a1456' : '#2a1018';
   const ground = level === 1 ? '#a8cc00' : level === 5 ? '#a6d62c' : '#fc7a10';
   const frame = (t: number): void => {
@@ -59,6 +68,22 @@ function fakeGame(host: HTMLElement): void {
     sky.forEach((col, i) => g.addColorStop(i / (sky.length - 1), col));
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
+    if (level === 6) {
+      // top-down road: 3 lanes scrolling down, the truck near the bottom third
+      const rw = Math.min(w - 8, 120);
+      const x0 = Math.round((w - rw) / 2);
+      ctx.fillStyle = '#3a3242';
+      ctx.fillRect(x0, 0, rw, h);
+      ctx.fillStyle = '#fce4c0';
+      const off = (t / 8) % 24;
+      for (let y = -24 + off; y < h; y += 24) for (const k of [1, 2]) ctx.fillRect(x0 + Math.round((rw * k) / 3), y, 2, 12);
+      ctx.fillStyle = '#141414';
+      ctx.fillRect(x0 + Math.round(rw / 2) - 17, Math.round(h * 0.62), 34, 56);
+      ctx.fillStyle = '#e81c24';
+      ctx.fillRect(x0 + Math.round(rw / 2) - 17, Math.round(h * 0.62) + 26, 34, 4);
+      requestAnimationFrame(frame);
+      return;
+    }
     if (level >= 3) {
       // portrait playfield centred like the real scenes: starfield / maze walls
       const pw = Math.min(w, Math.round((h * 224) / 288));
@@ -100,6 +125,7 @@ function layoutFor(lv: LevelId): ControlsLayout {
     return { level: 3, mode: 'shooter', fire: pick('fire', 'enabled'), club: pick('club', bolts > 0 ? 'enabled' : 'disabled'), down: 'hidden', jumpLabel: 'SALTA', clubCount: bolts };
   }
   if (lv === 4) return { level: 4, mode: 'maze', fire: 'hidden', club: 'hidden', down: 'hidden', jumpLabel: 'SALTA' };
+  if (lv === 6) return { level: 6, mode: 'driver', fire: 'hidden', club: 'hidden', down: 'hidden', jumpLabel: 'SALTA', swipe: 'mid' };
   if (lv === 5) return { level: 5, mode: 'platform', fire: pick('fire', 'enabled'), club: pick('club', 'enabled'), down: 'hidden', jumpLabel: 'SALTA' };
   return lv === 1
     ? { level: 1, mode: 'platform', fire: pick('fire', 'enabled'), club: pick('club', 'disabled'), down: pick('down', 'hidden'), jumpLabel: 'SALTA' }
@@ -126,16 +152,17 @@ function mount(): void {
       level,
       hearts: 3,
       maxHearts: 4,
-      score: [161, 1240, 3150, 870, 2260][level - 1],
+      score: [161, 1240, 3150, 870, 2260, 2350][level - 1],
       timeMs: 96000,
       progress: 0.42,
       powers: { brie: level === 1, goat: level === 1, thai: false, wings: level === 2, bolt: level === 3, pellet: false },
     });
+    if (level === 6) ui.updateHud({ ...RUSH_HUD, timeMs: params.get('low') === '1' ? 8400 : RUSH_HUD.timeMs });
     ui.setControls(layoutFor(level));
     if (params.get('anim') === '1') {
       const tick = (): void => {
         const s = (performance.now() - t0) / 1000;
-        ui.updateHud({ timeMs: 96000 + s * 1000, progress: (0.42 + s / 30) % 1 });
+        ui.updateHud({ timeMs: level === 6 ? Math.max(0, 23000 - s * 1000) : 96000 + s * 1000, progress: (0.42 + s / 30) % 1 });
         requestAnimationFrame(tick);
       };
       tick();
@@ -173,6 +200,19 @@ function mount(): void {
         { level, score: 1735, timeMs: 92500, best: 1735, newBest: true, hasNext: level < LEVEL_IDS.length },
         { onNext: log('next'), onReplay: log('replay'), onMenu: log('menu') },
       );
+      break;
+    case 'rushsetup':
+      ui.showRushSetup(rushSetup(params.get('daily') === '1'), { onPlay: (d, daily) => log(`play-${d}-${daily}`)(), onSettings: (st) => log(`settings-${JSON.stringify(st)}`)(), onMenu: log('menu') });
+      // after the card's 250 ms arm time
+      if (params.get('panel')) {
+        const i = ['help', 'settings', 'trophies'].indexOf(params.get('panel') ?? '');
+        window.setTimeout(() => document.querySelectorAll<HTMLElement>('.cc-btn--more')[i]?.click(), 400);
+      }
+      break;
+    case 'rushresults':
+      // "movimento ridotto" reaches the results through the setup panel, as in the game
+      if (params.get('calm') === '1') ui.showRushSetup(rushSetup(false, true), { onPlay: log('play'), onSettings: log('settings'), onMenu: log('menu') });
+      ui.showRushResults(rushResults(params.get('win') !== '0', params.get('daily') === '1'), { onRetry: log('retry'), onMenu: log('menu') });
       break;
     case 'gameover':
       hudOn();

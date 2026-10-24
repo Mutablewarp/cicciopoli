@@ -213,6 +213,7 @@ export class MazeScene extends Phaser.Scene {
 
   private teardown(): void {
     this.bootToken++;
+    this.svc?.ui.setLoading(null); // a cancelled boot must not leave the loading screen up
     this.cleanups.forEach((fn) => fn());
     this.cleanups = [];
     this.run = null;

@@ -1,7 +1,13 @@
-import type { Dir4 } from '../contracts';
+import type { Dir4, SwipeSetting } from '../contracts';
 
 /** Minimum finger travel (CSS px) for a swipe on the game area (maze mode). */
 export const SWIPE_MIN_PX = 24;
+
+/** Finger travel per swipe sensitivity (maze / driver); 'mid' is the classic maze value. */
+export const SWIPE_PX: Readonly<Record<Exclude<SwipeSetting, false>, number>> = { high: 14, mid: SWIPE_MIN_PX, low: 40 };
+
+/** Travel threshold for a setting, or null when swipes are off. */
+export const swipeMin = (s: SwipeSetting): number | null => (s === false ? null : SWIPE_PX[s]);
 
 /** Direction of a finger travel, or null while it is shorter than `min` on both axes. */
 export function swipeDir(dx: number, dy: number, min = SWIPE_MIN_PX): Dir4 | null {
@@ -37,6 +43,32 @@ export class SwipeTracker {
     this.y = y;
     if (d === this.last) return null;
     this.last = d;
+    return d;
+  }
+}
+
+/**
+ * Driver lanes: one gesture = at most one left / right, however long it gets. Vertical travel
+ * never steers; a swipe that starts vertical can still turn into a lane change.
+ */
+export class LaneSwipe {
+  private x = 0;
+  private y = 0;
+  private spent = false;
+
+  constructor(private readonly min = SWIPE_MIN_PX) {}
+
+  start(x: number, y: number): void {
+    this.x = x;
+    this.y = y;
+    this.spent = false;
+  }
+
+  move(x: number, y: number): Dir4 | null {
+    if (this.spent) return null;
+    const d = swipeDir(x - this.x, y - this.y, this.min);
+    if (d !== 'left' && d !== 'right') return null;
+    this.spent = true;
     return d;
   }
 }

@@ -7,7 +7,7 @@
  *                   includes the safe-area bottom.
  * main.ts only re-reads them on resize events, so a change outside a resize dispatches one.
  */
-const CONTROL_PARTS = '.cc-dpad, .cc-cross, .cc-act:not([hidden])';
+const CONTROL_PARTS = '.cc-dpad, .cc-cross, .cc-lane, .cc-act:not([hidden])';
 
 export interface Insets {
   /** Re-measure now; dispatches a window resize if a value changed. */

@@ -1,34 +1,14 @@
-/** 32x18 pixel thumbnails of the five levels for the title cards (deterministic; level 5 is 64x18, a wide card). */
+/** 32x18 pixel thumbnails of the six levels for the title cards (deterministic; level 5 is 64x18, cropped to its centre). */
 import type { LevelId } from '../contracts';
 import { PAL } from '../art/pixel';
 import { CUTOUT_URL } from './cutout';
-import { pixelSvg, seeded } from './dom';
+import { seeded } from './dom';
+import { Grid } from './grid';
 import { LOGO_URL } from './loading';
+import { rushThumb } from './rush/scene';
 
 const W = 32;
 const H = 18;
-
-class Grid {
-  readonly rows: string[][];
-  constructor(fill: string, readonly w = W) {
-    this.rows = Array.from({ length: H }, () => Array<string>(w).fill(fill));
-  }
-  put(x: number, y: number, c: string): void {
-    if (x >= 0 && x < this.w && y >= 0 && y < H) this.rows[y][x] = c;
-  }
-  rect(x: number, y: number, w: number, h: number, c: string): void {
-    for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) this.put(i, j, c);
-  }
-  /** Paints a sprite; '.' is transparent. */
-  stamp(x: number, y: number, art: readonly string[]): void {
-    art.forEach((row, j) => [...row].forEach((c, i) => c !== '.' && this.put(x + i, y + j, c)));
-  }
-  svg(pal: Readonly<Record<string, string>>): string {
-    // slice: the art fills cards of any aspect, cropping evenly around the centre (a landscape card shows
-    // ~20 of the 32 columns: key props stay in columns 6-26, see thumbs.test.ts)
-    return pixelSvg(this.rows.map((r) => r.join('')), pal).replace('<svg ', '<svg preserveAspectRatio="xMidYMid slice" ');
-  }
-}
 
 function hills(): string {
   const g = new Grid('s');
@@ -194,7 +174,7 @@ function spacca(): string {
   return g.svg(pal).replace('</svg>', `<g class="cc-thumb__fallback">${art.replace(/^<svg[^>]*>|<\/svg>$/g, '')}</g>${cutout}</svg>`);
 }
 
-const BUILDERS: Record<LevelId, () => string> = { 1: hills, 2: inferno, 3: invaders, 4: maze, 5: spacca };
+const BUILDERS: Record<LevelId, () => string> = { 1: hills, 2: inferno, 3: invaders, 4: maze, 5: spacca, 6: rushThumb };
 
 export function levelThumb(level: LevelId): string {
   return BUILDERS[level]();

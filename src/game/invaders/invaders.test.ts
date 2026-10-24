@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { JET_FACE } from '../../art/space/jet';
+import { JET_BADGE } from '../../art/space/jet';
 import { TITLE_SIZE } from '../../art/space/title';
 import { pickChain } from './chain';
 import { CHAIN, FIELD, FORM, HITBOX, JET, SHIELDS, SHOT, SPAN, TRAY, UFO, WAVES } from './config';
@@ -178,15 +178,15 @@ describe('playfield layout', () => {
     expect(TRAY.x0 + (TRAY.max - 1) * TRAY.step + 10).toBeLessThanOrEqual(FIELD.w);
   });
 
-  it('shows the wordmark inside the field and keeps the hit box on the face logo of the jet', () => {
+  it('shows the wordmark inside the field and keeps the hit box on the logo badge of the jet', () => {
     expect(TITLE_SIZE.w).toBeLessThanOrEqual(FIELD.w - 8);
     // jet frame 43 x 40 drawn around its centre (21.5, 20)
     const left = 21.5 - JET.hitW / 2;
     const top = 20 + JET.hitDy - JET.hitH / 2;
-    expect(left).toBeGreaterThanOrEqual(JET_FACE.x);
-    expect(left + JET.hitW).toBeLessThanOrEqual(JET_FACE.x + JET_FACE.size);
-    expect(top).toBeGreaterThanOrEqual(JET_FACE.y);
-    expect(top + JET.hitH).toBeLessThanOrEqual(JET_FACE.y + JET_FACE.size);
+    expect(left).toBeGreaterThanOrEqual(JET_BADGE.x);
+    expect(left + JET.hitW).toBeLessThanOrEqual(JET_BADGE.x + JET_BADGE.size);
+    expect(top).toBeGreaterThanOrEqual(JET_BADGE.y);
+    expect(top + JET.hitH).toBeLessThanOrEqual(JET_BADGE.y + JET_BADGE.size);
   });
 
   it('stacks UFO, formation, shields and jet from the top without overlap', () => {

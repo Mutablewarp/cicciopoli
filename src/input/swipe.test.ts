@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SwipeTracker, crossDir, swipeDir } from './swipe';
+import { LaneSwipe, SWIPE_PX, SwipeTracker, crossDir, swipeDir, swipeMin } from './swipe';
 
 describe('swipeDir', () => {
   it('ignores travel shorter than 24 px on both axes', () => {
@@ -36,5 +36,42 @@ describe('crossDir', () => {
     expect(crossDir(-40, 10, null)).toBe('left');
     expect(crossDir(3, 4, 'left')).toBe('left');
     expect(crossDir(30, 2, 'up')).toBe('right');
+  });
+});
+
+describe('swipe sensitivity', () => {
+  it('high needs less travel than mid, mid less than low; off disables swipes', () => {
+    expect(SWIPE_PX.high).toBeLessThan(SWIPE_PX.mid);
+    expect(SWIPE_PX.mid).toBeLessThan(SWIPE_PX.low);
+    expect(swipeMin('mid')).toBe(24); // the maze keeps its classic threshold
+    expect(swipeMin(false)).toBe(null);
+  });
+
+  it('the same 20 px flick changes lane on high only', () => {
+    for (const [s, lane] of [['high', 'right'], ['mid', null], ['low', null]] as const) {
+      const t = new LaneSwipe(SWIPE_PX[s]);
+      t.start(0, 0);
+      expect(t.move(20, 2)).toBe(lane);
+    }
+  });
+});
+
+describe('LaneSwipe', () => {
+  it('one gesture = one lane, however long or zig-zag it gets', () => {
+    const t = new LaneSwipe(24);
+    t.start(100, 300);
+    expect(t.move(80, 300)).toBe(null);
+    expect(t.move(70, 302)).toBe('left');
+    expect(t.move(-200, 302)).toBe(null);
+    expect(t.move(400, 302)).toBe(null);
+    t.start(0, 0);
+    expect(t.move(30, 0)).toBe('right');
+  });
+
+  it('vertical travel never steers, but the gesture can still turn sideways', () => {
+    const t = new LaneSwipe(24);
+    t.start(0, 0);
+    expect(t.move(4, -60)).toBe(null);
+    expect(t.move(-70, -60)).toBe('left');
   });
 });

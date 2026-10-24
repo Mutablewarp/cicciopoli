@@ -1,0 +1,323 @@
+/* Level 6 sub-panels (COME SI GIOCA, IMPOSTAZIONI, TRAGUARDI): slide over the pre-run card. */
+.cc-rpanel {
+  position: absolute;
+  inset: 4px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 14px 14px;
+  background: var(--hud);
+  box-shadow: inset 0 4px 0 #34343a, inset 0 -6px 0 #19191b;
+  animation: cc-panel-in 220ms cubic-bezier(0.3, 1.2, 0.5, 1) both;
+}
+.cc-rpanel.is-out {
+  animation: cc-panel-out 160ms ease-in both;
+}
+@keyframes cc-panel-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes cc-panel-out {
+  to {
+    transform: translateX(100%);
+  }
+}
+.cc-rpanel__title {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  font-family: var(--f-pixel);
+  font-weight: 400;
+  font-size: 16px;
+  color: var(--yellow);
+  text-shadow: 2px 2px 0 var(--ink);
+}
+.cc-rpanel__count {
+  font-size: 11px;
+  color: var(--cream-lo);
+}
+.cc-rpanel__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-width: thin;
+}
+/* more below the fold: the last lines fade out */
+.cc-rpanel__content.has-more {
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(#000 calc(100% - 28px), transparent);
+}
+.cc-rpanel__back {
+  flex: none;
+  width: 100%;
+}
+
+/* COME SI GIOCA */
+.cc-help {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cc-help ol,
+.cc-help ul {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* body text in Press Start: Pixelify draws 5 like S, Z like 2 and C like O */
+.cc-help__rules li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-family: var(--f-pixel);
+  font-weight: 400;
+  font-size: 9px;
+  line-height: 1.6;
+  color: var(--cream);
+}
+.cc-help__rules b {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  font-family: var(--f-pixel);
+  font-weight: 400;
+  font-size: 10px;
+  color: var(--ink);
+  background: var(--orange);
+  box-shadow: 0 0 0 2px var(--ink);
+}
+.cc-help strong {
+  font-family: var(--f-pixel);
+  font-weight: 400;
+  font-size: 9px;
+  color: var(--yellow);
+}
+.cc-help__sub {
+  margin: 4px 0 0;
+  font-family: var(--f-pixel);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--orange);
+}
+.cc-help__power {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--f-pixel);
+  font-weight: 400;
+  font-size: 8px;
+  line-height: 1.6;
+  color: var(--cream-lo);
+}
+.cc-help__power svg {
+  flex: none;
+  width: 26px;
+  height: 26px;
+}
+.cc-help__power span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.cc-help__power strong {
+  color: var(--cream);
+}
+
+/* IMPOSTAZIONI */
+.cc-setting__name {
+  font-family: var(--f-pixel);
+  font-weight: 400;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-align: left;
+  color: var(--cream);
+  text-shadow: 2px 2px 0 var(--ink);
+}
+.cc-setting--swipe {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cc-seg {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.cc-seg__opt {
+  min-width: 0;
+  min-height: 44px;
+}
+.cc-seg__opt .cc-btn__label {
+  padding: 0 0 3px;
+  font-size: 9px;
+}
+.cc-seg__opt.is-chosen {
+  --face: var(--orange);
+  --face-hi: var(--orange-hi);
+  --face-lo: var(--orange-lo);
+  --text: var(--ink);
+}
+.cc-seg__opt.is-chosen .cc-btn__label {
+  text-shadow: none;
+}
+.cc-seg__opt.is-selected::after,
+.cc-switch.is-selected::after {
+  display: none;
+}
+.cc-switch {
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 3px 14px;
+}
+.cc-switch__pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cc-switch__pill i {
+  position: relative;
+  width: 40px;
+  height: 20px;
+  background: #1a1a1c;
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+.cc-switch__pill i::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  background: #8a8278;
+  box-shadow: inset 0 -2px 0 #5a5450;
+  transition: left 120ms steps(3);
+}
+.cc-switch.is-on .cc-switch__pill i {
+  background: #3c8a14;
+}
+.cc-switch.is-on .cc-switch__pill i::after {
+  left: 23px;
+  background: var(--cream);
+  box-shadow: inset 0 -2px 0 var(--cream-lo);
+}
+.cc-switch__pill b {
+  width: 3ch;
+  font-family: var(--f-pixel);
+  font-weight: 400;
+  font-size: 9px;
+  color: var(--cream-lo);
+}
+
+/* TRAGUARDI */
+.cc-trophies {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cc-trophy {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  color: #5a5a62;
+  background: #1a1a1c;
+  box-shadow: inset 0 0 0 2px #0e0e0e;
+}
+.cc-trophy.is-unlocked {
+  color: var(--yellow);
+  background: #3c3016;
+  box-shadow: inset 0 0 0 2px var(--yellow-lo);
+}
+.cc-trophy .cc-glyph {
+  flex: none;
+  width: 22px;
+  height: 24px;
+}
+.cc-trophy__text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.cc-trophy__text strong {
+  font-family: var(--f-pixel);
+  font-weight: 400;
+  font-size: 9px;
+  color: #8a8278;
+}
+.cc-trophy.is-unlocked strong {
+  color: var(--cream);
+}
+.cc-trophy__text span {
+  font-family: var(--f-pixel);
+  font-weight: 400;
+  font-size: 8px;
+  line-height: 1.5;
+  color: var(--cream-lo);
+}
+
+@media (orientation: landscape) {
+  .cc-rpanel {
+    padding: 12px 16px;
+    gap: 8px;
+  }
+  .cc-help {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto 1fr;
+    gap: 6px 18px;
+  }
+  .cc-help__rules {
+    grid-row: 1 / 3;
+  }
+  .cc-help__sub {
+    margin: 0;
+  }
+  .cc-help ol,
+  .cc-help ul {
+    gap: 5px;
+  }
+  .cc-help__rules li,
+  .cc-help__power {
+    font-size: 8px;
+    line-height: 1.5;
+  }
+  .cc-help__power svg {
+    width: 20px;
+    height: 20px;
+  }
+  .cc-help__power span {
+    flex-flow: row wrap;
+    align-items: baseline;
+    column-gap: 8px;
+  }
+  .cc-rpanel__back {
+    min-height: 44px;
+  }
+  .cc-rpanel--settings .cc-rpanel__content,
+  .cc-trophies {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-content: start;
+    gap: 8px;
+  }
+  .cc-setting--swipe {
+    grid-column: 1 / -1;
+  }
+}

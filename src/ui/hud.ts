@@ -1,7 +1,10 @@
-/** Top HUD: hearts, coin + score, level progress, power chips, TIME and pause button. */
+/** Top HUD: hearts, coin + score, level progress, power chips, TIME (a countdown in level 6) and pause button. */
 import type { HudState, LevelId, PowerState } from '../contracts';
 import { el, onActivate, setText } from './dom';
 import { FLAG_SVG, PAUSE_GLYPH, boltSvg, brieSvg, goatSvg, headSvg, heartSvg, hulkHeadSvg, nuggetSvg, pelletSvg, thaiSvg, wingsSvg } from './icons';
+import { createRushHud } from './rush/hud';
+import { finishSvg, truckSvg } from './rush/icons';
+import { LOW_TIME_MS, countdownLabel } from './rush/text';
 
 type PowerKey = keyof PowerState;
 
@@ -21,7 +24,16 @@ const LEVEL_CHIPS: Record<LevelId, readonly PowerKey[]> = {
   3: ['bolt'],
   4: ['pellet'],
   5: [],
+  // level 6 powers live in their own row (rush/hud.ts)
+  6: [],
 };
+
+/** Progress marker and finish icon per level: Ciccio's head, the green head (5), the truck and a checkered flag (6). */
+const MARKERS: Partial<Record<LevelId, { skin: string; marker: () => string; flag: string }>> = {
+  5: { skin: 'hulk', marker: hulkHeadSvg, flag: FLAG_SVG },
+  6: { skin: 'truck', marker: truckSvg, flag: finishSvg() },
+};
+const HEAD = { skin: 'head', marker: headSvg, flag: FLAG_SVG };
 
 const POP: Keyframe[] = [{ transform: 'scale(1)' }, { transform: 'scale(1.35)' }, { transform: 'scale(1)' }];
 
@@ -49,9 +61,11 @@ export function createHud(): Hud {
   const track = el('div', 'cc-progress__track');
   track.appendChild(fill);
   const marker = el('div', 'cc-progress__marker', headSvg());
+  const rush = createRushHud();
   const rail = el('div', 'cc-progress__rail');
-  rail.append(track, marker);
-  progress.append(rail, el('div', 'cc-progress__flag', FLAG_SVG));
+  rail.append(track, rush.pins, marker);
+  const flag = el('div', 'cc-progress__flag', FLAG_SVG);
+  progress.append(rail, flag);
   const powers = el('div', 'cc-powers');
   const chipEls = new Map<PowerKey, HTMLElement>();
   for (const c of CHIPS) {
@@ -77,7 +91,7 @@ export function createHud(): Hud {
   pauseBtn.addEventListener('pointerdown', (e) => e.preventDefault());
   const right = el('div', 'cc-hud__right');
   right.append(time, pauseBtn);
-  root.append(left, mid, right);
+  root.append(left, mid, rush.row, right);
 
   const cur: HudState = {
     level: 1,
@@ -88,7 +102,8 @@ export function createHud(): Hud {
     progress: -1,
     powers: { brie: false, goat: false, thai: false, wings: false },
   };
-  let shownSecs = -1;
+  let shownTime = '';
+  let countdown = false;
   let shownProgress = -1;
   let heartEls: HTMLElement[] = [];
   let pauseCb: (() => void) | null = null;
@@ -116,12 +131,13 @@ export function createHud(): Hud {
   }
 
   function renderChips(level: LevelId, p: PowerState): void {
-    // level 5: the progress marker is the green head
-    const hulk = level === 5;
-    if (marker.classList.contains('is-hulk') !== hulk) {
-      marker.classList.toggle('is-hulk', hulk);
-      marker.innerHTML = hulk ? hulkHeadSvg() : headSvg();
+    const skin = MARKERS[level] ?? HEAD;
+    if (marker.dataset.skin !== skin.skin) {
+      marker.dataset.skin = skin.skin;
+      marker.innerHTML = skin.marker();
+      flag.innerHTML = skin.flag;
     }
+    root.classList.toggle('is-rush', level === 6);
     let shown = 0;
     for (const c of CHIPS) {
       const chip = chipEls.get(c.key) as HTMLElement;
@@ -136,6 +152,18 @@ export function createHud(): Hud {
     }
     // no chip at all (level 5): the row must not keep its flex gap
     powers.classList.toggle('is-empty', shown === 0);
+  }
+
+  /** Elapsed seconds "096" (dim leading zeros), or the time left "1:30" pulsing red in its last 10 s. */
+  function renderTime(ms: number): void {
+    const digits = countdown ? countdownLabel(ms) : String(Math.min(999, Math.floor(Math.max(0, ms) / 1000)));
+    if (digits === shownTime) return;
+    shownTime = digits;
+    setText(timeLead, countdown ? '' : '000'.slice(digits.length));
+    setText(timeDigits, digits);
+    const low = countdown && ms > 0 && ms <= LOW_TIME_MS;
+    time.classList.toggle('is-low', low);
+    if (low) timeNum.animate(POP, { duration: 220 });
   }
 
   function update(s: Partial<HudState>): void {
@@ -158,15 +186,10 @@ export function createHud(): Hud {
       setText(scoreNum, String(s.score));
       if (up) scoreNum.animate([{ transform: 'translateY(-3px)', color: '#fff' }, { transform: 'none' }], { duration: 160 });
     }
-    if (s.timeMs !== undefined) {
-      const secs = Math.min(999, Math.floor(Math.max(0, s.timeMs) / 1000));
-      if (secs !== shownSecs) {
-        shownSecs = secs;
-        const digits = String(secs);
-        setText(timeLead, '000'.slice(digits.length));
-        setText(timeDigits, digits);
-      }
-    }
+    if (s.countdown !== undefined) countdown = s.countdown;
+    else if (s.level !== undefined && s.level !== cur.level) countdown = false;
+    if (s.timeMs !== undefined) cur.timeMs = s.timeMs;
+    if ((s.timeMs !== undefined || s.countdown !== undefined) && cur.timeMs >= 0) renderTime(cur.timeMs);
     if (s.progress !== undefined) {
       const q = Math.round(Math.max(0, Math.min(1, s.progress)) * 400) / 400;
       if (q !== shownProgress) {
@@ -177,6 +200,7 @@ export function createHud(): Hud {
     }
     const level = s.level ?? cur.level;
     const p = s.powers;
+    rush.update(s);
     const powersChanged = !!p && CHIPS.some((c) => !!p[c.key] !== !!cur.powers[c.key]);
     if (powersChanged || level !== cur.level) {
       if (p) cur.powers = { ...p };

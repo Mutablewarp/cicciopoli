@@ -259,3 +259,107 @@ integrator     src/contracts.ts, src/art/keys.ts, src/main.ts, docs/**, scripts/
 ```
 Contracts already extended by the integrator: LevelId 1-5, LEVEL_SCENE[5]='game', SfxName punch/smash/slam/rubble/roar/rip,
 MusicName 'rampage', SCORE.clear[5], HULK / HULK_ANIMS / HULK_FX / HULK_FX_ANIMS / RAMPAGE / RAMPAGE_ANIMS in art/keys.ts.
+
+---------------------------------------------------------------------------------------
+## 8. Level 6 — CICCIO'S RUSH · MISSIONE CONSEGNA A PALERMO (owner request, 2026-10-20)
+The owner sent a long "master prompt" (arcade delivery driving game) and asked to follow it but to
+build it AS LEVEL 6 OF THIS GAME, in the SAME pixel-art style as the other levels (no visual
+discrepancy), "magnetic" (keeps you glued for its 90 seconds), bonuses / maluses inspired by the
+Ciccio's Palermo menu, an EASTER EGG where a booster makes the Ciccio's truck FLY "like the new
+Tesla" (a meme), and the truck logo + lettering must read well while driving. Refs:
+ref/truck_photo.png (real trailer: matte black, white "Ciccio's" script + burger icon, "The Burger
+Truck", two red checkered bands, PALERMO, SICILY!, face logo + SEGUICI! on the rear door),
+ref/truck_top.png (render of the Sprinter box van from above), ref/truck_face_side.png (box with the
+big face logo and CICCIO'S lettering), ref/truck_cartoon.png (cartoon truck, Ciccio at the wheel).
+
+Real places (cicciosburger.it): Ciccio's La Lumia (Via Isidoro La Lumia, centre: Politeama / Via
+Libertà), Sperlinga (Via Boris Giuliano), Stadio (Viale del Fante), Gluten Free (Via Principe di
+Paternò), Terrasini (opening soon), Burger Truck. **Owner: never mention Mondello (no shop there any
+more). Zone 3 is the TERRASINI seafront, where the new Ciccio's Terrasini will open: the last order is
+delivered there.** Menu names usable in the game (never invent products): Big,
+Tuma, Crispy Goat, Old School, American Baconcheese, Brie, Double Triple, Green, Cheeseburger,
+Bacon Cheeseburger, Talè, Zola, Egg, Pancetta, Nuggets, Chicken Pop Corn, Waffle Fries, Fries,
+Green Nuggets Veggie, Meatball, Ciccio's sauce.
+
+**Naming / legal:** never print "Tesla", "Elon", "SpaceX", "Starman", "Hulk", "Pac-Man", "Mondello" in visible text. The
+meme is told with our own words ("0–100 in 1,61 secondi", "il primo burger truck volante"). No
+fake QR codes that scan; no prizes, discounts or real rewards; no claims of official authorisation
+(footer already says "Demo concept non ufficiale"). No analytics code at all (privacy default off).
+
+### Run (scene key 'rush', LevelId 6, music 'rush')
+- Portrait-first, landscape must work too. Top-down road scrolling down, 3 lanes of 40 px, the truck
+  near the bottom third, auto-forward. 90 s of active play (countdown in the HUD), 3 zones of 30 s:
+  1 PALERMO CENTRO (Politeama / Via Libertà, daylight, light traffic; departs from Ciccio's La Lumia),
+  2 ZONA STADIO (Viale del Fante, busier, roadworks, Ciccio's Stadio storefront, pink-and-black stands),
+  3 LUNGOMARE TERRASINI (sunset, sea, cliffs, small port with gozzi, palms, coastal tower, the Ciccio's
+  Terrasini storefront with PROSSIMA APERTURA: the 3rd order goes there; densest but fair).
+- Controls: swipe left / right (one lane per swipe, no double moves), ◀ ▶ buttons (tap = one lane),
+  hold FRENA (smooth slow-down, release = smooth back); keyboard ←/→ A/D lanes, ↓/S/Space brake,
+  Esc/P pause. Lane change ~250 ms eased; optional vibration (navigator.vibrate) on hits/deliveries.
+- Traffic: city cars, SUVs, vans, orange bus, Vespa scooters, Ape car (slow), cars parked in double row
+  with hazard blinkers; hazards: cones, roadworks barriers / pits, spilled Ciccio's sauce (slippery:
+  lane change slower + wobble for 1.5 s, Cheddar Grip ignores it). Seeded generator + VALIDATOR:
+  every sequence has a reachable safe route given lane-change time, braking and >= 1.2 s warning;
+  no spawn near the truck; delivery lanes kept clear; difficulty grows by density / pattern variety,
+  speed only a little. Thousands of seeds simulated in tests.
+- 3 orders per run (deliveries due ~25 s / 53 s / 80 s). Each order = a real menu pair (e.g. "Big +
+  Waffle Fries per Rosalia, Via Libertà") announced by a banner; the destination shows ~4 s ahead as a
+  glowing green lane zone with a waving customer on the sidewalk. Driving through it in that lane =
+  automatic hand-off (bag arcs to the customer, "ORDINE CONSEGNATO!" / "CONSEGNA PERFETTA!", +1000).
+  Missed: "CONSEGNA MANCATA!", one recovery zone a few seconds later ("ULTIMA CHANCE", -20 freshness);
+  missed twice = order lost, the run continues. Sicilian flavour lines from customers ("MIZZICA!",
+  "TALÌA CHE VELOCITÀ!", "GRAZIE CICCIO!").
+- Vehicle condition: 3 hearts; a hit = -1, shake, flash, crash sfx, -20 freshness, 1.2 s invulnerable,
+  combo reset. 0 hearts = run ends early ("CORSA TERMINATA!").
+- Power-ups (menu food, one timed power at a time; the shield may stack): SCUDO NUGGETS (absorbs one hit,
+  max 8 s), WAFFLE RADAR (5 s: red chevrons on dangerous lanes ahead, green on safe ones), POPCORN
+  SPRINT (4 s: +15% speed, popcorn particles, spawner adapts so it stays fair), CHEDDAR GRIP (6 s:
+  faster lane change, no sauce slip). Score pickup: fries tray (+25). Never required to survive.
+- EASTER EGG "PROPULSORE": once per run a rocket-booster crate appears in zone 3 (only while the player
+  drove clean for the last 8 s; retries until 78 s). Grab it = 5 s FLIGHT: boosters + flames, the truck
+  lifts (shadow drops away, scale up), flies over traffic invulnerable, nuggets float in the air for
+  points, speed lines, banner "ROADCOASTER ATTIVATA!" (owner's wording) sub "0–100 in 1,61 secondi". A delivery zone
+  passed while flying = "CONSEGNA DAL CIELO!" (the bag parachutes down, +200). Safe landing (traffic
+  cleared around, 1 s invulnerable). Secret achievement "IL TRUCK VOLA!".
+- FINALE = the ROADCOASTER meme (owner: recreate the internet meme of the electric roadster floating in
+  space, with the Ciccio's truck; never write the car brand): if all 3 orders are delivered, at 0 s
+  "ROADCOASTER ATTIVATA!", the truck fires its boosters over the Terrasini sea and climbs through the
+  sunset sky (side view 'rush-truck-fly') into SPACE: the famous shot recreated — 'rush-truck-orbit'
+  floating over 'rush-space' (Earth's limb, the Mediterranean, Sicily lit), Ciccio in a white spacesuit at
+  the wheel with his arm on the window, slow drift + rotation; meme card: "CICCIO'S ROADCOASTER",
+  "0–100: 1,61 s", "Autonomia: 3 panini", "Pilota: Ciccio (in tuta spaziale)", "NIENTE PANICO",
+  "Ciccio nello Spazio dal 2021" (Ciccio's first graphic theme was really 'Ciccio nello Spazio').
+  Then the results.
+- Drivers (choose 1 before the run): RIFLESSI DA CICCIO (default: lane change 200 ms), OCCHIO AL TRAFFICO
+  (warnings 0.3 s earlier; unlocked after the first delivery ever), RE DELLE CONSEGNE (half freshness
+  loss on hits; unlocked by completing all 3 deliveries in a run). Daily challenge: seed = today's date,
+  standard driver, own daily best.
+- Freshness 0..100 per order; bonus 0-500 at hand-off. Score: delivery 1000, freshness 0-500, clean
+  pass (a vehicle passes below the truck without a hit) 15 x combo (deliveries stay the main source) (x1 -> x3 cap, +0.25 every 4 passes),
+  collision-free zone +300. Stars: 1 = >= 1 delivery; 2 = >= 2 deliveries and >= 2500 points;
+  3 = 3 deliveries, average freshness >= 80, no hits. All numbers in src/config/rush.ts.
+- Results (DOM): CONSEGNA COMPLETATA! / CORSA TERMINATA!, breakdown, stars, best, new achievements
+  (PRIMA CONSEGNA, ZERO URTI, RE DI PALERMO, TRIS PERFETTO, MAESTRO DEL TRAFFICO, secret IL TRUCK
+  VOLA!), driver unlocked, one tip ("Ti mancavano 150 punti per il tuo record!", "Evita un urto per
+  la terza stella!"), RIPROVA (primary, instant, no tutorial), CONDIVIDI RISULTATO (Web Share, else
+  copy), SCOPRI IL MENÙ CICCIO'S (https://cicciosburger.it/, new tab), MENU.
+- Pre-run panel (DOM): CICCIO'S RUSH / MISSIONE CONSEGNA A PALERMO, the side-view truck, record, GIOCA ORA,
+  SFIDA DEL GIORNO, driver cards, COME SI GIOCA, IMPOSTAZIONI (swipe sensitivity / off, vibration,
+  reduced motion, high contrast, music). First run: 3 tiny in-game hints in the first seconds
+  (skippable, never repeated). Reduced motion (setting or prefers-reduced-motion): no shake, no speed
+  lines. High contrast: darker scenery, outlined traffic / hazards.
+- Persistence: best score via SaveStore.recordWin(6, …) (at the end of any run that reached 0 s with
+  >= 1 delivery); everything else (settings, drivers, achievements, daily bests, first-run flag) in the
+  game-owned localStorage key 'cicciopoli.rush.v1' (failure-tolerant like save.ts).
+- Deferred (named, not built): cosmetic van unlocks, online leaderboard, analytics.
+
+### v4 ownership
+```
+RUSH-ART lane   src/art/rush.ts, src/art/rush/** EXCEPT src/art/rush/keys.ts, scripts/truck-logo*.mjs (new)
+RUSH-GAME lane  src/game/rush/**, src/config/rush.ts, src/main.ts (only: import + register RushScene)
+UI lane         src/ui/**, src/input/** (driver controls, swipe sensitivity, HUD fields, 6th title card,
+                rush setup + results screens, pause unchanged)
+AUDIO lane      src/audio/** (9 sfx, 'rush' music: Palermo street-food tarantella energy + engine pulse,
+                setMusicMuted)
+integrator      src/contracts.ts, src/art/rush/keys.ts, src/game/save.ts, docs/**, scripts/e2e.mjs
+```

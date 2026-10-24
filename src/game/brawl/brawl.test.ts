@@ -165,8 +165,8 @@ describe('rage hero movement', () => {
     expect(HULK.slam.hopVy * Math.sqrt(HULK.move.fallMul)).toBeLessThan(HULK.landing.minSpeed);
   });
 
-  it('level 5 is the last level and starts like the others: 4 hearts, score 161', () => {
-    expect(nextLevel(5)).toBeNull();
+  it('level 5 leads to level 6 and starts like the others: 4 hearts, score 161', () => {
+    expect(nextLevel(5)).toBe(6);
     const run = createRun(5);
     expect(run.hearts).toBe(4);
     expect(run.score).toBe(161);

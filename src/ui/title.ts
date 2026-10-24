@@ -1,4 +1,4 @@
-/** Title screen: official Ciccio's logo, level cards (4 + a wide one for level 5), sound toggle, runner strip. */
+/** Title screen: official Ciccio's logo, six level cards (2x3 portrait, 3x2 landscape), sound toggle, runner strip. */
 import type { LevelId, TitleInfo } from '../contracts';
 import { LEVEL_IDS } from '../contracts';
 import { PAL } from '../art/pixel';
@@ -7,13 +7,17 @@ import { brandImage, el, onActivate, pixelSvg } from './dom';
 import { SPEAKER_OFF, SPEAKER_ON } from './icons';
 import { LOGO_URL } from './loading';
 import { Menu } from './menu';
-import { LEVEL_HEROES, LEVEL_NAMES, keyLegend } from './screens';
+import { rushArt } from './rush/art';
+import { LEVEL_HEROES, LEVEL_NAMES, LEVEL_TAGS, keyLegend } from './screens';
 import { levelThumb } from './thumbs';
 
 const GRASS_TILE = pixelSvg(
   ['..g......g...g..', '.gGg....gGg.gGg.', 'gggggggggggggggg', 'GGGGGGGGGGGGGGGG', 'kkkkkkkkkkkkkkkk'],
   { g: PAL.grass, G: PAL.grassMid, k: PAL.hillOutline },
 ).replace('<svg class=""', '<svg xmlns="http://www.w3.org/2000/svg"');
+
+/** The truck art is built after the title has painted and the runner started. */
+const TRUCK_DELAY_MS = 600;
 
 export interface TitleHandlers {
   onStart(level: LevelId): void;
@@ -54,6 +58,7 @@ export function createTitle(onChange: () => void): Title {
   brand.append(logo, el('p', 'cc-title__sub', 'THE BURGER ADVENTURE'));
 
   const bests = new Map<LevelId, HTMLElement>();
+  let truckThumb: HTMLElement | null = null;
   const levelBtns = LEVEL_IDS.map((lv) => {
     const b = el('button', `cc-btn cc-level cc-level--${lv}`);
     b.type = 'button';
@@ -64,14 +69,27 @@ export function createTitle(onChange: () => void): Title {
     thumb.append(el('span', 'cc-level__num', `0${lv}`), el('span', 'cc-level__go', '▶'));
     // level 5: the owner's cut-out replaces the pixel stand-in once it has loaded
     if (lv === 5) void cutoutReady().then((ok) => thumb.classList.toggle('has-cutout', ok));
+    if (lv === 6) truckThumb = thumb;
     const text = el('span', 'cc-level__text');
     text.append(el('span', 'cc-level__name', LEVEL_NAMES[lv]));
     if (LEVEL_HEROES[lv]) text.append(el('span', 'cc-level__hero', LEVEL_HEROES[lv]));
+    if (LEVEL_TAGS[lv]) text.append(el('span', 'cc-level__tag', LEVEL_TAGS[lv]));
     text.append(best);
     b.append(thumb, text);
     onActivate(b, menu.guard(() => handlers?.onStart(lv)));
     return b;
   });
+  /** Level 6: the art pack's side-view truck replaces the pixel van (built lazily, after the title is up). */
+  function loadTruck(): void {
+    const thumb = truckThumb;
+    if (!thumb || thumb.classList.contains('has-truck')) return;
+    void rushArt().then((art) => {
+      if (!art) return;
+      thumb.querySelector('.cc-thumb__truck')?.setAttribute('href', art.truck);
+      thumb.classList.add('has-truck');
+    });
+  }
+
   const grid = el('nav', 'cc-title__menu');
   grid.setAttribute('aria-label', 'Scegli il livello');
   grid.append(...levelBtns);
@@ -106,6 +124,7 @@ export function createTitle(onChange: () => void): Title {
       root.hidden = false;
       isOpen = true;
       menu.open(levelBtns, { armMs: 250 });
+      window.setTimeout(loadTruck, TRUCK_DELAY_MS);
       onChange();
     },
     hide() {

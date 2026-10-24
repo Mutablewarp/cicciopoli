@@ -16,6 +16,7 @@ import { BootScene, BASE_PACKS_KEY } from './game/BootScene';
 import { GameScene } from './game/GameScene';
 import { InvadersScene } from './game/invaders/InvadersScene';
 import { MazeScene } from './game/maze/MazeScene';
+import { RushScene } from './game/rush/RushScene';
 import { buildCiccioArt } from './art/ciccio';
 import { buildItemsArt } from './art/items';
 import { effectiveDpr } from './game/viewport';
@@ -82,7 +83,7 @@ const game = new Phaser.Game({
   input: { keyboard: false, mouse: false, touch: false, gamepad: false },
   audio: { noAudio: true },
   render: { antialias: false, powerPreference: 'high-performance' },
-  scene: [BootScene, GameScene, InvadersScene, MazeScene],
+  scene: [BootScene, GameScene, InvadersScene, MazeScene, RushScene],
 });
 
 let currentLevel: LevelId | null = null;
@@ -203,6 +204,8 @@ window.addEventListener('blur', () => {
 });
 // A lazy level chunk that fails (weak signal, redeploy while open): reload once, not placeholders.
 window.addEventListener('vite:preloadError', (e) => {
+  // a failed optional prefetch on the title (card thumbnails) or no network: keep the page, never reload
+  if (currentLevel === null || navigator.onLine === false) return;
   try {
     if (sessionStorage.getItem('cc-reloaded') === '1') return;
     sessionStorage.setItem('cc-reloaded', '1');

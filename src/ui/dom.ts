@@ -11,6 +11,23 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
+/** Hidden content shorter than this does not count (sub-pixel rounding at the end of a scroll). */
+const MORE_SLACK_PX = 4;
+
+/**
+ * Makes `scroll` a touch-scrollable pane (main.ts blocks touch scrolling everywhere else) and toggles
+ * `has-more` on `flagOn` while content still hides below its fold, for a fade / ▼ cue in CSS.
+ */
+export function scrollPane(scroll: HTMLElement, flagOn: HTMLElement): void {
+  scroll.dataset.scrollable = '';
+  const update = (): void => {
+    flagOn.classList.toggle('has-more', scroll.scrollTop + scroll.clientHeight < scroll.scrollHeight - MORE_SLACK_PX);
+  };
+  const sizes = new ResizeObserver(() => (scroll.isConnected ? update() : sizes.disconnect()));
+  scroll.addEventListener('scroll', update, { passive: true });
+  for (const n of [scroll, ...scroll.children]) sizes.observe(n);
+}
+
 /** Extra px around a button where releasing a finger still counts as a tap. */
 const TAP_SLOP = 10;
 /** A click this soon after a touch activation is the browser's echo of that tap. */

@@ -1,25 +1,28 @@
 /**
  * Touch controls per mode: platform (◀▶ + SALTA/VOLA, GOAT, THAI, SCENDI), shooter
- * (◀▶ + FUOCO, FULMINE with charges) and maze (4-way cross pad; swipes live in input).
- * Every pointer is captured by the control it started on and tracked by pointerId.
+ * (◀▶ + FUOCO, FULMINE with charges), maze (4-way cross pad; swipes live in input) and driver
+ * (◀ ▶ lane taps + a held FRENA; swipes live in input). Every pointer is captured by the control
+ * it started on and tracked by pointerId.
  */
-import type { ButtonState, ControlsLayout, ControlsMode, LevelId } from '../contracts';
+import type { ButtonState, ControlsLayout, ControlsMode, LevelId, SwipeSetting } from '../contracts';
 import type { HoldAction, InputState } from '../input';
 import { el } from './dom';
 import { type Pad, capture, createCrossPad, createSlidePad, primary, touchSrc } from './dpad';
 import { ARROW_DOWN, ARROW_UP, LOCK_SVG, boltSvg, fuocoSvg } from './icons';
 import { type DiscColors, pixelDisc } from './pixeldisc';
+import { createLanePad } from './rush/lanes';
 import { type WeaponKey, actionSkin } from './skins';
 
 const POP: Keyframe[] = [{ transform: 'scale(0.6)' }, { transform: 'scale(1.18)' }, { transform: 'scale(1)' }];
 
-type ActKey = 'jump' | 'fire' | 'club' | 'down' | 'shoot' | 'bolt';
+type ActKey = 'jump' | 'fire' | 'club' | 'down' | 'shoot' | 'bolt' | 'brake';
 
 const DARK = { base: '#3a3a42', hi: '#5c5c68', lo: '#26262c', side: '#101012', lip: '#08080a' };
 const FACES: Record<Exclude<ActKey, WeaponKey> | 'fly', DiscColors> = {
   jump: { base: '#fc9000', hi: '#fcc060', lo: '#d86c00', side: '#8a4400', lip: '#5a2a00' },
   fly: { base: '#4cc0ec', hi: '#a8e4f4', lo: '#2a90c8', side: '#14506e', lip: '#0c3448' },
   shoot: { base: '#ec2a1c', hi: '#ff8a6a', lo: '#b8140c', side: '#6a0806', lip: '#3a0404' },
+  brake: { base: '#d81c24', hi: '#ff6a5a', lo: '#a00c14', side: '#5a0408', lip: '#300204', ring: '#fce4c0' },
   down: { ...DARK, ring: '#60ccf0' },
   bolt: { ...DARK, ring: '#7ad8ff' },
 };
@@ -27,7 +30,7 @@ const FACES: Record<Exclude<ActKey, WeaponKey> | 'fly', DiscColors> = {
 const faceFor = (key: ActKey, level: LevelId): DiscColors =>
   key === 'fire' || key === 'club' ? { ...DARK, ring: actionSkin(level, key).ring } : FACES[key];
 /** Disc diameter in art pixels (the CSS size sets the on-screen size). */
-const DISC_N: Record<ActKey, number> = { jump: 26, shoot: 26, fire: 20, club: 20, down: 20, bolt: 20 };
+const DISC_N: Record<ActKey, number> = { jump: 26, shoot: 26, fire: 20, club: 20, down: 20, bolt: 20, brake: 26 };
 const DISC_DEPTH = 3;
 
 function discFaces(n: number, c: DiscColors): string {
@@ -49,13 +52,14 @@ export interface Controls {
   set(layout: ControlsLayout | null): void;
 }
 
-export function createControls(input: InputState, onMode: (m: ControlsMode) => void): Controls {
+export function createControls(input: InputState, onMode: (m: ControlsMode, swipe?: SwipeSetting) => void): Controls {
   const root = el('div', 'cc-controls is-off');
   root.addEventListener('contextmenu', (e) => e.preventDefault());
   const isOff = (): boolean => root.classList.contains('is-off');
   const slide = createSlidePad(input, isOff);
   const cross = createCrossPad(input, isOff);
-  const pads: Pad[] = [slide, cross];
+  const lanes = createLanePad(input, isOff);
+  const pads: Pad[] = [slide, cross, lanes];
 
   const actZone = el('div', 'cc-act-zone');
   const jumpLabel = el('b', 'cc-act__name', 'SALTA');
@@ -68,12 +72,15 @@ export function createControls(input: InputState, onMode: (m: ControlsMode) => v
     down: makeAct('down', 'down', ARROW_DOWN, 'SCENDI'),
     shoot: makeAct('shoot', 'fire', fuocoSvg(), 'Fuoco'),
     bolt: makeAct('bolt', 'club', boltSvg(), 'FULMINE'),
+    // FRENA is its own label: a pedal glyph read as a menu icon at this size
+    brake: makeAct('brake', 'down', '', 'Frena'),
   };
   buttons.jump.root.querySelector('.cc-act__icon')?.appendChild(jumpLabel);
   buttons.shoot.root.querySelector('.cc-act__icon')?.appendChild(el('b', 'cc-act__name', 'FUOCO'));
+  buttons.brake.root.querySelector('.cc-act__icon')?.appendChild(el('b', 'cc-act__name', 'FRENA'));
   buttons.bolt.root.append(badge);
   actZone.append(...Object.values(buttons).map((b) => b.root));
-  root.append(slide.zone, cross.zone, actZone);
+  root.append(slide.zone, cross.zone, lanes.zone, actZone);
 
   function makeAct(key: ActKey, action: HoldAction, icon: string, label: string): ActButton {
     const b = el('div', `cc-act cc-act--${key}`);
@@ -82,7 +89,7 @@ export function createControls(input: InputState, onMode: (m: ControlsMode) => v
     const face = el('span', 'cc-act__face', discFaces(DISC_N[key], faceFor(key, 1)));
     face.append(el('span', 'cc-act__icon', icon));
     b.append(face);
-    if (key !== 'jump' && key !== 'shoot') b.append(el('span', 'cc-act__label', label));
+    if (key !== 'jump' && key !== 'shoot' && key !== 'brake') b.append(el('span', 'cc-act__label', label));
     b.append(el('span', 'cc-act__lock', LOCK_SVG));
     const btn: ActButton = { root: b, action, state: 'hidden', pointers: new Set() };
     b.hidden = true;
@@ -91,7 +98,8 @@ export function createControls(input: InputState, onMode: (m: ControlsMode) => v
       if (btn.state !== 'enabled' || isOff() || !primary(e)) return;
       capture(b, e.pointerId);
       btn.pointers.add(e.pointerId);
-      input.press(touchSrc(e.pointerId), action);
+      // a held brake / dive is a hold, not a direction press: it must not replace a lane tap of the same frame
+      input.press(touchSrc(e.pointerId), action, action !== 'down');
       b.classList.add('is-down');
     });
     // A finger kept down through a reset takes its hold back on its next move, without a new
@@ -175,9 +183,10 @@ export function createControls(input: InputState, onMode: (m: ControlsMode) => v
 
   /** States per mode; buttons that do not belong to the mode are hidden. */
   function statesFor(l: ControlsLayout, mode: ControlsMode): Record<ActKey, ButtonState> {
-    const none: Record<ActKey, ButtonState> = { jump: 'hidden', fire: 'hidden', club: 'hidden', down: 'hidden', shoot: 'hidden', bolt: 'hidden' };
+    const none: Record<ActKey, ButtonState> = { jump: 'hidden', fire: 'hidden', club: 'hidden', down: 'hidden', shoot: 'hidden', bolt: 'hidden', brake: 'hidden' };
     if (mode === 'shooter') return { ...none, shoot: l.fire, bolt: l.club };
     if (mode === 'maze') return none;
+    if (mode === 'driver') return { ...none, brake: 'enabled' };
     return { ...none, jump: 'enabled', fire: l.fire, club: l.club, down: l.down };
   }
 
@@ -203,8 +212,8 @@ export function createControls(input: InputState, onMode: (m: ControlsMode) => v
       if (root.dataset.mode !== mode) {
         for (const p of pads) p.release();
         root.dataset.mode = mode;
-        onMode(mode);
       }
+      onMode(mode, layout.swipe);
       root.classList.remove('is-off');
       root.dataset.level = String(layout.level);
       setWeaponSkins(mode === 'platform' ? layout.level : 1);
