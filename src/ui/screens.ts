@@ -13,9 +13,14 @@ export const LEVEL_NAMES: Record<LevelId, string> = {
   5: 'SPACCA TUTTO',
   6: "CICCIO'S RUSH",
   7: "CICCIO'S KITCHEN",
+  8: "CICCIO'S GOLDEN TICKET",
 };
 /** Tagline under a level name on its title card. */
-export const LEVEL_TAGS: Partial<Record<LevelId, string>> = { 6: 'MISSIONE CONSEGNA A PALERMO', 7: "IL TURNO DA CICCIO'S" };
+export const LEVEL_TAGS: Partial<Record<LevelId, string>> = {
+  6: 'MISSIONE CONSEGNA A PALERMO',
+  7: "IL TURNO DA CICCIO'S",
+  8: 'LA SFIDA DELLE MASCOTTE',
+};
 /** Name of the hero of a level, shown under its title on the end screens. */
 export const LEVEL_HEROES: Partial<Record<LevelId, string>> = { 5: 'CICCIO SPACCA!' };
 export const levelTitle = (l: LevelId): string => `0${l} · ${LEVEL_NAMES[l]}`;
@@ -38,6 +43,18 @@ const PAUSE_KEYS: [string[], string] = [['ESC', 'P'], 'pausa'];
 
 /** Desktop key legend per level (title: the platform keys plus the shooter extras). */
 export function keyLegend(level?: LevelId): string {
+  if (level === 8) {
+    return keys(
+      [['←', '→', 'A', 'D'], 'corri'],
+      [['↑', 'W'], 'mira in alto'],
+      [['SPAZIO', 'Z'], 'salta / para'],
+      [['J', 'X'], 'spara'],
+      [['K', 'C', 'SHIFT'], 'scatto'],
+      [['Q', 'L'], 'arma'],
+      [['E', 'V'], 'EX / super'],
+      PAUSE_KEYS,
+    );
+  }
   if (level === 7) return keys([['INVIO', 'SPAZIO'], "prendi l'ordine / servi"], [['MOUSE'], 'cucina'], PAUSE_KEYS);
   if (level === 6) return keys([['←', '→', 'A', 'D'], 'corsia'], [['↓', 'S', 'SPAZIO'], 'frena'], PAUSE_KEYS);
   if (level === 5) return keys([['←', '→', 'A', 'D'], 'muovi'], [['↑', 'W', 'SPAZIO'], 'salta'], [['K', 'C'], 'pugno'], [['J', 'X'], 'spacca'], PAUSE_KEYS);

@@ -13,14 +13,14 @@
 /**
  * 1 Le Colline · 2 Alette Crunchy (platform) · 3 Ciccio's Invaders (shooter) · 4 Ciccio-Man (maze) ·
  * 5 Spacca Tutto (platform brawler) · 6 Ciccio's Rush (burger-truck delivery driving) ·
- * 7 Ciccio's Kitchen (cook and serve the real menu)
+ * 7 Ciccio's Kitchen (cook and serve the real menu) · 8 Ciccio's Golden Ticket (1930s cartoon boss rush)
  */
-export type LevelId = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type LevelId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
-export const LEVEL_IDS: readonly LevelId[] = [1, 2, 3, 4, 5, 6, 7];
+export const LEVEL_IDS: readonly LevelId[] = [1, 2, 3, 4, 5, 6, 7, 8];
 
 /** Phaser scene key that runs each level (main.ts starts it with data { level }). */
-export const LEVEL_SCENE: Readonly<Record<LevelId, 'game' | 'invaders' | 'maze' | 'rush' | 'kitchen'>> = {
+export const LEVEL_SCENE: Readonly<Record<LevelId, 'game' | 'invaders' | 'maze' | 'rush' | 'kitchen' | 'cartoon'>> = {
   1: 'game',
   2: 'game',
   3: 'invaders',
@@ -28,6 +28,7 @@ export const LEVEL_SCENE: Readonly<Record<LevelId, 'game' | 'invaders' | 'maze' 
   5: 'game',
   6: 'rush',
   7: 'kitchen',
+  8: 'cartoon',
 };
 
 export type Dir4 = 'up' | 'down' | 'left' | 'right';
@@ -97,7 +98,8 @@ export interface CiccioArtPack extends ArtPack {
 
 /* ---------------------------------------------------------------- INPUT */
 
-export type EdgeAction = 'jump' | 'fire' | 'club' | 'pause';
+/** dash / swap / super: level 8 (SCATTO, ARMA, SUPER buttons; keyboard per src/input). */
+export type EdgeAction = 'jump' | 'fire' | 'club' | 'pause' | 'dash' | 'swap' | 'super';
 
 export interface GameInput {
   /** -1 left, 0 none, +1 right. When both directions are held the LAST pressed wins. */
@@ -167,6 +169,8 @@ export interface HudState {
   combo?: number;
   /** level 7: order ticket, customer bubble, patience, served pins, hint line */
   kitchen?: KitchenHud;
+  /** level 8: super cards, weapon, boss name, boss pins */
+  cartoon?: CartoonHud;
 }
 
 export type ButtonState = 'hidden' | 'disabled' | 'enabled';
@@ -179,8 +183,11 @@ export type ButtonState = 'hidden' | 'disabled' | 'enabled';
  *                  swipes on the game area also change lane when `swipe` is not false.
  * kitchen  (L7):   no pads (everything is tapped on the canvas); one big action button labelled
  *                  `actionLabel` (PRENDI L'ORDINE / SERVI …) whose state is `fire`; a press = 'fire'.
+ * cartoon  (L8):   ◀▶ pad + ▲ (aim up, held = upHeld) on the left; big SALTA (jump, parry in mid-air), SPARA
+ *                  (fire held; hidden when `autoFire`), SCATTO (dash edge), ARMA (swap edge, shows `weapon`)
+ *                  and SUPER (super edge, shows `superCards` 0..5) on the right.
  */
-export type ControlsMode = 'platform' | 'shooter' | 'maze' | 'driver' | 'kitchen';
+export type ControlsMode = 'platform' | 'shooter' | 'maze' | 'driver' | 'kitchen' | 'cartoon';
 
 /** Swipe sensitivity on the game area (maze / driver); false = swipes off, buttons only. */
 export type SwipeSetting = false | 'low' | 'mid' | 'high';
@@ -201,6 +208,12 @@ export interface ControlsLayout {
   swipe?: SwipeSetting;
   /** kitchen: text of the action button ("PRENDI L'ORDINE", "SERVI") */
   actionLabel?: string;
+  /** cartoon: shooting is automatic, hide SPARA */
+  autoFire?: boolean;
+  /** cartoon: current weapon on the ARMA button */
+  weapon?: CartoonWeapon;
+  /** cartoon: super cards 0..5 on the SUPER button (1 = EX shot ready, 5 = PIOGGIA DI PATATINE) */
+  superCards?: number;
 }
 
 export interface TitleInfo {
@@ -228,6 +241,8 @@ export * from './contracts-rush';
 import type { RushDriverId, RushResultInfo, RushSettings, RushSetupInfo } from './contracts-rush';
 export * from './contracts-kitchen';
 import type { KitchenHud, KitchenResultInfo, KitchenSettings, KitchenSetupInfo } from './contracts-kitchen';
+export * from './contracts-cartoon';
+import type { CartoonBossId, CartoonHud, CartoonMapInfo, CartoonResultInfo, CartoonSettings, CartoonWeapon } from './contracts-cartoon';
 
 export interface GameUI {
   /** Full-screen loading indicator. progress 0..1, null hides it. */
@@ -262,6 +277,16 @@ export interface GameUI {
   ): void;
   /** Level 7 results: breakdown, stars, takings, tip, RIPROVA, CONDIVIDI RISULTATO, SCOPRI IL MENÙ CICCIO'S, MENU. */
   showKitchenResults(info: KitchenResultInfo, h: { onRetry(): void; onMenu(): void }): void;
+  /** Level 8 boss map: 7 vintage boss cards, GIOCA, COME SI GIOCA, IMPOSTAZIONI (onSettings on every change). */
+  showCartoonMap(
+    info: CartoonMapInfo,
+    h: { onPlay(boss: CartoonBossId): void; onSettings(s: CartoonSettings): void; onMenu(): void },
+  ): void;
+  /** Level 8 results: knockout report card (grade) or defeat card (progress), RIPROVA / PROSSIMO BOSS / MAPPA / MENU. */
+  showCartoonResults(
+    info: CartoonResultInfo,
+    h: { onRetry(): void; onNext?(): void; onMap(): void; onMenu(): void },
+  ): void;
   /** HUD pause button pressed (touch or click). */
   onPauseButton(cb: () => void): void;
   /** Element the Phaser canvas must exactly fill. */
@@ -291,9 +316,17 @@ export type SfxName =
   // burning warning, topping on the stack, sauce squeeze, paper wrap, tray served, till cha-ching,
   // happy customer, unhappy customer, shop doorbell, item into the bin, YOU ARE SO GOLDEN fanfare
   | 'sizzle' | 'flip' | 'fry' | 'ding' | 'burn' | 'plop' | 'squeeze' | 'wrap' | 'serve' | 'cash'
-  | 'yum' | 'grumble' | 'doorbell' | 'trash' | 'golden';
+  | 'yum' | 'grumble' | 'doorbell' | 'trash' | 'golden'
+  // level 8 cartoon: provola shot, meatball lob, meatball blast, nugget shot, PIOGGIA DI PATATINE super,
+  // EX shot, parry, dash, boss hit, knockout bell / announcer sting, round-start bell, a card filled,
+  // the golden ticket reveal, player hurt (cartoon), boss phase change
+  | 'cheese' | 'lob' | 'blast' | 'nugget' | 'friesRain' | 'ex' | 'parry' | 'dash' | 'bossHit'
+  | 'knockout' | 'roundBell' | 'cardFull' | 'ticket' | 'oof' | 'phase';
 
-export type MusicName = 'title' | 'hills' | 'inferno' | 'invaders' | 'maze' | 'rampage' | 'rush' | 'kitchen';
+export type MusicName =
+  | 'title' | 'hills' | 'inferno' | 'invaders' | 'maze' | 'rampage' | 'rush' | 'kitchen'
+  // level 8: the map / ragtime theme, the boss fights (hot jazz big band), the final boss
+  | 'cartoon' | 'cartoonBoss' | 'cartoonFinal';
 
 export interface GameAudio {
   /** Call from inside a user gesture handler; safe to call many times. */

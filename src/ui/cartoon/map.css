@@ -1,0 +1,206 @@
+/* Level 8 boss map (cartoon/map.ts): a theatre playbill on old paper. Portrait: title, record, the eight rows
+   (seven acts + the golden ticket finale, scrolling when they do not fit), the buttons at the thumb. Landscape:
+   title and buttons on the left, the acts in two columns on the right. */
+.cc-cmap {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-areas: 'head' 'record' 'list' 'act';
+  row-gap: 8px;
+  width: min(560px, 100%);
+  height: 100%;
+  max-height: 900px;
+}
+.cc-toon.cc-cmap {
+  padding: 14px 12px 12px;
+}
+.cc-cmap__side {
+  display: contents;
+}
+.cc-cmap__head {
+  grid-area: head;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.cc-cmap__kicker {
+  margin: 0;
+  font-style: italic;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: #6e4a22;
+}
+.cc-cmap__title {
+  font-size: clamp(26px, 8.4vw, 46px);
+}
+.cc-cmap__title span {
+  display: block;
+  margin-bottom: 0.1em;
+  font-size: 0.62em;
+  letter-spacing: 0.12em;
+}
+.cc-cmap__record {
+  grid-area: record;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 0;
+  font-family: var(--f-toon);
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: #5a4632;
+}
+.cc-cmap__record b {
+  font-size: 17px;
+  color: var(--t-red-lo);
+}
+.cc-cmap__won {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--t-gold-lo);
+}
+.cc-cmap__won svg {
+  width: 40px;
+  height: 24px;
+}
+
+/* ------------------------------------------------------------ the acts */
+.cc-cmap__scroll {
+  grid-area: list;
+  position: relative;
+  min-height: 0;
+  margin: 0 -4px;
+  padding: 8px 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-width: thin;
+}
+/* the acts fade in under the title and, while more hide below, out over the buttons */
+.cc-cmap__scroll {
+  -webkit-mask-image: linear-gradient(transparent, #000 8px);
+  mask-image: linear-gradient(transparent, #000 8px);
+}
+.cc-cmap.has-more .cc-cmap__scroll {
+  -webkit-mask-image: linear-gradient(transparent, #000 8px, #000 calc(100% - 30px), transparent);
+  mask-image: linear-gradient(transparent, #000 8px, #000 calc(100% - 30px), transparent);
+}
+.cc-cmap__list {
+  display: grid;
+  gap: 8px;
+}
+
+/* ------------------------------------------------------------ buttons */
+.cc-cmap__act {
+  grid-area: act;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cc-toon .cc-cmap__go {
+  flex-direction: column;
+  gap: 0;
+  min-height: 66px;
+}
+.cc-toon .cc-cmap__go .cc-btn__label {
+  font-size: 24px;
+}
+.cc-cmap__gonext {
+  font-family: var(--f-toon-text);
+  font-style: italic;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--t-white);
+  white-space: nowrap;
+}
+.cc-cmap__more {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+}
+.cc-toon .cc-cmap__more .cc-btn__label {
+  padding: 0 8px 1px;
+  font-size: 12px;
+  line-height: 1.1;
+  text-align: center;
+}
+/* COME SI GIOCA may take two lines, IMPOSTAZIONI and MENU never break */
+.cc-toon .cc-cmap__more .cc-btn:first-child .cc-btn__label {
+  white-space: normal;
+}
+
+/* landscape: title, record and buttons in a column on the left, the acts in two columns on the right (acts.css) */
+@media (orientation: landscape) {
+  .cc-cmap {
+    display: flex;
+    gap: 16px;
+    width: min(1060px, 100%);
+    max-height: 680px;
+  }
+  .cc-toon.cc-cmap {
+    padding: 12px 14px;
+  }
+  .cc-cmap__side {
+    flex: 0 0 36%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 0;
+  }
+  .cc-cmap__title {
+    font-size: clamp(24px, 4.2vw, 46px);
+  }
+  .cc-cmap__scroll {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    margin: -4px -4px -4px 0;
+  }
+  .cc-cmap__list {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(4, auto);
+    grid-auto-flow: column;
+    align-content: center;
+    min-height: 100%;
+  }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .cc-cmap {
+    row-gap: 6px;
+  }
+  .cc-cmap__kicker {
+    display: none;
+  }
+  .cc-toon .cc-cmap__go {
+    min-height: 54px;
+  }
+  .cc-toon .cc-cmap__go .cc-btn__label {
+    font-size: 19px;
+  }
+  .cc-toon .cc-cmap__more .cc-btn__label {
+    padding: 0 6px 1px;
+    font-size: 11px;
+  }
+  .cc-cmap__list {
+    gap: 6px;
+  }
+}
+@media (orientation: portrait) and (max-height: 700px) {
+  .cc-cmap__kicker {
+    display: none;
+  }
+}
+@media (orientation: portrait) and (max-width: 360px) {
+  .cc-cmap__title {
+    font-size: 23px;
+  }
+  .cc-toon .cc-cmap__more .cc-btn__label {
+    padding: 0 5px 1px;
+    font-size: 10.5px;
+  }
+}

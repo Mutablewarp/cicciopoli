@@ -73,8 +73,27 @@ const KITCHEN: Readonly<Record<string, readonly [number, number]>> = {
   golden: [2.9, 3.2],
 };
 
-/** Every sound ends inside one second, except the fanfares that close a level. */
-const MAX_LEN: Partial<Record<SfxName, number>> = { golden: 3.2 };
+/** Level 8 sounds: cheese / nugget / bossHit fire many times a second, so they stay under 0.1 s. */
+const CARTOON: Readonly<Record<string, readonly [number, number]>> = {
+  cheese: [0.07, 0.1],
+  lob: [0.28, 0.36],
+  blast: [0.58, 0.68],
+  nugget: [0.06, 0.1],
+  friesRain: [1.85, 2],
+  ex: [0.42, 0.5],
+  parry: [0.45, 0.55],
+  dash: [0.22, 0.28],
+  bossHit: [0.06, 0.1],
+  knockout: [1.4, 1.6],
+  roundBell: [0.85, 0.95],
+  cardFull: [0.5, 0.62],
+  ticket: [2.9, 3.2],
+  oof: [0.33, 0.42],
+  phase: [0.88, 0.98],
+};
+
+/** Every sound ends inside one second, except the fanfares and the super / knockout cues. */
+const MAX_LEN: Partial<Record<SfxName, number>> = { golden: 3.2, ticket: 3.2, friesRain: 2, knockout: 1.6 };
 
 describe('sfx recipes', () => {
   const names = Object.keys(SFX) as SfxName[];
@@ -95,6 +114,7 @@ describe('sfx recipes', () => {
     ['level 5', RAMPAGE],
     ['level 6', RUSH],
     ['level 7', KITCHEN],
+    ['level 8', CARTOON],
   ] as const)('has a recipe for every %s sound, layered and bounded in time', (_level, table) => {
     for (const [name, [min, max]] of Object.entries(table)) {
       expect(typeof SFX[name as SfxName], name).toBe('function');

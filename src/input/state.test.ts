@@ -256,3 +256,76 @@ describe('kitchen mode', () => {
     expect(keyDown(new InputState(), 'Enter', false, 'platform')).toBe(false);
   });
 });
+
+describe('cartoon mode (level 8)', () => {
+  const cartoon = (): InputState => {
+    const s = new InputState();
+    s.upJumps = false;
+    return s;
+  };
+
+  it('↑ / W / ▲ only aim: upHeld and axisY, never a jump edge or jumpHeld', () => {
+    const s = cartoon();
+    keyDown(s, 'ArrowUp', false, 'cartoon');
+    expect([s.axisY, s.upHeld, s.jumpHeld, s.consume('jump')]).toEqual([-1, true, false, false]);
+    s.press('t:4', 'up'); // ▲ finger too
+    s.release('k:ArrowUp');
+    expect(s.upHeld).toBe(true);
+  });
+
+  it('Space / Z jump without aiming up; SALTA held with ▲ held reads as both', () => {
+    const s = cartoon();
+    for (const code of ['Space', 'KeyZ']) {
+      keyDown(s, code, false, 'cartoon');
+      expect([s.jumpHeld, s.upHeld, s.consume('jump')]).toEqual([true, false, true]);
+      s.release(`k:${code}`);
+    }
+    s.press('t:1', 'jump');
+    s.press('t:2', 'up');
+    expect([s.jumpHeld, s.upHeld]).toEqual([true, true]);
+  });
+
+  it('dash / swap / super are one latched press each, from their keys', () => {
+    const s = cartoon();
+    const cases: Array<[string, 'dash' | 'swap' | 'super']> = [
+      ['KeyK', 'dash'], ['KeyC', 'dash'], ['ShiftLeft', 'dash'], ['ShiftRight', 'dash'],
+      ['KeyQ', 'swap'], ['KeyL', 'swap'], ['KeyE', 'super'], ['KeyV', 'super'],
+    ];
+    for (const [code, edge] of cases) {
+      expect(keyDown(s, code, false, 'cartoon')).toBe(true);
+      keyDown(s, code, true, 'cartoon'); // auto-repeat: still one press
+      expect([s.consume(edge), s.consume(edge)]).toEqual([true, false]);
+      s.release(`k:${code}`);
+    }
+    expect([s.consume('club'), s.clubHeld]).toEqual([false, false]);
+  });
+
+  it('J / X shoot held, Esc / P pause; the level 8 keys mean nothing elsewhere', () => {
+    const s = cartoon();
+    keyDown(s, 'KeyX', false, 'cartoon');
+    keyDown(s, 'KeyP', false, 'cartoon');
+    expect([s.fireHeld, s.consume('fire'), s.consume('pause')]).toEqual([true, true, true]);
+    const p = new InputState();
+    for (const code of ['KeyZ', 'KeyQ', 'KeyE', 'KeyV', 'KeyL', 'ShiftLeft']) expect(keyDown(p, code, false, 'platform')).toBe(false);
+    keyDown(p, 'KeyK', false, 'platform');
+    expect([p.consume('club'), p.consume('dash')]).toEqual([true, false]);
+  });
+
+  it('move + jump + dash + shoot from four fingers at once', () => {
+    const s = cartoon();
+    s.press('t:1', 'right');
+    s.press('t:1:up', 'up');
+    s.press('t:2', 'jump');
+    s.press('t:3', 'dash');
+    s.press('t:5', 'fire');
+    expect([s.axisX, s.upHeld, s.jumpHeld, s.fireHeld]).toEqual([1, true, true, true]);
+    expect([s.consume('jump'), s.consume('dash'), s.consume('fire')]).toEqual([true, true, true]);
+  });
+
+  it('back in the other modes ↑ jumps again', () => {
+    const s = cartoon();
+    s.upJumps = true;
+    s.press('k:ArrowUp', 'up');
+    expect([s.jumpHeld, s.consume('jump')]).toEqual([true, true]);
+  });
+});

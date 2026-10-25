@@ -1,0 +1,162 @@
+/* Level 8 COME SI GIOCA (cartoon/panels.ts): one row per control with its button drawn as on screen (the same
+   enamel colours as cartoon/controls.css), then the three weapons. Landscape: two columns. */
+.cc-thelp {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cc-thelp ul {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cc-thelp li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13.5px;
+  line-height: 1.32;
+  color: #3a2c1e;
+}
+.cc-thelp li > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.cc-thelp strong {
+  font-family: var(--f-toon);
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  color: var(--t-ink);
+}
+.cc-thelp__disc {
+  --face: var(--t-cream);
+  --face-hi: #fffaf0;
+  --face-lo: var(--t-paper-lo);
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--t-ink);
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 26%, var(--face-hi) 0 16%, var(--face) 48%, var(--face-lo) 100%);
+  box-shadow: 0 3px 0 var(--t-ink);
+}
+.cc-thelp__disc svg {
+  width: 62%;
+  height: 62%;
+}
+.cc-thelp__disc--jump {
+  --face: var(--t-red);
+  --face-hi: var(--t-red-hi);
+  --face-lo: var(--t-red-lo);
+}
+.cc-thelp__disc--dash {
+  --face: #4a86c4;
+  --face-hi: #8cbce8;
+  --face-lo: #2a5488;
+}
+.cc-thelp__disc--swap {
+  --face: var(--t-gold);
+  --face-hi: var(--t-gold-hi);
+  --face-lo: var(--t-gold-lo);
+}
+.cc-thelp__disc--up {
+  border-radius: 24px 24px 10px 10px;
+}
+.cc-thelp__disc--parry {
+  --face: #ffd2e6;
+  --face-hi: #fff2f8;
+  --face-lo: #f08ab8;
+}
+.cc-thelp__disc--pad {
+  display: flex;
+  gap: 2px;
+  width: 48px;
+  padding: 0 3px;
+  border-radius: 999px;
+}
+.cc-thelp__disc--pad i {
+  flex: 1;
+  display: grid;
+  place-items: center;
+}
+.cc-thelp__disc--pad svg {
+  width: 18px;
+  height: 18px;
+}
+.cc-thelp__disc--pad .is-l svg {
+  transform: rotate(-90deg);
+}
+.cc-thelp__disc--pad .is-r svg {
+  transform: rotate(90deg);
+}
+.cc-thelp__disc--super .cc-tbtn__minis {
+  --size: 48px;
+}
+.cc-thelp__sub {
+  margin: 6px 0 0;
+  font-family: var(--f-toon);
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-align: center;
+  color: var(--t-red-lo);
+}
+.cc-thelp__weapon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+}
+.cc-thelp__weapon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* IMPOSTAZIONI rows: room for the two-line note */
+.cc-toon .cc-rpanel .cc-switch {
+  padding: 9px 12px 11px 18px;
+}
+
+@media (orientation: landscape) {
+  .cc-thelp {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto 1fr;
+    align-items: start;
+    gap: 6px 18px;
+  }
+  .cc-thelp__rows {
+    grid-row: 1 / 3;
+  }
+  .cc-thelp__sub {
+    margin: 0;
+  }
+  .cc-toon .cc-rpanel--toon-settings .cc-rpanel__content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-content: start;
+    gap: 8px;
+  }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .cc-thelp li {
+    font-size: 12px;
+    gap: 9px;
+  }
+  .cc-thelp__disc,
+  .cc-thelp__weapon {
+    width: 38px;
+    height: 38px;
+  }
+  .cc-thelp__disc--pad {
+    width: 44px;
+  }
+}

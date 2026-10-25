@@ -26,9 +26,22 @@ import './kitchen/screens.css';
 import './kitchen/results.css';
 import './title.css';
 import './title-short.css';
+import './cartoon/toon.css';
+import './cartoon/stage.css';
+import './cartoon/controls.css';
+import './cartoon/tablet.css';
+import './cartoon/hud.css';
+import './cartoon/map.css';
+import './cartoon/acts.css';
+import './cartoon/panels.css';
+import './cartoon/results.css';
+import './cartoon/finale.css';
 import type { GameInput, GameUI } from '../contracts';
+import { CT_VIEW } from '../config/cartoon';
 import { createInput } from '../input';
 import { createBanner } from './banner';
+import { showCartoonMap } from './cartoon/map';
+import { showCartoonResults } from './cartoon/results';
 import { createControls } from './controls';
 import { el } from './dom';
 import { createHud } from './hud';
@@ -59,8 +72,17 @@ export function createUI(root: HTMLElement): { ui: GameUI; input: GameInput } {
   stage.append(hud.root, play, controls.root);
   hub.bindSwipe(gameHost);
 
-  // Level 6 finale: the driver controls go away with no screen opening (only the cinematic does that),
-  // so the HUD and controls bands collapse and the space shot fills a portrait screen too.
+  // level 8 restyles the whole stage (1930s HUD, controls band sized to the arena, vintage cards): `.is-l8` on the root
+  const level8 = (on: boolean): void => {
+    shell.classList.toggle('is-l8', on);
+  };
+  // the portrait game host follows the core camera framing (cartoon/stage.css)
+  shell.style.setProperty('--l8-push', String(CT_VIEW.push.max));
+  shell.style.setProperty('--l8-zmin', String(CT_VIEW.push.minZoomCss));
+  shell.style.setProperty('--l8-m', `${CT_VIEW.marginCss}px`);
+
+  // Level 6 / 8 finales: the driver / cartoon controls go away with no screen opening (only the cinematic does
+  // that), so the HUD and controls bands collapse and the space shot / golden ticket fills a portrait screen too.
   let driving = false;
   const cinematic = (on: boolean): void => {
     stage.classList.toggle('is-cinematic', on);
@@ -72,7 +94,10 @@ export function createUI(root: HTMLElement): { ui: GameUI; input: GameInput } {
     const top = modal.open ? modal.menu : title.open ? title.menu : null;
     hub.setInterceptor(top ? (e) => top.handleKey(e) : null);
     if (top) {
-      cinematic(false);
+      if (stage.classList.contains('is-cinematic')) {
+        cinematic(false);
+        insets.update(); // a screen opening in the same task as the collapse: the ResizeObserver sees no change
+      }
       input.enabled = false;
     } else if (wasBlocked) {
       input.enabled = true;
@@ -108,6 +133,7 @@ export function createUI(root: HTMLElement): { ui: GameUI; input: GameInput } {
   const ui: GameUI = {
     setLoading: (p, msg) => loading.set(p, msg),
     showTitle: (info, h) => {
+      level8(false);
       driving = false;
       cinematic(false);
       title.show(info, h);
@@ -120,10 +146,14 @@ export function createUI(root: HTMLElement): { ui: GameUI; input: GameInput } {
       }
     },
     showHud: (v) => hud.setVisible(v),
-    updateHud: (s) => hud.update(s),
+    updateHud: (s) => {
+      if (s.level !== undefined) level8(s.level === 8);
+      hud.update(s);
+    },
     setControls: (layout) => {
+      if (layout) level8(layout.level === 8);
       cinematic(!layout && driving && !modal.open && !title.open);
-      driving = layout?.mode === 'driver';
+      driving = layout?.mode === 'driver' || layout?.mode === 'cartoon';
       controls.set(layout);
       insets.update();
     },
@@ -132,6 +162,7 @@ export function createUI(root: HTMLElement): { ui: GameUI; input: GameInput } {
     showPause: (h, muted) => {
       banner.freeze();
       modal.showPause(h, muted);
+      if (shell.classList.contains('is-l8')) modal.root.querySelector('.cc-pause-card')?.classList.add('cc-toon');
     },
     showVictory: (info, h) => modal.showVictory(info, h),
     showGameOver: (info, h) => modal.showGameOver(info, h),
@@ -166,6 +197,26 @@ export function createUI(root: HTMLElement): { ui: GameUI; input: GameInput } {
       });
     },
     showKitchenResults: (info, h) => showKitchenResults(modal, info, h, reducedMotion()),
+    showCartoonMap: (info, h) => {
+      level8(true);
+      setCalm(info.settings.reducedMotion);
+      showCartoonMap(
+        modal,
+        info,
+        {
+          ...h,
+          onSettings: (s) => {
+            setCalm(s.reducedMotion);
+            h.onSettings(s);
+          },
+        },
+        reducedMotion,
+      );
+    },
+    showCartoonResults: (info, h) => {
+      level8(true);
+      showCartoonResults(modal, info, h, reducedMotion());
+    },
     onPauseButton: (cb) => hud.onPause(cb),
     gameHost,
     titleRunnerCanvas: title.canvas,

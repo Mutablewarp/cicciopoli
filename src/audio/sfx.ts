@@ -3,6 +3,7 @@
  * multiplier (≈ ±3%) chosen by the caller so repeated sounds don't fatigue.
  */
 import type { SfxName } from '../contracts';
+import { CARTOON_SFX } from './sfx-cartoon';
 import { KITCHEN_SFX } from './sfx-kitchen';
 import { RAMPAGE_SFX } from './sfx-rampage';
 import { RUSH_SFX } from './sfx-rush';
@@ -300,4 +301,5 @@ export const SFX: Readonly<Record<SfxName, Recipe>> = {
   ...RAMPAGE_SFX,
   ...RUSH_SFX,
   ...KITCHEN_SFX,
+  ...CARTOON_SFX,
 };

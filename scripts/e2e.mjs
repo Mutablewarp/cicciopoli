@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Smoke test in a real browser (Playwright + in-process Vite dev server):
- * title renders 7 level cards; every level boots, accepts input and has debug hooks;
+ * title renders 8 level cards; every level boots, accepts input and has debug hooks;
  * every level can be entered twice in a row (restart / re-entry regressions);
  * no uncaught page errors. Desktop and phone (portrait + landscape).
  *
@@ -45,9 +45,9 @@ for (const view of VIEWS) {
   };
 
   await page.goto(base + '?debug=1', { waitUntil: 'load' });
-  check(await waitFor(page, () => document.querySelectorAll('.cc-title button, .cc-title [role="button"]').length >= 7, 8000), 'title shows 7 level cards');
+  check(await waitFor(page, () => document.querySelectorAll('.cc-title button, .cc-title [role="button"]').length >= 8, 8000), 'title shows 8 level cards');
 
-  for (const level of [1, 2, 3, 4, 5, 6, 7]) {
+  for (const level of [1, 2, 3, 4, 5, 6, 7, 8]) {
     for (const attempt of [1, 2]) {
       await page.evaluate((l) => window.__app.app.startLevel(l), level);
       const booted = await waitFor(page, () => !!window.__game, 12000);
@@ -98,6 +98,27 @@ for (const view of VIEWS) {
     await page.waitForTimeout(1500); // end screens ignore taps for a moment (ui/menu.ts guard)
     await page.click('.cc-modal .cc-btn--go');
     check(await kstate(() => window.__game?.state?.().session === 'play'), 'level 7 RIPROVA restarts the shift');
+    await page.evaluate(() => window.__app.app.toMenu());
+    await waitFor(page, () => !window.__game, 4000);
+  }
+  {
+    // level 8: map -> a boss fight -> knockout -> results -> RIPROVA; the golden ticket finale -> golden results
+    const cstate = (expr, ms = 20000) => waitFor(page, expr, ms);
+    await page.evaluate(() => window.__app.app.startLevel(8));
+    check(await cstate(() => window.__game?.state?.().session === 'map' && !!document.querySelector('.cc-cmap__go')), 'level 8 boss map');
+    await page.evaluate(() => window.__game.boss('brie'));
+    check(await cstate(() => window.__game.state().session === 'round' && window.__game.state().round === 'fight', 30000), 'level 8 first boss fight starts');
+    await page.keyboard.down('KeyJ');
+    await page.waitForTimeout(800);
+    await page.keyboard.up('KeyJ');
+    await page.evaluate(() => window.__game.kill());
+    check(await cstate(() => window.__game.state().session === 'results' && !!document.querySelector('.cc-modal .cc-cres__retry'), 30000), 'level 8 knockout results');
+    await page.waitForTimeout(1500); // end screens ignore taps for a moment (ui/menu.ts guard)
+    await page.click('.cc-modal .cc-cres__retry');
+    check(await cstate(() => window.__game.state().session === 'round', 30000), 'level 8 RIPROVA restarts the boss');
+    await page.evaluate(() => window.__game.golden());
+    check(await cstate(() => window.__game.state().session === 'finale', 30000), 'level 8 golden ticket finale plays');
+    check(await cstate(() => window.__game.state().session === 'results' && !!document.querySelector('.cc-modal .cc-cres__retry'), 40000), 'level 8 golden results');
     await page.evaluate(() => window.__app.app.toMenu());
     await waitFor(page, () => !window.__game, 4000);
   }

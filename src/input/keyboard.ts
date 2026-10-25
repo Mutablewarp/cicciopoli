@@ -20,14 +20,32 @@ export const KEYMAP: Readonly<Record<string, HoldAction>> = {
   KeyP: 'pause',
 };
 
+/**
+ * Level 8 (§10): ↑ / W aim up (no jump), Space / Z jump, J / X shoot, K / C / Shift dash, Q / L swap weapon, E / V super.
+ * Only in the cartoon mode: K / C are the club elsewhere, and Z, Q, L, E, V, Shift mean nothing in levels 1-7.
+ */
+const CARTOON_KEYS: Readonly<Record<string, HoldAction>> = {
+  ...KEYMAP,
+  KeyZ: 'jump',
+  KeyK: 'dash',
+  KeyC: 'dash',
+  ShiftLeft: 'dash',
+  ShiftRight: 'dash',
+  KeyQ: 'swap',
+  KeyL: 'swap',
+  KeyE: 'super',
+  KeyV: 'super',
+};
+
 /** Keys of the level 7 action button (§9: Enter / Space). */
 const KITCHEN_FIRE: ReadonlySet<string> = new Set(['Enter', 'NumpadEnter', 'Space']);
 
 /**
  * Space fires in the shooter (BRIEF §6: Space/J/X = fuoco) and brakes in the driver (§8: ↓/S/Space);
- * Enter / Space press the kitchen's action button (§9).
+ * Enter / Space press the kitchen's action button (§9); level 8 has its own map (CARTOON_KEYS).
  */
 export function actionFor(code: string, mode: ControlsMode): HoldAction | undefined {
+  if (mode === 'cartoon') return CARTOON_KEYS[code];
   if (code === 'Space' && mode === 'shooter') return 'fire';
   if (code === 'Space' && mode === 'driver') return 'down';
   if (mode === 'kitchen' && KITCHEN_FIRE.has(code)) return 'fire';

@@ -1,0 +1,79 @@
+/* Level 8 touch controls on tablets held sideways (4:3 .. ~3:2, after cartoon/controls.css). Two side columns would
+   squeeze the 16:9 arena and leave a third of the height empty, so here the game host spans the full width and the
+   controls take a sepia band under it: the ◀ ▶ pill with its ▲ cap bottom left, the action discs in two rows bottom
+   right (SALTA big in the corner). The band is at least --l8-band-min tall and takes all the height the full-width
+   arena leaves (49px = the landscape HUD bar over the host, --play-inset-t). Nothing overlays the arena. */
+@media (orientation: landscape) and (max-aspect-ratio: 31/20) {
+  .is-touch.is-l8 {
+    --l8-band-min: 196px;
+    --l8-band: max(var(--l8-band-min), 100vh - 49px - (100vw - var(--safe-l) - var(--safe-r)) * 0.5625 - var(--safe-b));
+  }
+  .is-touch.is-l8 .game-host {
+    left: var(--safe-l);
+    right: var(--safe-r);
+    bottom: calc(var(--l8-band) + var(--safe-b));
+  }
+  .is-touch.is-l8 .cc-controls {
+    height: calc(var(--l8-band) + var(--safe-b));
+    background-color: var(--t-sepia);
+    background-image: var(--t-grain), radial-gradient(ellipse at 50% 0%, rgba(201, 160, 90, 0.2), transparent 60%);
+    box-shadow: inset 0 2px 0 #c9a05a, inset 0 5px 0 var(--t-sepia), inset 0 6px 0 rgba(201, 160, 90, 0.55);
+  }
+  .is-touch.is-l8 .cc-controls.is-off {
+    display: flex;
+  }
+  .cc-tpad-zone {
+    --k: 1;
+    width: calc(var(--safe-l) + 236px);
+    height: calc(var(--l8-band, 196px) + var(--safe-b));
+    padding: 0 0 calc(var(--safe-b) + 16px) calc(var(--safe-l) + 24px);
+    justify-content: flex-start;
+  }
+  .cc-tpad__pill {
+    width: calc(176px * var(--k));
+  }
+  .cc-tact-zone {
+    --k: 1;
+    right: calc(var(--safe-r) + 14px);
+    bottom: calc(var(--safe-b) + 12px);
+    width: calc(300px * var(--k));
+    height: calc(172px * var(--k));
+  }
+  /* bottom row SPARA, SCATTO, SALTA (big, at the thumb's rest in the corner); EX and ARMA above */
+  .cc-tbtn--super {
+    --s: 64;
+    --x: 20;
+    --y: 6;
+  }
+  .cc-tbtn--swap {
+    --s: 60;
+    --x: 108;
+    --y: 8;
+  }
+  .cc-tbtn--fire {
+    --s: 80;
+    --x: 8;
+    --y: 88;
+  }
+  .cc-tbtn--dash {
+    --s: 80;
+    --x: 98;
+    --y: 88;
+  }
+  .cc-tbtn--jump {
+    --s: 110;
+    --x: 188;
+    --y: 58;
+  }
+  /* sparo automatico: no SPARA, ARMA drops into its place and EX stands over SCATTO */
+  .cc-tact-zone.is-auto .cc-tbtn--swap {
+    --s: 66;
+    --x: 12;
+    --y: 96;
+  }
+  .cc-tact-zone.is-auto .cc-tbtn--super {
+    --s: 64;
+    --x: 106;
+    --y: 6;
+  }
+}

@@ -1,0 +1,46 @@
+/**
+ * PANCETTA LO SKATER tuning (boss 2 of the rush): rig geometry, the half-pipe of phase 1, every attack's
+ * timing / speed / size, transformation and knockout beats. World units, ms, units / s.
+ * Phase 0 skating the seafront floor; phase 1 up on the half-pipe in the background (scale `pipe.s`).
+ */
+import { ARENA } from '../../api';
+
+const F = ARENA.floorY;
+
+export const PANCETTA = {
+  hp: 1600,
+  phases: [0.5] as readonly number[],
+  introMs: 900,
+  transformMs: 2300,
+  koMs: 2500,
+  rest: { x: 520, amp: 18, periodMs: 3000 },
+  /** the half-pipe in the arena's mid layer: lips at x l / r, flat bottom at y bottom, wall radius R */
+  pipe: { l: 372, r: 604, bottom: 290, R: 86, s: 0.62, periodMs: 2600, uMin: 0.1, uMax: 0.9 },
+  /** rig offsets from the feet (facing left), at scale 1 */
+  rig: {
+    /** the drawings are made a bit big: the puppet is shown at this scale (times the pose scale) */
+    scale: 0.86,
+    /** deck top above the floor, the hips above the deck, the neck and the shoulder above the hips (drawing units) */
+    deck: 17,
+    hip: 44,
+    neck: { x: -4, y: -51 },
+    shoulder: { x: -22, y: -46 },
+    hand: { x: -58, y: -100 },
+    bgHand: { x: 0, y: -120 },
+  },
+  /** hit boxes from the feet at scale 1 (facing left; mirrored facing right) */
+  box: {
+    body: { x: -40, y: -158, w: 80, h: 158 },
+    /** up in the background: a square around the body centre, plus a pad (generous for phone thumbs) */
+    bg: { up: 78, size: 120, pad: 14, solidAt: 0.9 },
+  },
+  board: { teleMs: 750, w: 60, h: 12, lift: 8, speed: 330, wallX: 40, startDx: -46, recoverMs: 600 },
+  stomp: { teleMs: 800, minX: 70, maxX: 410, outMs: 750, apex: 160, holdMs: 300, backMs: 700, backApex: 120, wave: { w: 24, h: 18, speed: 240, gap: 22 }, shake: 7, recoverMs: 650 },
+  bacon: { teleMs: 800, count: 3, everyMs: 1100, entryMs: 300, entryX: 430, speed: 220, yc: F - 62, amp: 30, wavelength: 170, r: 11, pinkIndex: 1, recoverMs: 600 },
+  skyBacon: { teleMs: 750, count: 4, everyMs: 950, entryMs: 380, entryX: 420, speed: 250, yc: F - 62, amp: 30, wavelength: 170, r: 11, pinkIndex: 2, recoverMs: 650 },
+  wheels: { teleMs: 700, count: 4, everyMs: 700, speed: 250, r: 12, g: 1100, popVy: -120, hopVy: 160, spin: -1400, lift: 30, dx: -50, pinkIndex: 2, recoverMs: 600 },
+  dive: { teleMs: 900, minX: 70, maxX: 400, outMs: 900, apex: 60, holdMs: 400, backMs: 900, backApex: 80, backU: 0.9, wave: { w: 24, h: 18, speed: 240, gap: 22 }, shake: 8, recoverMs: 700 },
+  rain: { teleMs: 850, count: 4, spacing: 100, minX: 40, maxX: 440, everyMs: 250, flightMs: 950, apex: 110, hopMs: 700, r: 12, g: 1100, hopVy: 200, pinkIndex: 1, spin: -900, recoverMs: 650 },
+  transform: { leapMs: 1300, apex: 50, u: 0.9 },
+  ko: { fallMs: 700, apex: 40, minX: 380, maxX: 580, tumbleMs: 600, bonkAt: 1250, slideMs: 450, starsAt: 1300 },
+} as const;

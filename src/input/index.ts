@@ -13,8 +13,8 @@ export interface InputHub {
   setInterceptor(fn: KeyInterceptor | null): void;
   /**
    * Current controls mode: keyboard mapping (Space = fire in the shooter, brake in the driver, Enter / Space =
-   * the action button in the kitchen while `fire` is true) and game-area swipes (maze, driver) at the given
-   * sensitivity (false = off).
+   * the action button in the kitchen while `fire` is true, the level 8 keys in the cartoon mode, where ↑ aims and
+   * never jumps) and game-area swipes (maze, driver) at the given sensitivity (false = off).
    */
   setMode(mode: ControlsMode, swipe?: SwipeSetting, fire?: boolean): void;
   /** Swipes on this element steer in maze mode and change lane in driver mode (one finger at a time). */
@@ -39,6 +39,7 @@ export function createInput(): InputHub {
     },
     setMode(m, s = 'mid', fire = true) {
       mode = m;
+      state.upJumps = m !== 'cartoon';
       swipe = s;
       fireOk = fire;
     },

@@ -1,5 +1,5 @@
 /* Title screen — black, official logo + level cards (stacked in portrait, side by side in
-   landscape): seven cards, 2x4 in portrait and 4x2 in landscape, the 7th a wide card (kitchen/screens.css).
+   landscape): eight cards, 2x4 in portrait and 4x2 in landscape (the 8th, level 8, has its vintage frame: cartoon/title.css).
    The logo takes whatever height the cards leave; on short screens the cards shrink instead
    (title-short.css), so the logo and tagline never leave the screen. */
 .cc-title {
@@ -175,9 +175,10 @@
   text-shadow: 2px 2px 0 var(--ink);
   white-space: nowrap;
 }
-/* levels 6-7: a one-line name, so the two-line tagline keeps the row as tall as the others */
+/* levels 6-8: a one-line name, so the two-line tagline keeps the row as tall as the others */
 .cc-level--6 .cc-level__name,
-.cc-level--7 .cc-level__name {
+.cc-level--7 .cc-level__name,
+.cc-level--8 .cc-level__name {
   min-height: 0;
 }
 .cc-level__tag {
@@ -228,7 +229,7 @@
   color: #6e6862;
 }
 
-/* Portrait: four rows of cards (the wide 7th a little lower: its text sits beside the thumbnail). The brand block never shrinks below the logo + tagline and takes the
+/* Portrait: four rows of two cards. The brand block never shrinks below the logo + tagline and takes the
    spare height; on shorter phones the cards give way instead (their thumbnails shrink first, and in an
    uneven row the thumbnails grow to fill it). */
 @media (orientation: portrait) {
@@ -242,7 +243,7 @@
   .cc-title__menu {
     flex: 0 1 auto;
     min-height: 0;
-    grid-template-rows: repeat(3, minmax(0, 1fr)) minmax(0, 0.8fr);
+    grid-template-rows: repeat(4, minmax(0, 1fr));
   }
   .cc-level__thumb {
     flex: 1 1 auto;

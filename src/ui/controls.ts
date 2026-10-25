@@ -1,14 +1,17 @@
 /**
  * Touch controls per mode: platform (◀▶ + SALTA/VOLA, GOAT, THAI, SCENDI), shooter
  * (◀▶ + FUOCO, FULMINE with charges), maze (4-way cross pad; swipes live in input), driver
- * (◀ ▶ lane taps + a held FRENA; swipes live in input) and kitchen (no pads: one big action button,
- * mounted in the kitchen HUD and shown with a mouse too). Every pointer is captured by the control
+ * (◀ ▶ lane taps + a held FRENA; swipes live in input), kitchen (no pads: one big action button,
+ * mounted in the kitchen HUD and shown with a mouse too) and cartoon (level 8: the ◀▶ + ▲ aim pad and the
+ * SALTA / SPARA / SCATTO / ARMA / SUPER buttons, cartoon/*). Every pointer is captured by the control
  * it started on and tracked by pointerId.
  */
 import type { ButtonState, ControlsLayout, ControlsMode, LevelId, SwipeSetting } from '../contracts';
 import type { HoldAction, InputState } from '../input';
 import { el } from './dom';
 import { type Pad, capture, createCrossPad, createSlidePad, primary, touchSrc } from './dpad';
+import { createCartoonButtons } from './cartoon/controls';
+import { createAimPad } from './cartoon/pad';
 import { createKitchenAction } from './kitchen/action';
 import { ARROW_DOWN, ARROW_UP, LOCK_SVG, boltSvg, fuocoSvg } from './icons';
 import { type DiscColors, pixelDisc } from './pixeldisc';
@@ -64,8 +67,10 @@ export function createControls(input: InputState, onMode: (m: ControlsMode, swip
   const slide = createSlidePad(input, isOff);
   const cross = createCrossPad(input, isOff);
   const lanes = createLanePad(input, isOff);
-  const pads: Pad[] = [slide, cross, lanes];
+  const aim = createAimPad(input, isOff);
+  const pads: Pad[] = [slide, cross, lanes, aim];
   const kitchen = createKitchenAction(input);
+  const cartoon = createCartoonButtons(input, isOff);
 
   const actZone = el('div', 'cc-act-zone');
   const jumpLabel = el('b', 'cc-act__name', 'SALTA');
@@ -86,7 +91,7 @@ export function createControls(input: InputState, onMode: (m: ControlsMode, swip
   buttons.brake.root.querySelector('.cc-act__icon')?.appendChild(el('b', 'cc-act__name', 'FRENA'));
   buttons.bolt.root.append(badge);
   actZone.append(...Object.values(buttons).map((b) => b.root));
-  root.append(slide.zone, cross.zone, lanes.zone, actZone);
+  root.append(slide.zone, cross.zone, lanes.zone, aim.zone, actZone, cartoon.zone);
 
   function makeAct(key: ActKey, action: HoldAction, icon: string, label: string): ActButton {
     const b = el('div', `cc-act cc-act--${key}`);
@@ -191,7 +196,7 @@ export function createControls(input: InputState, onMode: (m: ControlsMode, swip
   function statesFor(l: ControlsLayout, mode: ControlsMode): Record<ActKey, ButtonState> {
     const none: Record<ActKey, ButtonState> = { jump: 'hidden', fire: 'hidden', club: 'hidden', down: 'hidden', shoot: 'hidden', bolt: 'hidden', brake: 'hidden' };
     if (mode === 'shooter') return { ...none, shoot: l.fire, bolt: l.club };
-    if (mode === 'maze' || mode === 'kitchen') return none;
+    if (mode === 'maze' || mode === 'kitchen' || mode === 'cartoon') return none;
     if (mode === 'driver') return { ...none, brake: 'enabled' };
     return { ...none, jump: 'enabled', fire: l.fire, club: l.club, down: l.down };
   }
@@ -200,6 +205,7 @@ export function createControls(input: InputState, onMode: (m: ControlsMode, swip
   // next move, so nothing can stick but a resting thumb is not dead until lifted.
   input.onReset(() => {
     for (const p of pads) p.rearm();
+    cartoon.rearm();
     for (const b of Object.values(buttons)) b.root.classList.remove('is-down');
   });
 
@@ -208,6 +214,7 @@ export function createControls(input: InputState, onMode: (m: ControlsMode, swip
     kitchen: kitchen.root,
     set(layout) {
       kitchen.set(layout);
+      cartoon.set(layout);
       if (!layout) {
         for (const p of pads) p.release();
         for (const b of Object.values(buttons)) releaseAct(b);

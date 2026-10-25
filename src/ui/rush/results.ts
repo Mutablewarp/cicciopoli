@@ -51,9 +51,9 @@ function legacyCopy(value: string): boolean {
 
 /**
  * Web Share sheet when the browser has one, else the clipboard; a cancelled share is not an error. The challenge
- * carries the game's address (no ?level / ?debug) so whoever receives it can play.
+ * carries the game's address (no ?level / ?debug) so whoever receives it can play. Shared with level 8 (cartoon/results.ts).
  */
-async function share(shareText: string, toast: (msg: string) => void): Promise<void> {
+export async function share(shareText: string, toast: (msg: string) => void): Promise<void> {
   const url = location.origin + location.pathname;
   if (typeof navigator.share === 'function') {
     try {

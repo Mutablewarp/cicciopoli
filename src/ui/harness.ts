@@ -6,13 +6,17 @@
  * level 7: state=kitchensetup (&golden=1 &calm=1 &panel=…) | kitchenresults (&win=0 &golden=1 &calm=1) |
  *          hud&level=7 (&view=counter|kitchen &ticket=long|wide|tale|double|short|none &say=0 &hint=0 &patience=0..1
  *          &mood=neutral|happy|angry &label=SERVI &fire=enabled|disabled|hidden)
+ * level 8: state=cartoonmap (&beaten=0..7 &calm=1 &auto=0 &panel=help|settings) | cartoonresults (&kind=win|golden|over
+ *          &grade=A+|B|C|D &progress=0..1 &calm=1) | hud&level=8 / pause&level=8 (&cards=0..5 &weapon=provola|meatball|nuggets &hearts=0..3
+ *          &auto=0 &boss=0..6)
  */
-import type { ButtonState, ControlsLayout, LevelId } from '../contracts';
+import type { ButtonState, CartoonWeapon, ControlsLayout, LevelId } from '../contracts';
 import { LEVEL_IDS } from '../contracts';
 import { startTitleRunner } from '../titleRunner';
 import { boltSvg, brieSvg, fistSvg, fuocoSvg, goatSvg, headSvg, hulkHeadSvg, nuggetSvg, pelletSvg, slamSvg, thaiSvg, wingsSvg } from './icons';
 import { createUI } from './index';
 import { LOGO_FACE_VIEWBOX, WORDMARK_VIEWBOX, logoFaceSvg, wordmarkSvg } from './logo';
+import { type SampleResult, cartoonHud, cartoonLayout, cartoonMap, cartoonResults, drawArena } from './cartoon/samples';
 import { KITCHEN_HUD, type SampleTicket, drawKitchen, headAnchor, kitchenHud, kitchenResults, kitchenSetup } from './kitchen/samples';
 import { RUSH_HUD, rushResults, rushSetup } from './rush/samples';
 
@@ -21,6 +25,13 @@ const root = document.getElementById('app') as HTMLElement;
 const state = params.get('state') ?? 'hud';
 const level: LevelId = LEVEL_IDS.find((l) => String(l) === params.get('level')) ?? 1;
 const view = params.get('view') === 'kitchen' ? 'kitchen' : 'counter';
+const toon = {
+  cards: Number(params.get('cards') ?? '2.4'),
+  weapon: (params.get('weapon') as CartoonWeapon | null) ?? 'provola',
+  hearts: Number(params.get('hearts') ?? '2'),
+  auto: params.get('auto') !== '0',
+  boss: Number(params.get('boss') ?? '2'),
+};
 const log = (msg: string) => () => {
   (window as unknown as { __log: string[] }).__log.push(msg);
 };
@@ -56,6 +67,7 @@ function fakeGame(host: HTMLElement): void {
     5: ['#2a0e4a', '#a81c7c', '#f08a3c'],
     6: ['#5a4a52', '#6a5a5e'],
     7: ['#3a3036', '#3a3036'],
+    8: ['#140d08', '#140d08'],
   }[level];
   const hill = level === 1 ? '#489c30' : level === 5 ? '#3a1456' : '#2a1018';
   const ground = level === 1 ? '#a8cc00' : level === 5 ? '#a6d62c' : '#fc7a10';
@@ -69,6 +81,11 @@ function fakeGame(host: HTMLElement): void {
       c.height = h;
       c.style.width = `${r.width}px`;
       c.style.height = `${r.height}px`;
+    }
+    if (level === 8) {
+      drawArena(ctx, host, s);
+      requestAnimationFrame(frame);
+      return;
     }
     if (level === 7) {
       drawKitchen(ctx, host, s, view);
@@ -131,6 +148,7 @@ function fakeGame(host: HTMLElement): void {
 
 function layoutFor(lv: LevelId): ControlsLayout {
   const pick = (k: string, d: ButtonState): ButtonState => (params.get(k) as ButtonState | null) ?? d;
+  if (lv === 8) return cartoonLayout(toon.cards, toon.weapon, toon.auto);
   if (lv === 3) {
     const bolts = Number(params.get('bolts') ?? '3');
     return { level: 3, mode: 'shooter', fire: pick('fire', 'enabled'), club: pick('club', bolts > 0 ? 'enabled' : 'disabled'), down: 'hidden', jumpLabel: 'SALTA', clubCount: bolts };
@@ -173,6 +191,7 @@ function mount(): void {
       powers: { brie: level === 1, goat: level === 1, thai: false, wings: level === 2, bolt: level === 3, pellet: false },
     });
     if (level === 6) ui.updateHud({ ...RUSH_HUD, timeMs: params.get('low') === '1' ? 8400 : RUSH_HUD.timeMs });
+    if (level === 8) ui.updateHud(cartoonHud(toon.cards, toon.weapon, toon.hearts, toon.boss));
     if (level === 7) {
       const k = kitchenHud((params.get('ticket') as SampleTicket | null) ?? 'long', view, {
         say: params.get('say') !== '0',
@@ -252,6 +271,26 @@ function mount(): void {
     case 'kitchenresults':
       if (params.get('calm') === '1') ui.showKitchenSetup(kitchenSetup(false, true), { onPlay: log('play'), onSettings: log('settings'), onMenu: log('menu') });
       ui.showKitchenResults(kitchenResults(params.get('win') !== '0', params.get('golden') === '1'), { onRetry: log('retry'), onMenu: log('menu') });
+      break;
+    case 'cartoonmap':
+      ui.showCartoonMap(cartoonMap(Number(params.get('beaten') ?? '2'), params.get('calm') === '1', toon.auto), {
+        onPlay: (b) => log(`play-${b}`)(),
+        onSettings: (st) => log(`settings-${JSON.stringify(st)}`)(),
+        onMenu: log('menu'),
+      });
+      if (params.get('panel')) {
+        const i = ['help', 'settings'].indexOf(params.get('panel') ?? '');
+        window.setTimeout(() => document.querySelectorAll<HTMLElement>('.cc-btn--more')[i]?.click(), 400);
+      }
+      break;
+    case 'cartoonresults':
+      if (params.get('calm') === '1') ui.showCartoonMap(cartoonMap(2, true), { onPlay: log('play'), onSettings: log('settings'), onMenu: log('menu') });
+      ui.showCartoonResults(cartoonResults((params.get('kind') as SampleResult | null) ?? 'win', params.get('grade') ?? 'A+', Number(params.get('progress') ?? '0.72')), {
+        onRetry: log('retry'),
+        onNext: log('next'),
+        onMap: log('map'),
+        onMenu: log('menu'),
+      });
       break;
     case 'gameover':
       hudOn();

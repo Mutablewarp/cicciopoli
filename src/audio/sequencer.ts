@@ -3,7 +3,8 @@
  *
  * Song data (src/audio/tracks/*.ts) is written as text grids, one token per step:
  *   note "C#5" | chord "F3+A3+C4" | "-" hold previous note(s) | "." rest; bars separated by "|".
- *   Drums: letters k(ick) s(nare) h(at) o(pen/tambourine), combinable ("ko"), UPPERCASE = accent.
+ *   Drums: letters k(ick) s(nare) h(at) o(pen/tambourine) t(om) c(rash) w(oodblock), combinable ("ko"),
+ *   UPPERCASE = accent.
  * A channel string shorter than its pattern is repeated (e.g. a 1-bar drum loop).
  */
 import { playDrum, playNote, type Drum, type Patch } from './instruments';
@@ -50,7 +51,7 @@ export interface Song {
   steps: SongEvent[][];
 }
 
-const DRUMS = new Set<string>(['k', 's', 'h', 'o']);
+const DRUMS = new Set<string>(['k', 's', 'h', 'o', 't', 'c', 'w']);
 
 /** Expands one channel of the whole song into a flat token list (validates bar lengths). */
 function channelTokens(src: SongSrc, ch: Channel): string[] {

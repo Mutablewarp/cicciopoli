@@ -1,5 +1,8 @@
 import type { MusicName } from '../../contracts';
 import type { SongSrc } from '../sequencer';
+import { cartoon } from './cartoon';
+import { cartoonBoss } from './cartoonBoss';
+import { cartoonFinal } from './cartoonFinal';
 import { hills } from './hills';
 import { inferno } from './inferno';
 import { invaders } from './invaders';
@@ -13,4 +16,6 @@ import { title } from './title';
 export type JingleName = 'win' | 'gameover';
 export type SongName = MusicName | JingleName;
 
-export const SONGS: Readonly<Record<SongName, SongSrc>> = { title, hills, inferno, invaders, maze, rampage, rush, kitchen, win, gameover };
+export const SONGS: Readonly<Record<SongName, SongSrc>> = {
+  title, hills, inferno, invaders, maze, rampage, rush, kitchen, cartoon, cartoonBoss, cartoonFinal, win, gameover,
+};

@@ -502,3 +502,73 @@ fries / starters with a light golf line pattern, black tray with a "CICCIO'S" pr
    (gold-tinted original), setup / title / results wherever the face appears.
 Ownership addition: BRAND lane = src/game/kitchen/brand/** (high-resolution packaging + logo textures for the
 scene, with a small API the game lane calls).
+
+---------------------------------------------------------------------------------------
+## 10. Level 8 — CICCIO'S GOLDEN TICKET · LA SFIDA DELLE MASCOTTE (owner request, 2026-10-25)
+Owner: "qualcosa come il gioco Cuphead, però utilizzando tutte le grafiche di Ciccio's". A run-and-gun
+BOSS RUSH in the 1930s rubber-hose cartoon style of that game (thick ink lines, pie-cut eyes, white gloves,
+squash and stretch, watercolour backgrounds, film grain, sepia vignette, title cards, big-band jazz).
+**This level overrides the pixel-art rule**: everything is drawn in code as smooth vector art at runtime
+(src/game/cartoon/api.ts, draw/canvas.ts: texture scale k, LINEAR filtering). Never print the name of that
+game, its characters, "Wonka" or the film in visible text (add them to the forbidden list of §8: Tesla,
+Elon, SpaceX, Starman, Hulk, Pac-Man, Mondello). No prizes, QR, analytics; "Demo concept non ufficiale".
+References (ref/): `level8_ciccio_hero.png` (THE HERO: the owner's rubber-hose Ciccio — navy three-piece
+suit, polka-dot tie, round black sunglasses, white gloves, big glossy black shoes, finger-gun pose),
+`level8_shirt_*.png` (the seven BOSSES = the mascots of the Ciccio's shirts), `level8_style_ref_19..22`
+(screenshots of the style).
+
+### The rush (scene key 'cartoon', LevelId 8)
+- **Map** (DOM, ui.showCartoonMap): a vintage poster with 7 boss cards in order; beaten = replayable with
+  its best grade, the next one open, the rest locked. GIOCA starts the next boss. COME SI GIOCA, IMPOSTAZIONI
+  (auto-fire, vibration, reduced motion, music), MENU. Progress in 'cicciopoli.cartoon.v1'.
+- **Bosses** (in order; each its own arena, 2 phases — the final one 3; ~60-90 s for a decent player):
+  1 MONSIEUR BRIE (brie wedge with a beret on a bicycle, baguette in the basket; countryside road with
+     farmhouses) · 2 PANCETTA LO SKATER (pig in dungarees and a bandana on a skateboard; skatepark on the
+     Palermo seafront) · 3 DON TUMA (100% TUMA SICILIANA: the moustached Sicilian in a coppola lounging in a
+     deck chair under lemon trees, checkered band; a Sicilian beach) · 4 HAPPY BOX (MAKE IT HAPPY: the blue
+     Happy Ciccio's box with a spray can; a graffiti alley) · 5 THE OLD SCHOOL (the burger held by a giant
+     white-gloved hand, "Sapori classici, gusto senza tempo — Solo da Ciccio's!"; a retro diner) ·
+     6 DOUBLE TRIPLE (the walking double burger in sneakers making a peace sign; a city street) ·
+     7 IL BOSS DELLA BURGER GANG (the burger with pink sunglasses and a soda cup, BURGER GANG; final, the
+     Ciccio's rooftop at night with neon). Attacks come from the character (baguettes, cheese wheels,
+     bacon strips, lemons, paint clouds, sauce bottles, patties, soda fizz …), readable telegraphs, fair
+     patterns, pink parryable objects in each fight.
+- **Hero**: Ciccio (HP 3), run, jump (variable height), dash (SCATTO, short invulnerability), aim forward or
+  up (▲), PARRY = press SALTA again in mid-air on a pink object (pops it, bounce, +1 card).
+- **Weapons from the menu** (ARMA cycles them; each has an EX shot costing 1 card):
+  PROVOLA GOAT = fast straight cheese rectangles (the main one) · MEATBALL = lobbed bombs that explode
+  (slow, strong, splash) · NUGGETS = homing nuggets (weaker, they find the boss). **SUPER** (5 cards) =
+  PIOGGIA DI PATATINE: a giant fries box / cloud pours fries from the sky onto the boss (big damage, the
+  hero is invulnerable while it rains). Cards fill by dealing damage and parrying.
+- **Round flow**: title card "PRONTI? AMUNÌ!" with the boss intro line → fight → "AL TAPPETO!" (knockout,
+  bell) → report card (DOM, ui.showCartoonResults: time, HP, parries, supers, GRADE A+…D, score, best,
+  PROSSIMO BOSS / RIPROVA / MAPPA / MENU) — or defeat: "K.O.!" card with a progress bar of how far the boss
+  was pushed, RIPROVA / MAPPA. svc.save.recordWin(8, score) on every knockout.
+- **Finale** (after the 7th boss): the GOLDEN TICKET — an ornate golden banknote / ticket (engraved border,
+  the owner's ORIGINAL face logo public/brand/ciccio-face-hd.png, CICCIO'S, a serial number, "BIGLIETTO
+  D'ORO", huge "YOU ARE SO GOLDEN"), unwrapped from a chocolate-bar-like Ciccio's wrapper, shimmering, Ciccio
+  dancing, confetti, then the results with the golden flag.
+- **Mobile first, portrait AND landscape**: ControlsMode 'cartoon' (◀▶ + ▲ left; SALTA, SPARA (hidden with
+  auto-fire), SCATTO, ARMA, SUPER right; multi-touch: move + jump + dash together). Portrait: the arena fits
+  the width with the controls below it (never over the fight); landscape: controls overlaid in the bottom
+  corners, translucent. Keyboard: ←/→ A/D move, ↑/W aim up, Space / Z jump, J/X shoot, K/C/Shift dash,
+  Q/L swap, E/V super, Esc/P pause. Film look: grain, vignette, flicker, dust (reduced motion: calm).
+- Audio: 'cartoon' (map, ragtime piano), 'cartoonBoss' (hot-jazz big band), 'cartoonFinal' (final boss),
+  sfx cheese, lob, blast, nugget, friesRain, ex, parry, dash, bossHit, knockout, roundBell, cardFull,
+  ticket, oof, phase.
+
+### v6 ownership
+```
+CORE lane     src/game/cartoon/** EXCEPT api.ts, draw/canvas.ts, bosses/**, hero/** — CartoonScene ('cartoon'),
+              player, weapons, damage, cards, parry, hazards, film FX, title cards, golden ticket, map / results
+              wiring, save 'cicciopoli.cartoon.v1', debug hooks; src/config/cartoon.ts; src/main.ts (register)
+HERO lane     src/game/cartoon/hero/** (Ciccio sheets + HERO_ANIMS, the weapon / FX textures of api.ts FX)
+BOSS-A lane   src/game/cartoon/bosses/{brie,pancetta}/**
+BOSS-B lane   src/game/cartoon/bosses/{tuma,happy}/**
+BOSS-C lane   src/game/cartoon/bosses/{oldschool,doubletriple}/**
+BOSS-D lane   src/game/cartoon/bosses/burgergang/** (the final boss, 3 phases)
+UI lane       src/ui/**, src/input/** (8th title card, 'cartoon' controls + keys, HUD, map, results)
+AUDIO lane    src/audio/** (3 tracks, 15 sfx)
+integrator    src/contracts*.ts, src/game/cartoon/api.ts, draw/canvas.ts, bosses/index.ts, bosses/placeholder.ts,
+              docs/**, scripts/e2e.mjs, README.md
+```

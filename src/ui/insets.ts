@@ -10,7 +10,7 @@
  * Level 7 parts are the `[data-inset]` elements; CSS tells each one's side with `--dock: top | left | bottom`.
  * main.ts only re-reads them on resize events, so a change outside a resize dispatches one.
  */
-const CONTROL_PARTS = '.cc-dpad, .cc-cross, .cc-lane, .cc-act:not([hidden])';
+const CONTROL_PARTS = '.cc-dpad, .cc-cross, .cc-lane, .cc-act:not([hidden]), .cc-tpad, .cc-tbtn:not([hidden])';
 
 export interface Insets {
   /** Re-measure now; dispatches a window resize if a value changed. */
@@ -48,7 +48,8 @@ export function trackInsets(play: HTMLElement, host: HTMLElement, hud: HTMLEleme
     if (getComputedStyle(controls).position === 'absolute') {
       for (const n of controls.querySelectorAll<HTMLElement>(CONTROL_PARTS)) {
         const r = n.getBoundingClientRect();
-        if (r.height > 0) bottom = Math.max(bottom, h.bottom - r.top);
+        // level 8 landscape: the controls stand in columns beside the host, so they cover none of it
+        if (r.height > 0 && r.right > h.left && r.left < h.right) bottom = Math.max(bottom, h.bottom - r.top);
       }
     }
     const parts = [...play.querySelectorAll<HTMLElement>('[data-inset]')].map((n) => ({

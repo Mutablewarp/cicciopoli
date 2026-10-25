@@ -1,9 +1,11 @@
 /**
  * Top HUD: hearts, coin + score, level progress, power chips, TIME (a countdown in level 6) and pause button.
  * Level 7 adds its layer over the play area (kitchen/hud.ts: ticket, bubble, hint), drives the rail by customers served
- * and shows INCASSO € in place of TIME.
+ * and shows INCASSO € in place of TIME. Level 8 swaps the whole bar for its 1930s layer (cartoon/hud.ts): playing-card hearts,
+ * super cards, weapon, boss name and pins; only the pause button stays.
  */
 import type { HudState, LevelId, PowerState } from '../contracts';
+import { createCartoonHud } from './cartoon/hud';
 import { el, onActivate, setText } from './dom';
 import { FLAG_SVG, PAUSE_GLYPH, boltSvg, brieSvg, goatSvg, headSvg, heartSvg, hulkHeadSvg, nuggetSvg, pelletSvg, thaiSvg, wingsSvg } from './icons';
 import { type KitchenLayer, createKitchenLayer } from './kitchen/hud';
@@ -33,6 +35,7 @@ const LEVEL_CHIPS: Record<LevelId, readonly PowerKey[]> = {
   // level 6 powers live in their own row (rush/hud.ts)
   6: [],
   7: [],
+  8: [],
 };
 
 /** Progress marker and finish icon per level: Ciccio's head, the green head (5), the truck and a checkered flag (6),
@@ -103,7 +106,8 @@ export function createHud(): Hud {
   pauseBtn.addEventListener('pointerdown', (e) => e.preventDefault());
   const right = el('div', 'cc-hud__right');
   right.append(time, pauseBtn);
-  root.append(left, mid, rush.row, right);
+  const cartoon = createCartoonHud();
+  root.append(left, mid, rush.row, cartoon.root, right);
 
   const cur: HudState = {
     level: 1,
@@ -151,6 +155,7 @@ export function createHud(): Hud {
     }
     root.classList.toggle('is-rush', level === 6);
     root.classList.toggle('is-kitchen', level === 7);
+    root.classList.toggle('is-cartoon', level === 8);
     kitchen.show(level === 7, !root.classList.contains('is-hidden'));
     let shown = 0;
     for (const c of CHIPS) {
@@ -219,6 +224,7 @@ export function createHud(): Hud {
     const p = s.powers;
     rush.update(s);
     if (s.kitchen) kitchen.update(s.kitchen);
+    if (level === 8) cartoon.update(s);
     const powersChanged = !!p && CHIPS.some((c) => !!p[c.key] !== !!cur.powers[c.key]);
     if (powersChanged || level !== cur.level) {
       if (p) cur.powers = { ...p };

@@ -18,6 +18,7 @@ import { InvadersScene } from './game/invaders/InvadersScene';
 import { MazeScene } from './game/maze/MazeScene';
 import { RushScene } from './game/rush/RushScene';
 import { KitchenScene } from './game/kitchen/KitchenScene';
+import { CartoonScene } from './game/cartoon/CartoonScene';
 import { buildCiccioArt } from './art/ciccio';
 import { buildItemsArt } from './art/items';
 import { effectiveDpr } from './game/viewport';
@@ -86,7 +87,7 @@ const game = new Phaser.Game({
   input: { keyboard: false, mouse: false, touch: false, gamepad: false },
   audio: { noAudio: true },
   render: { antialias: false, powerPreference: 'high-performance' },
-  scene: [BootScene, GameScene, InvadersScene, MazeScene, RushScene, KitchenScene],
+  scene: [BootScene, GameScene, InvadersScene, MazeScene, RushScene, KitchenScene, CartoonScene],
 });
 
 let currentLevel: LevelId | null = null;

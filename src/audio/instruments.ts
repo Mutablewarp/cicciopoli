@@ -20,9 +20,12 @@ export interface Patch {
   /** fixed lowpass cutoff (Hz) */
   cutoff?: number;
   vib?: { cents: number; rate: number; delay: number };
+  /** second oscillator this many cents sharp (honky-tonk piano, brass / reed section) */
+  unison?: number;
 }
 
-export type Drum = 'k' | 's' | 'h' | 'o';
+/** kick, snare, hat, open / tambourine, tom, crash cymbal, woodblock */
+export type Drum = 'k' | 's' | 'h' | 'o' | 't' | 'c' | 'w';
 
 /**
  * Pluck-style envelope: attack to vol, decay towards sustain. With `trem` the note is
@@ -68,14 +71,17 @@ export function playNote(v: Voice, p: Patch, midi: number, t: number, len: numbe
     lp.connect(g);
     input = lp;
   }
-  const o = makeOsc(ctx, p.wave, f, t);
+  const freqs = p.unison ? [f, f * 2 ** (p.unison / 1200)] : [f];
   const vib = p.vib;
   const vibDur = end - t - (vib?.delay ?? 0);
-  if (vib && vibDur > 0.12) o.detune.setValueCurveAtTime(vibratoCurve(vib.cents, vib.rate, vibDur, 0.12), t + vib.delay, vibDur);
-  o.connect(input);
-  o.start(t);
-  o.stop(end + 0.01);
-  o.onended = () => g.disconnect();
+  freqs.forEach((fr, i) => {
+    const o = makeOsc(ctx, p.wave, fr, t);
+    if (vib && vibDur > 0.12) o.detune.setValueCurveAtTime(vibratoCurve(vib.cents, vib.rate, vibDur, 0.12), t + vib.delay, vibDur);
+    o.connect(input);
+    o.start(t);
+    o.stop(end + 0.01);
+    if (i === 0) o.onended = () => g.disconnect();
+  });
 }
 
 /** Drum hit; `vol` is the channel level, accents are 25% louder. */
@@ -98,6 +104,22 @@ export function playDrum(v: Voice, d: Drum, accent: boolean, vol: number, t: num
       // tambourine-ish jingle: bright wash plus a resonant shimmer
       hiss(v, { t, a: 0.003, d: 0.15, peak: g * 0.24, type: 'highpass', f: 6000 });
       hiss(v, { t, d: 0.09, peak: g * 0.12, type: 'bandpass', f: 9500, q: 3 });
+      break;
+    case 't':
+      // jungle floor tom: a pitched boom with a mid skin slap (the slap carries it on phones)
+      tone(v, { wave: 'sine', t, f: 170, to: 104, slide: 0.12, a: 0.001, d: 0.26, peak: g * 0.75 });
+      tone(v, { wave: 'triangle', t, f: 360, to: 210, slide: 0.05, a: 0.001, d: 0.07, peak: g * 0.3 });
+      hiss(v, { t, d: 0.04, peak: g * 0.2, type: 'bandpass', f: 900, q: 1.2 });
+      break;
+    case 'c':
+      // crash cymbal: a bright wash ringing out, with a darker body under the attack
+      hiss(v, { t, a: 0.002, d: 1.1, peak: g * 0.26, type: 'highpass', f: 4800 });
+      hiss(v, { t, a: 0.002, d: 0.5, peak: g * 0.16, type: 'bandpass', f: 3200, q: 0.6 });
+      break;
+    case 'w':
+      // hollow woodblock "tock"
+      tone(v, { wave: 'sine', t, f: 1180, to: 1050, slide: 0.04, a: 0.001, d: 0.06, peak: g * 0.4 });
+      hiss(v, { t, d: 0.015, peak: g * 0.3, type: 'bandpass', f: 2400, q: 5 });
       break;
   }
 }

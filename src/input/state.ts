@@ -5,15 +5,27 @@
  */
 import type { Dir4, EdgeAction, GameInput } from '../contracts';
 
-/** 'up' = ↑ / W / cross-pad up: a direction (axisY) that also counts as jump. */
-export type HoldAction = 'left' | 'right' | 'up' | 'down' | 'jump' | 'fire' | 'club' | 'pause';
+/**
+ * 'up' = ↑ / W / cross-pad up / ▲: a direction (axisY) that also counts as jump, except in level 8 (`upJumps` false:
+ * ▲ only aims). 'dash' / 'swap' / 'super' = level 8 SCATTO, ARMA, SUPER (edges).
+ */
+export type HoldAction = 'left' | 'right' | 'up' | 'down' | 'jump' | 'fire' | 'club' | 'pause' | 'dash' | 'swap' | 'super';
 
 interface Hold {
   action: HoldAction;
   seq: number;
 }
 
-const EDGE: Partial<Record<HoldAction, EdgeAction>> = { jump: 'jump', up: 'jump', fire: 'fire', club: 'club', pause: 'pause' };
+const EDGE: Partial<Record<HoldAction, EdgeAction>> = {
+  jump: 'jump',
+  up: 'jump',
+  fire: 'fire',
+  club: 'club',
+  pause: 'pause',
+  dash: 'dash',
+  swap: 'swap',
+  super: 'super',
+};
 
 function isDir(a: HoldAction): a is Dir4 {
   return a === 'left' || a === 'right' || a === 'up' || a === 'down';
@@ -21,6 +33,8 @@ function isDir(a: HoldAction): a is Dir4 {
 
 export class InputState implements GameInput {
   enabled = true;
+  /** false in the cartoon controls mode (level 8): ↑ / W / ▲ aim up (upHeld) and never jump; jump = SALTA / Space / Z. */
+  upJumps = true;
   private readonly holds = new Map<string, Hold>();
   private readonly latched = new Set<EdgeAction>();
   private readonly resetListeners: Array<() => void> = [];
@@ -36,7 +50,7 @@ export class InputState implements GameInput {
     if (prev && prev.action === action) return;
     this.holds.set(source, { action, seq: ++this.seq });
     if (!latch) return;
-    const edge = EDGE[action];
+    const edge = action === 'up' && !this.upJumps ? undefined : EDGE[action];
     if (edge && (this.enabled || edge === 'pause')) this.latched.add(edge);
     if (isDir(action)) this.pushDir(action);
   }
@@ -87,15 +101,15 @@ export class InputState implements GameInput {
     return a === 'up' ? -1 : a === 'down' ? 1 : 0;
   }
 
-  /** Up shares the jump sources (↑ / W / Space / SALTA): rising in flight = holding jump. */
+  /** Up shares the jump sources (↑ / W / Space / SALTA): rising in flight = holding jump. Level 8: ↑ / W / ▲ only. */
   get upHeld(): boolean {
-    return this.held('jump') || this.held('up');
+    return this.held('up') || (this.upJumps && this.held('jump'));
   }
   get downHeld(): boolean {
     return this.held('down');
   }
   get jumpHeld(): boolean {
-    return this.upHeld;
+    return this.upJumps ? this.upHeld : this.held('jump');
   }
   get fireHeld(): boolean {
     return this.held('fire');

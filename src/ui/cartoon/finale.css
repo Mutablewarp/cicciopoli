@@ -1,0 +1,134 @@
+/* Level 8 results, the two special pieces (cartoon/results.ts): the K.O. bar from Ciccio's face to the boss (how far
+   the boss was pushed) and the golden ticket banner that shimmers on top after the finale. */
+/* defeat: Ciccio's face walks on the road to the boss, above it, so the red fill behind him always shows. The road
+   runs from the face's centre at 0% (22px: the face never leaves the card) to the boss emblem's centre (25px). */
+.cc-cres__bar {
+  --p: 0;
+  --at: calc(22px + (100% - 47px) * var(--p));
+  position: relative;
+  width: 100%;
+  height: 90px;
+  margin-top: 4px;
+}
+.cc-cres__track {
+  position: absolute;
+  left: 22px;
+  right: 25px;
+  top: 66px;
+  height: 18px;
+  border: 3px solid var(--t-ink);
+  border-radius: 999px;
+  background: #d8c49c;
+  overflow: hidden;
+}
+.cc-cres__track i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--p) * 100%);
+  background: repeating-linear-gradient(-45deg, var(--t-red) 0 8px, #e85a44 8px 16px);
+  animation: cc-cres-grow 900ms 200ms ease-out both;
+}
+@keyframes cc-cres-grow {
+  from { width: 0; }
+}
+.cc-cres__runner {
+  position: absolute;
+  top: 19px;
+  left: var(--at);
+  margin-left: -20px;
+  animation: cc-cres-run 900ms 200ms ease-out both;
+}
+@keyframes cc-cres-run {
+  from { left: 22px; }
+}
+.cc-cres__goal {
+  position: absolute;
+  right: 0;
+  top: 50px;
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--t-cream);
+  box-shadow: 0 0 0 3px var(--t-ink);
+}
+.cc-cres__goal svg {
+  width: 42px;
+  height: 42px;
+}
+.cc-cres__pct {
+  position: absolute;
+  left: var(--at);
+  top: -4px;
+  transform: translateX(-50%);
+  font-family: var(--f-toon);
+  font-weight: 900;
+  font-size: 15px;
+}
+
+/* golden ticket banner */
+.cc-cres__golden {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.cc-cres__golden svg {
+  width: min(230px, 64vw);
+  height: auto;
+  animation: cc-cres-ticket 2.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 12px rgba(251, 224, 140, 0.9));
+}
+@keyframes cc-cres-ticket {
+  50% { transform: rotate(-3deg) scale(1.04); filter: drop-shadow(0 0 22px rgba(255, 240, 170, 1)); }
+}
+.cc-cres__so {
+  font-size: clamp(26px, 8vw, 38px);
+  color: var(--t-gold-hi);
+}
+.cc-cres__so span {
+  display: block;
+  font-size: 0.6em;
+  color: var(--t-white);
+}
+/* desktop / tablet windows of medium height: ticket and YOU ARE SO GOLDEN side by side, so the whole report card and
+   the NUOVO RECORD! stamp fit above the buttons without scrolling */
+@media (min-width: 480px) and (min-height: 601px) and (max-height: 820px) {
+  .cc-cres__golden {
+    flex-direction: row;
+    gap: 14px;
+  }
+  .cc-cres__golden svg {
+    width: 150px;
+  }
+  .cc-cres__so {
+    font-size: 30px;
+    text-align: left;
+  }
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  .cc-cres__scroll > .cc-cres__sheet,
+  .cc-cres__scroll > .cc-cres__bar,
+  .cc-cres__scroll > .cc-cres__line,
+  .cc-cres__scroll > .cc-cres__tip {
+    grid-column: 2;
+  }
+  .cc-cres__golden svg {
+    width: 150px;
+  }
+  .cc-cres__so {
+    font-size: 30px;
+  }
+  /* golden: the ticket + title fill the left column, so the score and its stamp join the sheet on the right */
+  .is-golden .cc-cres__scroll > .cc-cres__score,
+  .is-golden .cc-cres__scroll > .cc-cres__new,
+  .is-golden .cc-cres__scroll > .cc-cres__best {
+    grid-column: 2;
+  }
+  /* each left piece spans two right rows, so the columns stack independently instead of sharing row heights */
+  .is-golden .cc-cres__scroll > .cc-cres__golden,
+  .is-golden .cc-cres__scroll > .cc-cres__head {
+    grid-row: span 2;
+  }
+}

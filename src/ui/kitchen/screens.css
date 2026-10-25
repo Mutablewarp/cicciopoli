@@ -1,41 +1,9 @@
-/* Level 7 screens: the wide 7th title card, then the cards built on the level 6 layout (rush/setup.css,
+/* Level 7 screens: the cards built on the level 6 layout (rush/setup.css,
    rush/panels.css): the counter stage with the big burger, the SO GOLDEN! badge, the illustrated COME SI GIOCA.
    The results card is in kitchen/results.css. */
 
-/* title: the newest level spans the last row (portrait) or two columns (landscape), thumbnail beside the text */
-.cc-title__menu .cc-level--7 {
-  grid-column: 1 / -1;
-  flex-direction: row;
-  align-items: stretch;
-  gap: 10px;
-}
-/* the art slices to any box (grid.ts), so the thumbnail just takes its share of the card */
-.cc-title__menu .cc-level--7 .cc-level__thumb {
-  flex: 0 1 46%;
-  height: auto;
-  min-height: 0;
-  aspect-ratio: auto;
-}
-/* CICCIO'S never breaks at its apostrophe: the text keeps its widest word, the thumbnail gives up the pixels */
-.cc-title__menu .cc-level--7 .cc-level__text {
-  flex: 1 1 0;
-  min-width: min-content;
-  justify-content: center;
-}
-.cc-title__menu .cc-level--7 .cc-level__name {
-  overflow-wrap: normal;
-}
 .cc-thumb__kitchen {
   image-rendering: pixelated;
-}
-@media (orientation: landscape) {
-  .cc-title__menu .cc-level--7 {
-    grid-column: span 2;
-  }
-  /* a taller box: wide enough that the slice keeps the whole CICCIO'S neon */
-  .cc-title__menu .cc-level--7 .cc-level__thumb {
-    flex-basis: 58%;
-  }
 }
 
 /* the title sizes to its column: 16 cells of Press Start (1.02em each) and the 3 px outline on both sides */

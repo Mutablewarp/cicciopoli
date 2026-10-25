@@ -1,0 +1,123 @@
+/* Level 8 stage (.is-l8 on the root, ui/index.ts). Portrait + touch: the play area is as tall as the arena at the
+   camera's full push-in (core CT_VIEW: the 16:9 arena of the width x push.max, never past push.minZoomCss CSS px per
+   unit, plus the framing margins; --l8-push / --l8-zmin / --l8-m are set from the config by ui/index.ts), so a pushed-in
+   fight fills the host top to bottom; the controls band takes all the height left under it, so the fight is never
+   under a thumb and the buttons are big; --play-inset-b stays 0 (nothing overlays the arena).
+   Landscape: the controls sit in two side columns and the game host is inset between them (cartoon/controls.css),
+   or, on tablets, in a band under the arena (cartoon/tablet.css). Also the 8th title card and the pause card. */
+@media (orientation: portrait) {
+  .is-touch.is-l8 .cc-play {
+    --l8-a: calc((100vw - 2 * var(--l8-m)) * 0.5625);
+    flex: 0 1 calc(max(var(--l8-a), min(var(--l8-a) * var(--l8-push), var(--l8-zmin) * 360px)) + 2 * var(--l8-m));
+    min-height: 120px;
+  }
+  .is-touch.is-l8 .cc-controls {
+    flex: 1 0 auto;
+    height: auto;
+    min-height: calc(214px + var(--safe-b));
+    align-items: flex-end;
+    padding: 12px calc(var(--safe-r) + 10px) calc(var(--safe-b) + clamp(10px, 4vh, 40px)) calc(var(--safe-l) + 8px);
+    background-color: var(--t-sepia);
+    background-image: var(--t-grain), radial-gradient(ellipse at 50% 0%, rgba(201, 160, 90, 0.2), transparent 60%),
+      repeating-linear-gradient(90deg, rgba(255, 220, 160, 0.035) 0 1px, transparent 1px 46px);
+    background-size: auto, auto, auto;
+    background-position: 0 0;
+    box-shadow: inset 0 2px 0 #c9a05a, inset 0 5px 0 var(--t-sepia), inset 0 6px 0 rgba(201, 160, 90, 0.55);
+  }
+}
+
+/* tall phones and tablets held sideways: a faint vintage marquee fills the band between the arena and the thumbs
+   (never under a control) */
+@media (orientation: portrait) and (max-aspect-ratio: 10/19), (orientation: landscape) and (max-aspect-ratio: 31/20) {
+  .is-touch.is-l8 .cc-controls::before {
+    content: "CICCIO'S GOLDEN TICKET";
+    position: absolute;
+    left: 50%;
+    top: clamp(16px, 5%, 40px);
+    padding: 8px 18px 7px;
+    border: 1.5px solid rgba(201, 160, 90, 0.35);
+    border-radius: 6px;
+    box-shadow: inset 0 0 0 3px var(--t-sepia), inset 0 0 0 4px rgba(201, 160, 90, 0.25);
+    font-family: var(--f-toon);
+    font-weight: 900;
+    font-size: 13px;
+    letter-spacing: 0.24em;
+    white-space: nowrap;
+    color: rgba(231, 176, 74, 0.32);
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+  .is-touch.is-l8 .cc-controls.is-off::before {
+    visibility: hidden;
+  }
+}
+
+/* the golden ticket finale (.is-cinematic, ui/index.ts): HUD and controls are gone, the arena takes the whole screen */
+@media (orientation: portrait) {
+  .is-touch.is-l8 .cc-stage.is-cinematic > .cc-play {
+    flex: 1 1 auto;
+  }
+}
+.is-touch.is-l8 .cc-stage.is-cinematic .game-host {
+  left: var(--safe-l);
+  right: var(--safe-r);
+  bottom: 0;
+}
+
+/* the cinema around the arena matches the scene's surround (CT_VIEW.background) */
+.is-l8 .cc-play {
+  background: var(--t-sepia);
+}
+
+/* ------------------------------------------------------------ 8th title card */
+.cc-level--8 {
+  --face: #4a3214;
+  --face-hi: #8a6424;
+  --face-lo: #24180a;
+}
+.cc-level--8 .cc-level__thumb {
+  box-shadow: 0 0 0 2px var(--t-ink), 0 0 0 4px #c9a05a;
+}
+.cc-level--8 .cc-level__name {
+  color: var(--t-gold-hi);
+}
+.cc-level--8 .cc-level__tag {
+  color: #f0c870;
+}
+.cc-level--8 .cc-level__num {
+  color: var(--t-gold-hi);
+}
+
+/* ------------------------------------------------------------ pause card (ui/index.ts adds .cc-toon in level 8) */
+.cc-toon.cc-pause-card {
+  width: min(360px, 100%);
+}
+.cc-toon .cc-card__body {
+  background: none;
+  box-shadow: none;
+  clip-path: none;
+}
+.cc-toon .cc-bigtitle--pause {
+  font-family: var(--f-toon);
+  font-weight: 900;
+  font-size: 40px;
+  letter-spacing: 0.04em;
+  color: var(--t-white);
+  -webkit-text-stroke: 7px var(--t-ink);
+  paint-order: stroke fill;
+  text-shadow: 3px 5px 0 var(--t-ink);
+}
+.cc-toon .cc-card__btns--grid {
+  gap: 12px;
+}
+.cc-toon .cc-btn--audio .cc-glyph {
+  color: var(--t-ink);
+  filter: invert(0.9) sepia(1);
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  /* short landscape cards hug their top edge: keep the outlined PAUSA off the gold rule */
+  .cc-toon .cc-bigtitle--pause {
+    margin-top: 8px;
+    font-size: 36px;
+  }
+}

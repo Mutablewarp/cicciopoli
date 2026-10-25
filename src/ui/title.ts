@@ -1,6 +1,6 @@
 /**
- * Title screen: official Ciccio's logo, seven level cards (2 columns in portrait, 4 in landscape; the newest, level 7,
- * is a wide card), sound toggle, runner strip.
+ * Title screen: official Ciccio's logo, eight level cards (2 columns in portrait, 4 in landscape), sound toggle,
+ * runner strip.
  */
 import type { LevelId, TitleInfo } from '../contracts';
 import { LEVEL_IDS } from '../contracts';
