@@ -24,5 +24,8 @@ export default defineConfig({
     include: ['src/**/*.test.ts'],
     // the level reach tests simulate whole levels: allow slow / busy machines
     testTimeout: 120000,
+    // the GitHub runner has few cores: parallel workers starve each other and vitest's fixed 60 s worker RPC
+    // timeout fires during the long whole-shift sweeps (every test still passes); one worker there
+    ...(process.env.CI ? { maxWorkers: 1, minWorkers: 1 } : {}),
   },
 } as never);
