@@ -54,7 +54,8 @@ const RUSH: Readonly<Record<string, readonly [number, number]>> = {
   record: [0.8, 0.95],
 };
 
-/** Level 7 sounds: plop / sizzle / flip repeat every few seconds; golden is the ~3 s shift-end fanfare. */
+/** Level 7 sounds: plop / sizzle / flip repeat every few seconds; golden is the ~3 s shift-end fanfare.
+ * v7: the grabs fire on almost every tap, so they stay under 0.4 s; sizzleBig / dunk may run to 1.2 s. */
 const KITCHEN: Readonly<Record<string, readonly [number, number]>> = {
   sizzle: [0.65, 0.75],
   flip: [0.3, 0.38],
@@ -71,6 +72,15 @@ const KITCHEN: Readonly<Record<string, readonly [number, number]>> = {
   doorbell: [0.9, 0.98],
   trash: [0.37, 0.43],
   golden: [2.9, 3.2],
+  grabMeat: [0.12, 0.17],
+  grabLeaf: [0.17, 0.22],
+  grabCheese: [0.19, 0.24],
+  grabCrisp: [0.14, 0.18],
+  grabBun: [0.13, 0.17],
+  grabCan: [0.31, 0.36],
+  sizzleBig: [1, 1.1],
+  dunk: [1.03, 1.1],
+  lift: [0.55, 0.6],
 };
 
 /** Level 8 sounds: cheese / nugget / bossHit fire many times a second, so they stay under 0.1 s. */
@@ -92,8 +102,8 @@ const CARTOON: Readonly<Record<string, readonly [number, number]>> = {
   phase: [0.88, 0.98],
 };
 
-/** Every sound ends inside one second, except the fanfares and the super / knockout cues. */
-const MAX_LEN: Partial<Record<SfxName, number>> = { golden: 3.2, ticket: 3.2, friesRain: 2, knockout: 1.6 };
+/** Every sound ends inside one second, except the fanfares, the super / knockout cues and the big kitchen sizzle / dunk. */
+const MAX_LEN: Partial<Record<SfxName, number>> = { golden: 3.2, ticket: 3.2, friesRain: 2, knockout: 1.6, sizzleBig: 1.2, dunk: 1.2 };
 
 describe('sfx recipes', () => {
   const names = Object.keys(SFX) as SfxName[];

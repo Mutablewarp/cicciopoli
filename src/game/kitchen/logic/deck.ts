@@ -105,12 +105,11 @@ function bins(rng: Rng, index: number, id: BurgerId, starter: SideId | null, dri
   const fryNeed: FryItemId[] = [];
   for (const i of need) if (isFryItem(i)) fryNeed.push(i);
   if (starter) fryNeed.push('patatine', starter);
-  const room = D.maxRail - griddle.length - fryNeed.length - cold.length;
-  const coldDecoys = Math.max(0, Math.min(decoys - sauceDecoys, D.maxBins - cold.length, room));
+  const coldDecoys = Math.max(0, Math.min(decoys - sauceDecoys, D.maxBins - cold.length));
   const coldPool = INGREDIENTS.filter((i) => STATION_OF[i] === 'bin' && !need.includes(i));
   const saucePool = SAUCES.filter((i) => !need.includes(i));
   const fryPool = SIDES.filter((s) => !fryNeed.includes(s));
-  const fryDecoys = shuffled(rng, fryPool).slice(0, Math.max(0, Math.min(D.fryDecoys[index] ?? 0, room - coldDecoys)));
+  const fryDecoys = shuffled(rng, fryPool).slice(0, Math.max(0, Math.min(D.fryDecoys[index] ?? 0, D.maxCook - griddle.length - fryNeed.length)));
   const drinkPool = shuffled(rng, DRINKS.filter((d) => d !== drink));
   return {
     griddle,

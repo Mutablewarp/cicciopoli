@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BUBBLE, MENU_RULE_TEXT, avgStars, lineView, patienceMood, placeBubble, shortLabel, takings, ticketLabel } from './text';
+import { BUBBLE, MENU_RULE_TEXT, avgStars, lineView, namedBy, patienceMood, placeBubble, shortLabel, takings, ticketLabel } from './text';
 
 describe('ticket lines', () => {
   it('drops the can size from drink labels only', () => {
@@ -12,6 +12,18 @@ describe('ticket lines', () => {
     expect(shortLabel('CIPOLLA CARAMELLATA')).toBe('CIPOLLA CARAMELL.');
     expect(shortLabel('GREEN NUGGETS VEGGIE')).toBe('GREEN NUGGETS');
     expect(shortLabel('MANZO')).toBe('MANZO');
+    // the bins print these whole (hyphenated): the ticket says the same words
+    for (const n of ['POLLO PASTELLATO', 'PERE CARAMELLATE', 'CONFETTURA DI FICHI']) expect(shortLabel(n)).toBe(n);
+  });
+
+  it('the tutorial line names a ticket line only when it says every word of it', () => {
+    expect(namedBy('FUZE TEA LIMONE 33CL', 'Bibita: prendi il Fuze Tea limone!')).toBe(true);
+    expect(namedBy('ACQUA FRIZZANTE 50CL', "Bibita: prendi l'acqua frizzante!")).toBe(true);
+    expect(namedBy("SALSA CICCIO'S", "Aggiungi la salsa Ciccio's!")).toBe(true);
+    expect(namedBy('PATATINE', 'Friggitrice: tocca le patatine!')).toBe(true);
+    expect(namedBy('NOCI', 'Aggiungi le nocciole!')).toBe(false);
+    expect(namedBy('PERE CARAMELLATE', 'Aggiungi le pere!')).toBe(false);
+    expect(namedBy('MANZO', 'Tocca la carne: va sulla piastra!')).toBe(false);
   });
 
   it('a single item shows no quantity; a tick once it is on', () => {

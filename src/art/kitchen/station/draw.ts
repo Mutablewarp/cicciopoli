@@ -1,7 +1,7 @@
 /**
  * Shared raster helpers of the station pack: brushed-metal grain, bevelled steel plates, the black
- * knob and the white dial, the rows of "CICCIO'S" printed on the packaging and the station name
- * plates (PIASTRA, FRIGGITRICE, VASSOIO).
+ * knob and the white dial, polished chrome, the rows of "CICCIO'S" printed on the packaging and the
+ * station name plates (PIASTRA, FRIGGITRICE, VASSOIO, the red CICCIO'S badge).
  */
 import type { Mask } from '../../hills/mask';
 import { Raster, gridR, hash2 } from '../../hills/raster';
@@ -118,12 +118,39 @@ export function brandPrint(
 /** Rows of a station name plate: lit edge, 5 rows of 3x5 capitals, dark edge. */
 export const PLATE_H = 7;
 
-/** Black enamel name plate with gold capitals ("PIASTRA"), centred on cx, top row at y: tells a
- * first-time player what each station is. */
-export function namePlate(r: Raster, text: string, cx: number, y: number): void {
+export interface PlateLook {
+  face: string;
+  lit: string;
+  edge: string;
+  letters: string;
+}
+
+/** Black enamel with gold capitals: the station names. */
+const ENAMEL: PlateLook = { face: ST.black, lit: ST.blackLight, edge: ST.blackEdge, letters: ST.goldLight };
+/** Ciccio's red enamel badge with white capitals (the maker's plate on the griddle). */
+export const BADGE: PlateLook = { face: ST.red, lit: ST.redLight, edge: ST.redDark, letters: ST.faceWhite };
+
+/** Enamel name plate ("PIASTRA"), centred on cx, top row at y: tells a first-time player what each station is. */
+export function namePlate(r: Raster, text: string, cx: number, y: number, look: PlateLook = ENAMEL): void {
   const w = textWidth(text) + 4;
   const x = Math.round(cx - w / 2);
-  rectR(r, x, y, w, PLATE_H, ST.black);
-  bevel(r, x, y, w, PLATE_H, ST.blackLight, ST.blackEdge);
-  drawText(r, text, x + 2, y + 1, ST.goldLight);
+  rectR(r, x, y, w, PLATE_H, look.face);
+  bevel(r, x, y, w, PLATE_H, look.lit, look.edge);
+  drawText(r, text, x + 2, y + 1, look.letters);
+}
+
+/** Period (px along x + y) of the glare streaks across polished chrome. */
+const GLARE = 34;
+
+/**
+ * Polished chrome (the big equipment frames): steel toned by `t` in 0..1 (0 = facing the light,
+ * 1 = turned away), crossed by diagonal glare streaks; mirror-bright, never brushed.
+ */
+export function chrome(r: Raster, x: number, y: number, t: number): void {
+  const d = (((x + y) % GLARE) + GLARE) % GLARE;
+  if (d < 2 && t < 0.8) return r.set(x, y, ST.steelShine);
+  if (d < 4 && t < 0.8) return r.set(x, y, ST.steelLight);
+  const ramp = [ST.steelShine, ST.steelLight, ST.steel, ST.steelMid, ST.steelShade, ST.steelDark];
+  const f = Math.max(0, Math.min(0.999, t)) * ramp.length;
+  r.set(x, y, ramp[Math.floor(f) + (f % 1 > 0.5 + (hash2(x, y, 97) - 0.5) * 0.6 && f < ramp.length - 1 ? 1 : 0)]);
 }

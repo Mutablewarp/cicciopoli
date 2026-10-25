@@ -120,7 +120,7 @@ export class KitchenBot {
       if (wrongTop) return () => shift.removeTop();
       return () => shift.trashItem({ from: 'tray', part: wrongCone ? 'cone' : 'side' });
     }
-    // 3. start what cooks: the protein (the bacon once the layers under it are on), fries and starter
+    // 3. start what cooks: the protein (the bacon once every layer under it is on), fries and starter
     for (const k of need.keys()) {
       const station = isGriddleItem(k) ? s.griddle : isFryItem(k) ? s.fryer : null;
       if (station?.includes(null) && short(k, station.filter((v) => v?.item === k).length) > 0 && canStart(k, todo)) return () => shift.tapBin(k);

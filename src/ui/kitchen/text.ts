@@ -7,16 +7,26 @@ export const ticketLabel = (label: string): string => label.replace(/\s+\d+\s?CL
 
 /**
  * The tightest ticket (narrow phones, the longest orders) uses the short names printed on the bins
- * (game/kitchen/labels.ts SHORT): two long names share a row, and the player reads the same words on ticket and bin.
+ * (game/kitchen/labels.ts SHORT), only where the bin abbreviates: the player reads the same words on ticket and bin
+ * (a bin that hyphenates the full name, POLLO PA-STELLATO, keeps the full name on the ticket).
  */
 const SHORT_LABEL: Readonly<Record<string, string>> = {
-  [INGREDIENT_NAME.polloPastellato.short]: 'POLLO PASTELL.',
   [INGREDIENT_NAME.cipollaCaramellata.short]: 'CIPOLLA CARAMELL.',
-  [INGREDIENT_NAME.fichi.short]: 'CONFETT. DI FICHI',
-  [INGREDIENT_NAME.pere.short]: 'PERE',
   [SIDE_NAME.greenNuggets]: 'GREEN NUGGETS',
 };
 export const shortLabel = (label: string): string => SHORT_LABEL[label] ?? label;
+
+/** Lower-case words, split at spaces, apostrophes and punctuation: "l'acqua frizzante!" -> l, acqua, frizzante. */
+const words = (s: string): string[] => s.toLowerCase().split(/[^\p{L}\d]+/u).filter(Boolean);
+/**
+ * True when the tutorial line names this ticket line (every word of its label is in it): "Bibita: prendi il Fuze Tea
+ * limone!" names FUZE TEA LIMONE, so a scrolling ticket shows the line the step is about.
+ */
+export function namedBy(label: string, hint: string): boolean {
+  const said = new Set(words(hint));
+  const need = words(ticketLabel(label));
+  return need.length > 0 && need.every((w) => said.has(w));
+}
 
 /** todo = nothing on yet, part = some of a "x3", done = exactly right, over = too many. */
 export type LineState = 'todo' | 'part' | 'done' | 'over';

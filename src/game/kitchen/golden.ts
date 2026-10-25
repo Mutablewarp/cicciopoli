@@ -12,7 +12,7 @@ import type Phaser from 'phaser';
 import { KITCHEN, KITCHEN_ANIMS } from '../../art/kitchen/keys';
 import { BRAND, BRAND_SIZE, brandScale } from './brand';
 import { KITCHEN_COLORS, KITCHEN_GOLDEN } from './config';
-import type { Point } from './layout';
+import type { Point } from './framing';
 import type { KitchenView } from './view';
 
 const G = KITCHEN_GOLDEN;

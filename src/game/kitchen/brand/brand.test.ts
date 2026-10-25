@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { KITCHEN, SHEET_SPEC, STARTERS } from '../../../art/kitchen/keys';
-import { BOAT_H, BOAT_W } from './boat';
+import { BOARD, BOAT_H, BOAT_W } from './boat';
 import { WORD_W, wordLayout } from './letters';
-import { LINER_H, LINER_W } from './liner';
+import { LINER_H, LINER_PAPER, LINER_W } from './liner';
 import { DISC, FACE_H, FACE_W } from './logo';
 import { printRows, type PrintSpec } from './print';
 import { BRAND_DENSITY, quantizeDensity, sheetLayout } from './sheet';
-import { WRAP_H, WRAP_W } from './wrap';
+import { KRAFT, WRAP_H, WRAP_W } from './wrap';
 
 const SPEC: PrintSpec = { letterH: 2.7, rowPitch: 2.55, wordGap: 1.3, angle: -0.22, phase: 0.35 };
 
@@ -87,5 +87,42 @@ describe('density and sheets', () => {
     expect(SHEET_SPEC[KITCHEN.starterBox].slice(0, 3)).toEqual([BOAT_W, BOAT_H, STARTERS.length]);
     expect(SHEET_SPEC[KITCHEN.faceDisc].slice(0, 3)).toEqual([DISC, DISC, 2]);
     expect(FACE_W / FACE_H).toBeCloseTo(358 / 512, 2); // public/brand/ciccio-face-hd.png
+  });
+});
+
+/** CIE L* of a '#rrggbb' or 'rgba(r,g,b,a)' colour laid over `under` ('#rrggbb'). */
+function lstar(color: string, under = '#ffffff'): number {
+  const hex = (h: string): number[] => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const m = /rgba\((\d+),(\d+),(\d+),([\d.]+)\)/.exec(color.replace(/\s/g, ''));
+  const bg = hex(under);
+  const rgb = m ? [1, 2, 3].map((i) => Number(m[i]) * Number(m[4]) + bg[i - 1] * (1 - Number(m[4]))) : hex(color);
+  const lin = (c: number): number => (c / 255 <= 0.04045 ? c / 255 / 12.92 : ((c / 255 + 0.055) / 1.055) ** 2.4);
+  const y = 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]);
+  return y > 0.008856 ? 116 * Math.cbrt(y) - 16 : 903.3 * y;
+}
+
+describe('tray contrast (BRIEF v7 point 7)', () => {
+  it('the kraft wrap is clearly darker than the pale liner', () => {
+    expect(lstar(LINER_PAPER.light)).toBeGreaterThanOrEqual(85);
+    expect(lstar(LINER_PAPER.base)).toBeGreaterThanOrEqual(85);
+    expect(lstar(KRAFT.base)).toBeLessThanOrEqual(60);
+    expect(lstar(KRAFT.light)).toBeLessThanOrEqual(72);
+    expect(lstar(LINER_PAPER.base) - lstar(KRAFT.light)).toBeGreaterThanOrEqual(20);
+  });
+
+  it('prints the liner lighter (lower contrast) than the wrap', () => {
+    const linerPrint = lstar(LINER_PAPER.base) - lstar(LINER_PAPER.ink, LINER_PAPER.base);
+    const wrapPrint = lstar(KRAFT.base) - lstar(KRAFT.ink, KRAFT.base);
+    expect(lstar(LINER_PAPER.ink, LINER_PAPER.base)).toBeGreaterThanOrEqual(65);
+    expect(linerPrint).toBeLessThan(wrapPrint);
+  });
+
+  it('makes the boats Ciccio\'s red, the cut rim white', () => {
+    for (const c of [BOARD.lit, BOARD.base, BOARD.shade]) {
+      const [r, g, b] = [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
+      expect(r).toBeGreaterThan(2.5 * g);
+      expect(r).toBeGreaterThan(2.5 * b);
+    }
+    expect(lstar(BOARD.cut)).toBeGreaterThanOrEqual(95);
   });
 });

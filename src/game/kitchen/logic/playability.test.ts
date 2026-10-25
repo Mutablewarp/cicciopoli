@@ -4,6 +4,8 @@ import { KITCHEN_SHIFT, KITCHEN_STACK } from '../../../config/kitchen';
 import { BURGERS, burger } from '../../../config/kitchenMenu';
 import { mulberry32, pick, randInt, type Rng } from '../../rush/logic/rng';
 import { autopilot, CAREFUL, KitchenBot, SLOPPY, type BotProfile } from './bot';
+import { PAGER } from '../config';
+import { isFryItem, isGriddleItem } from './order';
 import { KitchenProgress } from './progress';
 import { KitchenShift } from './shift';
 import type { KitchenEvent, KitchenSnapshot, KitchenTarget, TrayPart } from './types';
@@ -108,6 +110,55 @@ describe('playability sweep (300 seeds each)', () => {
         busy = 700;
       }
       expect(sh.summary).toMatchObject({ completed: true, ratings: [5, 5, 5, 5, 5, 5, 5, 5], golden: true });
+    }
+  });
+
+  it('an adult following AIUTI on a phone (1 tap a second, a page change = the tab, the 380 ms glide and a look) never overcooks, never sent back before a tap', () => {
+    const TAP = 1000;
+    const GLIDE = PAGER.slideMs + 450;
+    const cooking = (t: KitchenTarget): boolean => t.kind === 'griddle' || t.kind === 'fryer' || t.kind === 'drink' || (t.kind === 'bin' && (isGriddleItem(t.id) || isFryItem(t.id)));
+    for (const seed of SEEDS.slice(0, 60)) {
+      const sh = new KitchenShift({ seed, tutorial: seed % 2 === 0, hints: true });
+      let busy = 0;
+      let page = 1;
+      let handoff = Infinity;
+      // taps since the last page change: a change with none = the guide sent the player back at once (2 wasted glides)
+      let taps = 1;
+      let bounces = 0;
+      for (let t = 0; t < 20 * 60_000 && sh.snapshot.phase !== 'finished'; t += 50) {
+        sh.step(50);
+        busy -= 50;
+        const s = sh.snapshot;
+        // session.ts handoff: off the heat, the camera slides to MONTAGGIO unless COTTURA needs the player or holds the next step
+        if (t >= handoff) {
+          handoff = Infinity;
+          const next = sh.guideNow();
+          if (page === 1 && ![...s.griddle, ...s.fryer].some((v) => v !== null && v.phase !== 'raw') && !(next && next.target.kind !== 'action' && cooking(next.target))) {
+            page = 0;
+            taps = 0;
+            busy = Math.max(busy, GLIDE);
+          }
+        }
+        const g = s.guide;
+        if (busy > 0 || !g || g.wait) continue;
+        const to = g.target.kind === 'action' ? page : cooking(g.target) ? 1 : 0;
+        if (to !== page) {
+          if (taps === 0) bounces++;
+          page = to;
+          taps = 0;
+          busy = TAP + GLIDE;
+          continue;
+        }
+        const ev = tapTarget(sh, g.target);
+        taps++;
+        if (ev.some((e) => e.type === 'griddleTaken' || e.type === 'fryLifted')) handoff = t + PAGER.handoffMs;
+        busy = TAP;
+      }
+      const s = sh.summary;
+      expect(s.completed, `seed ${seed}`).toBe(true);
+      expect(s.ratings.every((r) => r === 5), `seed ${seed}: ${s.ratings.join(',')}`).toBe(true);
+      // measured: 58 in 120 shifts with KITCHEN_GUIDE.holdMs 2500 (menù with a fried chicken burger), 0 from 3200
+      expect(bounces, `seed ${seed}`).toBe(0);
     }
   });
 });

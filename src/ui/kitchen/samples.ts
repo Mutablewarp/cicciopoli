@@ -19,10 +19,12 @@ function ticket(id: BurgerId, menu: boolean, customer: string, done: readonly nu
   return { title: b.name, form: menu ? 'MENÙ' : 'SINGOLO', price: euro(menu ? b.menuPriceCents : b.priceCents), customer, lines, wrong };
 }
 
-export type SampleTicket = 'long' | 'wide' | 'tale' | 'double' | 'short' | 'none';
+/** ui-harness.html `ticket=`; `late` = a long order almost built: on a phone its lines scroll to the menù parts left. */
+export type SampleTicket = 'long' | 'late' | 'wide' | 'tale' | 'double' | 'short' | 'none';
 
 const SAMPLE_TICKETS: Readonly<Record<SampleTicket, () => KitchenTicket | null>> = {
   long: () => ticket('pancetta', true, 'Signora Rosalia', [1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0], ['POMODORO']),
+  late: () => ticket('pancetta', true, 'Signora Rosalia', [1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0], []),
   // few lines with the longest words: two columns are tried first
   wide: () => ticket('pancetta', false, 'Kevin', [1, 1], []),
   tale: () => ticket('tale', true, 'Signora Rosalia', [], []),

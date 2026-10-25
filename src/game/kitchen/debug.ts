@@ -4,14 +4,17 @@
  * screen point of a station for scripted taps.
  */
 import type Phaser from 'phaser';
-import { toCss, type Point } from './layout';
+import type { Point } from './framing';
 import type { KitchenSnapshot, KitchenTarget } from './logic/types';
 import type { KitchenSession, SessionState } from './session';
 import type { KitchenView } from './view';
 
 export interface KitchenDebugState extends Partial<KitchenSnapshot> {
   session: SessionState;
+  /** the counter's stage orientation and the kitchen plan (tall / short / wide) */
   orient: string;
+  plan: string;
+  /** device px per world px of the kitchen page on screen */
   zoom: number;
   slide: number;
   /** paged kitchen: the page shown and how many there are */
@@ -50,8 +53,9 @@ export function installKitchenDebug(scene: Phaser.Scene, session: KitchenSession
     state: () => ({
       ...(session.shift?.snapshot ?? {}),
       session: session.state,
-      orient: view.framing.orient,
-      zoom: view.framing.zoom,
+      orient: view.framing.counter.orient,
+      plan: view.framing.plan.name,
+      zoom: view.framing.pages[view.paged ? view.page : 0].zoom,
       slide: view.slide,
       page: view.page,
       pages: view.framing.pages.length,
@@ -72,9 +76,9 @@ export function installKitchenDebug(scene: Phaser.Scene, session: KitchenSession
     cssOf: (t) => {
       const r = view.targetWorld(t, null);
       if (!r) return null;
-      // kitchen targets: world rect of the kitchen view, measured with the camera on it (on its page: a
-      // target on the other page of a paged kitchen gives its tab)
-      const p = toCss(view.framing, r.x + r.w / 2 - view.station.root.x, r.y + r.h / 2 - (view.framing.pages[view.page] ?? 0));
+      // kitchen targets: measured with the camera on the kitchen page shown (a target on the other page of a
+      // paged kitchen gives its tab)
+      const p = view.kitchenCss(r.x + r.w / 2 - view.station.root.x, r.y + r.h / 2);
       return { x: Math.round(p.x), y: Math.round(p.y) };
     },
   };

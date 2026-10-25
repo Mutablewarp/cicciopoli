@@ -4,9 +4,13 @@
  * mistakes, start what cooks, the menù fries / starter, the drink, then the burger bottom-up as on
  * the menu (the patty first, then each topping on it), close, SERVI. While the patty cooks the guide
  * sends the player to the fryer and the drinks, never a topping onto a bare bun: an upper cooked
- * layer (the bacon) starts only once the layers of other cooked kinds under it are on the bun.
+ * layer starts only once the layers of other cooked kinds under it are on the bun, a quick one (the bacon:
+ * PERFETTO in under 3 s, a 2 s window) only once it is the next layer, so the guide keeps the player at the
+ * griddle while it cooks instead of sending them to the toppings on the other page; and a wanted item about to be
+ * PERFETTO (KITCHEN_GUIDE.holdMs) holds the player at the stations too.
  */
 import type { FryItemId, IngredientId } from '../../../art/kitchen/keys';
+import { KITCHEN_GRIDDLE, KITCHEN_GUIDE } from '../../../config/kitchen';
 import { burger } from '../../../config/kitchenMenu';
 import { countKinds, isCold, isFryItem, isGriddleItem, isIngredient, needs } from './order';
 import type { Tray } from './stack';
@@ -42,9 +46,10 @@ export function pendingLayers(order: KitchenOrder, stack: readonly StackLayer[],
 }
 
 /** A cooked layer may start once every pending layer under it is cold or of its own kind (both patties
- * together): the protein first, the bacon once the patty is on the bun. */
+ * together): the protein first; a one-side griddle item (bacon, guanciale) only once every layer under it is on. */
 export function canStart(kind: IngredientId, pending: readonly IngredientId[]): boolean {
-  return pending.slice(0, pending.indexOf(kind)).every((k) => isCold(k) || k === kind);
+  const quick = isGriddleItem(kind) && KITCHEN_GRIDDLE.sides[kind] === 1;
+  return pending.slice(0, pending.indexOf(kind)).every((k) => k === kind || (isCold(k) && !quick));
 }
 
 export function guide(s: GuideInput): KitchenGuide | null {
@@ -90,13 +95,25 @@ export function guide(s: GuideInput): KitchenGuide | null {
   });
   const urgent = ready.sort((a, b) => a.left - b.left)[0];
   if (urgent) return urgent.guide;
+  // a wanted item this close to PERFETTO keeps the player at the stations rather than send them to the board: on a phone
+  // that is a page away, and back (the tab, the glide, a look, the tap) its window would be gone
+  const soon: { left: number; guide: KitchenGuide }[] = [];
+  s.griddle.forEach((v, slot) => {
+    if (v?.phase === 'raw' && (v.tap === 'flip' || (open && short(v.item) > 0 && v.item === next))) {
+      soon.push({ left: v.perfectAtMs - v.ms, guide: make(v.tap === 'flip' ? 'waitFlip' : 'waitTake', { kind: 'griddle', slot }) });
+    }
+  });
+  s.fryer.forEach((v, basket) => {
+    if (v?.phase === 'raw' && fryWanted(v.item) && (!isIngredient(v.item) || v.item === next)) soon.push({ left: v.perfectAtMs - v.ms, guide: make('waitFry', { kind: 'fryer', basket }) });
+  });
+  const hold = soon.filter((x) => x.left <= KITCHEN_GUIDE.holdMs).sort((a, b) => a.left - b.left)[0]?.guide;
 
   // 3. undo mistakes: a layer the order does not want (or raw) on top, a wrong menù part
   const top = s.stack[s.stack.length - 1];
-  if (open && top && (short(top.kind) < 0 || top.quality === 'raw')) return make('removeTop', { kind: 'stackTop' });
-  if (tray.cone && !menu) return make('trayTrash', { kind: 'tray', part: 'cone' });
-  if (tray.side && tray.side.id !== o.starter) return make('trayTrash', { kind: 'tray', part: 'side' });
-  if (tray.drink && !menu) return make('trayTrash', { kind: 'tray', part: 'drink' });
+  if (open && top && (short(top.kind) < 0 || top.quality === 'raw')) return hold ?? make('removeTop', { kind: 'stackTop' });
+  if (tray.cone && !menu) return hold ?? make('trayTrash', { kind: 'tray', part: 'cone' });
+  if (tray.side && tray.side.id !== o.starter) return hold ?? make('trayTrash', { kind: 'tray', part: 'side' });
+  if (tray.drink && !menu) return hold ?? make('trayTrash', { kind: 'tray', part: 'drink' });
 
   // 4. start what cooks (the lowest cooked layers first)
   if (open) {
@@ -118,8 +135,8 @@ export function guide(s: GuideInput): KitchenGuide | null {
 
   // 6. the burger bottom-up: the next layer from its pan, or the one cooking to wait for; all on: close
   if (open) {
-    if (next === undefined) return make('close', { kind: 'bun' });
-    if (isCold(next)) return make('topping', { kind: 'bin', id: next }, THE[next]);
+    if (next === undefined) return hold ?? make('close', { kind: 'bun' });
+    if (isCold(next)) return hold ?? make('topping', { kind: 'bin', id: next }, THE[next]);
     const g = s.griddle.findIndex((v) => v?.item === next);
     if (g >= 0) return make(s.griddle[g]?.tap === 'flip' ? 'waitFlip' : 'waitTake', { kind: 'griddle', slot: g });
     const f = s.fryer.findIndex((v) => v?.item === next);

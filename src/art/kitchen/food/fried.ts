@@ -1,14 +1,16 @@
 /**
- * Everything that goes in the fryer: KITCHEN.fryItem (28x18, frame = FRY_ITEMS index * 3 + FRY_STATE:
- * raw / perfect golden / burnt, what sits in a raised basket) and KITCHEN.binSide (PAN 44x28, frame =
- * SIDES index: the raw menù sides heaped in their pan). Shapes tell them apart: one big battered / craggy /
- * panko fillet, a pile of fries, nuggets, round meatballs, small pop-corn bites, green nuggets.
+ * Everything that goes in the fryer: KITCHEN.fryItem (FRY_ITEM 44x28, frame = FRY_ITEMS index * 3 +
+ * FRY_STATE: raw pale / perfect golden with oil glints / burnt dark, big pieces heaped in a raised basket)
+ * and KITCHEN.binSide (PAN 44x28, frame = SIDES index: the raw menù sides heaped in their pan). Shapes tell
+ * them apart: one big battered / craggy / panko fillet, a pile of fries, nuggets, round meatballs, small
+ * pop-corn bites, green nuggets.
  */
 import type { Mask, Tone } from '../../hills/mask';
-import { Raster, hash2 } from '../../hills/raster';
-import { FRY_ITEMS, FRY_STATE, SIDES, type FryItemId } from '../keys';
-import { PAN, ballLight, bed, capsuleMask, dots, inkEdge, panClip, piece, rampAt, roughen, specks, type Pt } from './kit';
-import { C, T, WHITE } from './palette';
+import { Raster, hash2, packColor } from '../../hills/raster';
+import { FRY_ITEM, FRY_ITEMS, FRY_STATE, SIDES, type FryItemId } from '../keys';
+import { PAN, ballLight, bed, dots, inkEdge, panClip, piece, rampAt, roughen, specks, type Pt } from './kit';
+import { mix } from '../../pixel';
+import { C, INK, T, WHITE } from './palette';
 
 /** [raw, perfect, burnt] tones of each fryer item. */
 export const LOOK: Readonly<Record<FryItemId, readonly [Tone, Tone, Tone]>> = {
@@ -50,11 +52,16 @@ export function pankoFlakes(p: Raster, m: Mask, tone: Tone, seed: number): void 
   }
 }
 
-function fillet(r: Raster, tone: Tone, kind: 'pastellato' | 'croccante' | 'panko', cx: number, cy: number, seed: number): void {
+function fillet(r: Raster, tone: Tone, kind: 'pastellato' | 'croccante' | 'panko', cx: number, cy: number, seed: number, size = 1): void {
+  const z = (v: number): number => Math.round(v * size);
   piece(r, tone, (m) => {
-    if (kind === 'panko') thighMask(m, cx, cy);
-    else m.ellipse(cx, cy, 11, 5, 1);
-    if (kind === 'pastellato') for (const dx of [-8, -2, 4, 9]) m.ellipse(cx + dx, cy - 4, 2, 1, 1); // batter blisters
+    if (kind === 'panko') thighMask(m, cx, cy, size);
+    else m.ellipse(cx, cy, z(11), z(5), 1);
+    if (kind === 'pastellato') {
+      // batter blisters along the top: more of them on a bigger fillet, never bigger (bumps, not ears)
+      const n = Math.round(4 * size);
+      for (let k = 0; k < n; k++) m.ellipse(cx + Math.round((k / (n - 1) - 0.5) * 17 * size), cy - z(4), 2, 1, 1);
+    }
     if (kind !== 'pastellato') roughen(m, seed, kind === 'croccante' ? 0.55 : 0.3, kind === 'croccante' ? 0.2 : 0.12);
   }, {
     line: lineOf(tone),
@@ -62,32 +69,80 @@ function fillet(r: Raster, tone: Tone, kind: 'pastellato' | 'croccante' | 'panko
       if (kind === 'croccante') crumbs(p, m, tone, seed);
       else if (kind === 'panko') pankoFlakes(p, m, tone, seed);
       else specks(p, m, tone.light, 0.12, seed);
-      if (tone !== T.burntFry) dots(p, [[cx - 7, cy - 3], [cx - 6, cy - 3]], WHITE);
+      if (tone !== T.burntFry) dots(p, [[cx - z(7), cy - z(3)], [cx - z(7) + 1, cy - z(3)]], WHITE);
       else specks(p, m, C.ember, 0.03, seed + 9);
     },
   });
 }
 
-/** Fries: sticks of radius `rad` at a few angles, crisp darker tips when cooked. */
-function fries(r: Raster, tone: Tone, sticks: readonly (readonly [number, number, number, number])[], rad = 1.2, line = lineOf(tone)): void {
-  for (const [ax, ay, bx, by] of sticks) {
-    piece(r, tone, (m) => capsuleMask(m, ax, ay, bx, by, rad, rad), {
+/** One fry: [centre x, centre y, angle (rad, screen), length], a square-cut stick FRY_W px thick. */
+export type Fry = readonly [number, number, number, number];
+const FRY_W = 4;
+
+/** Coordinate of pixel (x, y) along the fry (u) and across it (v), from its centre. */
+function fryUV([cx, cy, a]: Fry, x: number, y: number): [number, number] {
+  const dx = x + 0.5 - cx;
+  const dy = y + 0.5 - cy;
+  return [dx * Math.cos(a) + dy * Math.sin(a), dy * Math.cos(a) - dx * Math.sin(a)];
+}
+
+/** Fries: square-cut sticks, each lit on its top face and inked on its own, so every stick reads; the
+ * cooked ones get crisp darker tips. */
+function fries(r: Raster, tone: Tone, pile: readonly Fry[], line = lineOf(tone)): void {
+  for (const f of pile) {
+    const reach = f[3] / 2 + FRY_W;
+    const inside = (x: number, y: number): boolean => {
+      const [u, v] = fryUV(f, x, y);
+      return Math.abs(u) <= f[3] / 2 && Math.abs(v) <= FRY_W / 2;
+    };
+    piece(r, tone, (m) => {
+      for (let y = Math.floor(f[1] - reach); y <= f[1] + reach; y++) for (let x = Math.floor(f[0] - reach); x <= f[0] + reach; x++) if (inside(x, y)) m.set(x, y, 1);
+    }, {
       line,
-      detail: (p) => {
-        if (tone === T.fries) p.set(bx, by, tone.shade);
-        p.set(ax, ay, tone.light);
+      detail: (p, m) => {
+        if (tone !== T.fries) return;
+        for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) if (m.get(x, y) && Math.abs(fryUV(f, x, y)[0]) > f[3] / 2 - 1.5) p.set(x, y, tone.shade);
       },
     });
   }
 }
 
+/**
+ * A loose pile of fries over w x h: `rows` staggered rows of `cols` sticks, each leaning the other way
+ * from its neighbours (criss-cross: parallel rows read as straw or wood grain), back row first. `len`
+ * is the mean length; a stick near the edge slides inwards to fit whole (never cut short: stubs read as
+ * nuggets). `heap` drops the corners (a mound in a basket).
+ */
+export function friesPile(w: number, h: number, rows: number, cols: number, len: number, seed: number, heap = false): Fry[] {
+  const out: Fry[] = [];
+  const sx = (w - 2 * FRY_W) / cols;
+  const fit = (c: number, ext: number, size: number): number => Math.max(ext + 1, Math.min(size - 1 - ext, c));
+  for (let j = 0; j < rows; j++) {
+    const odd = j & 1;
+    for (let i = 0; i < cols + odd; i++) {
+      const cx = FRY_W + sx * (i + (odd ? 0 : 0.5)) + (hash2(i, j, seed) - 0.5) * 3;
+      const cy = FRY_W + ((h - 2 * FRY_W) * j) / (rows - 1) + (hash2(j, i, seed) - 0.5) * 2;
+      if (heap && ((cx - w / 2) / (w / 2)) ** 2 + ((cy - h / 2) / (h / 2)) ** 2 > 1.3) continue;
+      const steep = hash2(i, j, seed + 1) < 0.18;
+      const lean = (i + j) % 2 ? 1 : -1; // mostly alternating, a few strays: a pile, not parquet
+      const a = (hash2(i, j, seed + 4) < 0.25 ? -lean : lean) * (steep ? 1.15 : 0.2 + hash2(i, j, seed + 2) * 0.65);
+      const [c, sn] = [Math.abs(Math.cos(a)), Math.abs(Math.sin(a))];
+      // the longest stick that fits the frame at this angle, then its half extents across x and y
+      const half = Math.min((len * (0.85 + hash2(i, j, seed + 3) * 0.3)) / 2, (w / 2 - 1 - (FRY_W / 2) * sn) / c, (h / 2 - 1 - (FRY_W / 2) * c) / sn);
+      out.push([fit(cx, half * c + (FRY_W / 2) * sn, w), fit(cy, half * sn + (FRY_W / 2) * c, h), a, 2 * half]);
+    }
+  }
+  return out.sort((p, q) => p[1] - q[1]);
+}
+
 export type Shape = 'nugget' | 'ball' | 'bite';
 
-export function lumps(r: Raster, tone: Tone, shape: Shape, spots: readonly Pt[], seed: number): void {
+/** Pieces of `shape` at `spots`; `size` scales them (1 = in the pan, bigger in the basket). */
+export function lumps(r: Raster, tone: Tone, shape: Shape, spots: readonly Pt[], seed: number, size = 1): void {
   spots.forEach(([x, y], i) => {
-    const rad = shape === 'bite' ? 2 : 3;
+    const rad = Math.round((shape === 'bite' ? 2 : 3) * size);
     piece(r, tone, (m) => {
-      m.ellipse(x, y, shape === 'nugget' ? 4 : rad, shape === 'nugget' ? 3 : rad, 1);
+      m.ellipse(x, y, shape === 'nugget' ? Math.round(4 * size) : rad, shape === 'nugget' ? Math.round(3 * size) : rad, 1);
       if (shape !== 'ball') roughen(m, seed + i * 3, shape === 'bite' ? 0.45 : 0.12, shape === 'bite' ? 0.2 : 0.06); // smooth nuggets, craggy bites
     }, {
       line: lineOf(tone),
@@ -105,7 +160,7 @@ export function lumps(r: Raster, tone: Tone, shape: Shape, spots: readonly Pt[],
         else {
           specks(p, m, tone.light, 0.16, seed + i * 7);
           specks(p, m, tone.shade, 0.06, seed + i * 7 + 1);
-          if (tone !== T.burntFry) p.set(x - 2, y - 1, WHITE);
+          if (tone !== T.burntFry) p.set(x - Math.round(2 * size), y - Math.round(size), WHITE);
         }
       },
     });
@@ -124,53 +179,53 @@ function spotsIn(w: number, h: number, step: number, pad: number, seed: number):
   return out;
 }
 
-/** Sticks criss-crossing the w x h area: [ax, ay, bx, by]. */
-function stickPile(w: number, h: number, seed: number): (readonly [number, number, number, number])[] {
-  const out: [number, number, number, number][] = [];
-  for (let k = 0; k < Math.round((w * h) / 30); k++) {
-    const x = 3 + Math.round(hash2(k, 1, seed) * (w - 7));
-    const y = 3 + Math.round(hash2(k, 2, seed) * (h - 7));
-    const a = (hash2(k, 3, seed) - 0.5) * 1.6;
-    const len = Math.round(w / 7) + Math.round(hash2(k, 4, seed) * 2); // 4..6 in a basket, longer in the pan
-    const dx = Math.round(Math.cos(a) * len);
-    const dy = Math.round(Math.sin(a) * len * 0.8);
-    out.push([Math.max(2, Math.min(w - 3, x - dx)), Math.max(2, Math.min(h - 3, y - dy)), Math.max(2, Math.min(w - 3, x + dx)), Math.max(2, Math.min(h - 3, y + dy))]);
-  }
-  return out;
-}
-
-/** Draws fryer item `id` in look `tone` filling a w x h frame. */
-function drawItem(r: Raster, id: FryItemId, tone: Tone): void {
+/** Draws the raw starter `id` (not the fries) in look `tone` filling a pan frame. */
+function drawStarter(r: Raster, id: FryItemId, tone: Tone): void {
   const { w, h } = r;
   const seed = FRY_ITEMS.indexOf(id) * 37 + 501;
-  if (id === 'polloPastellato') fillet(r, tone, 'pastellato', w >> 1, (h >> 1) + 1, seed);
-  else if (id === 'polloCroccante') fillet(r, tone, 'croccante', w >> 1, (h >> 1) + 1, seed);
-  else if (id === 'cosciaPanko') fillet(r, tone, 'panko', w >> 1, (h >> 1) + 1, seed);
-  else if (id === 'patatine') fries(r, tone, stickPile(w, h, seed));
-  else if (id === 'meatball') lumps(r, tone, 'ball', spotsIn(w, h, 7, 4, seed), seed);
+  if (id === 'meatball') lumps(r, tone, 'ball', spotsIn(w, h, 7, 4, seed), seed);
   else if (id === 'chickenPopCorn') lumps(r, tone, 'bite', spotsIn(w, h, 5, 3, seed), seed);
   else lumps(r, tone, 'nugget', spotsIn(w, h, 7, 4, seed), seed);
 }
 
+/** Basket pieces are this much bigger than in the pan (read at a glance on the COTTURA page). */
+const BIG = 1.5;
+
+/** Spots of a heap: a jittered grid kept inside an ellipse filling the w x h frame, back row first. */
+function heapSpots(w: number, h: number, step: number, pad: number, seed: number): Pt[] {
+  return spotsIn(w, h, step, pad, seed).filter(([x, y]) => ((x - w / 2) / (w / 2 - pad + 1)) ** 2 + ((y - h / 2) / (h / 2 - pad + 2)) ** 2 <= 1.15);
+}
+
+/** Hot oil glints on the lit pixels of golden pieces. */
+function glints(r: Raster, tone: Tone, seed: number): void {
+  const lit = packColor(tone.light);
+  for (let y = 0; y < r.h; y++) for (let x = 0; x < r.w; x++) if (r.get(x, y) === lit && hash2(x, y, seed) < 0.12) r.set(x, y, WHITE);
+}
+
+/** Fryer item `id` in its basket look `tone`: big pieces heaped to fill the FRY_ITEM frame. */
+function drawBasketItem(r: Raster, id: FryItemId, tone: Tone): void {
+  const { w, h } = r;
+  const seed = FRY_ITEMS.indexOf(id) * 37 + 701;
+  const cx = w >> 1;
+  const cy = (h >> 1) + 1;
+  if (id === 'polloPastellato') fillet(r, tone, 'pastellato', cx, cy, seed, BIG + 0.1);
+  else if (id === 'polloCroccante') fillet(r, tone, 'croccante', cx, cy, seed, BIG + 0.1);
+  else if (id === 'cosciaPanko') fillet(r, tone, 'panko', cx - 2, cy, seed, BIG);
+  else if (id === 'patatine') fries(r, tone, friesPile(w, h, 4, 4, 21, seed, true));
+  else if (id === 'meatball') lumps(r, tone, 'ball', heapSpots(w, h, 10, 5, seed), seed, BIG);
+  else if (id === 'chickenPopCorn') lumps(r, tone, 'bite', heapSpots(w, h, 7, 4, seed), seed, BIG);
+  else lumps(r, tone, 'nugget', heapSpots(w, h, 11, 5, seed), seed, BIG);
+}
+
 export function buildFryItems(): Raster[] {
   return FRY_ITEMS.flatMap((id) => [FRY_STATE.raw, FRY_STATE.perfect, FRY_STATE.burnt].map((s) => {
-    const r = new Raster(28, 18);
-    drawItem(r, id, LOOK[id][s]);
+    const r = new Raster(FRY_ITEM.w, FRY_ITEM.h);
+    const tone = LOOK[id][s];
+    drawBasketItem(r, id, tone);
+    if (s === FRY_STATE.perfect) glints(r, tone, FRY_ITEMS.indexOf(id) + 811);
     inkEdge(r);
     return r;
   }));
-}
-
-/** Long raw fries lying in loose rows across the pan, each row leaning its own way: [ax, ay, bx, by]. */
-function panFries(): (readonly [number, number, number, number])[] {
-  const out: [number, number, number, number][] = [];
-  for (let y = 2, row = 0; y <= 26; y += 3, row++) {
-    for (let x = -6 + (row % 3) * 5; x < 44; x += 14) {
-      const a = (hash2(x, y, 541) - 0.5) * 1.1;
-      out.push([x, y, Math.round(x + Math.cos(a) * 13), Math.round(y + Math.sin(a) * 6)]);
-    }
-  }
-  return out;
 }
 
 /** The raw menù sides heaped in their pan, full to the brim. */
@@ -178,9 +233,14 @@ export function buildBinSide(): Raster[] {
   return SIDES.map((id) => {
     const r = new Raster(PAN.w, PAN.h);
     const raw = LOOK[id][FRY_STATE.raw];
-    bed(r, raw, 531 + SIDES.indexOf(id), raw.shade);
-    if (id === 'patatine') fries(r, raw, panFries(), 1.7, '#a8884a');
-    else drawItem(r, id, raw);
+    if (id === 'patatine') {
+      // shadowed gaps between the pale sticks (a pale bed made them blur into one straw-coloured patch)
+      bed(r, { light: raw.shade, base: mix(T.fries.shade, INK, 0.3), shade: mix(T.fries.shade, INK, 0.55) }, 531);
+      fries(r, raw, friesPile(r.w, r.h, 5, 3, 17, 541));
+    } else {
+      bed(r, raw, 531 + SIDES.indexOf(id), raw.shade);
+      drawStarter(r, id, raw);
+    }
     return panClip(r);
   });
 }

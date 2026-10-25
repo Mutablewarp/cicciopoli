@@ -8,11 +8,13 @@ import type { ViewportInfo } from '../../contracts';
 import { KITCHEN, KITCHEN_ANIMS } from '../../art/kitchen/keys';
 import { POINTER_TIP } from '../../art/kitchen/station/fx';
 import { KITCHEN_COLORS, KITCHEN_FX } from './config';
-import type { Rect } from './layout';
+import type { Rect } from './framing';
 
 const HAND = { w: 20, h: 22, bobPx: 2, bobMs: 600 } as const;
-/** side: the fingertip this far inside the rect's edge and under its top (the hand stays over the pan / can, off the label tape under it) */
-const SIDE = { inset: 3, dy: 10 } as const;
+/** side: the fingertip on the rect's middle, `dy` under its top (`fromMid` over its middle in a tall place, whose pan sits in
+ * its middle): the hand lies right of it inside the rect (over its own pan / can, off the label tape under it and off the
+ * neighbouring places a big thumb could hit instead) */
+const SIDE = { dy: 13, fromMid: 18 } as const;
 const GLOW_PAD = 2;
 const GLOW_R = 4;
 
@@ -21,13 +23,11 @@ export interface GuideShow {
   rect: Rect | null;
   hand: boolean;
   pulse: boolean;
-  /** up = fingertip on the centre of the rect, hand below it; side = fingertip on the rect's right edge,
-   * the hand lying right of it (left of it when that would cross `maxX`), never over the label under a
-   * pan or a can; down / left = fingertip on the rect's top-left point, pointing at the DOM action
-   * button under it / left of it */
+  /** up = fingertip on the centre of the rect, hand below it; side = fingertip on the rect's middle, the
+   * hand lying right of it inside the rect, never over the label under a pan or a can nor over the next
+   * place; down / left = fingertip on the rect's top-left point, pointing at the DOM action button under
+   * it / left of it */
   dir: 'up' | 'side' | 'down' | 'left';
-  /** side: world x the hand must not cross (the view's right edge) */
-  maxX?: number;
 }
 
 export class Guide {
@@ -57,9 +57,7 @@ export class Guide {
     const bob = calm ? 0 : Math.round(Math.abs(Math.sin((timeMs / HAND.bobMs) * Math.PI)) * HAND.bobPx);
     const h = this.hand.setFlipY(s.dir === 'down').setAngle(s.dir === 'left' ? -90 : 0);
     if (s.dir === 'side') {
-      const fromRight = r.x + r.w + HAND.h <= (s.maxX ?? Infinity);
-      const x = fromRight ? r.x + r.w - SIDE.inset + bob : r.x + SIDE.inset - bob;
-      h.setOrigin(POINTER_TIP.x / HAND.w, POINTER_TIP.y / HAND.h).setAngle(fromRight ? -90 : 90).setPosition(Math.round(x), Math.round(r.y + SIDE.dy));
+      h.setOrigin(POINTER_TIP.x / HAND.w, POINTER_TIP.y / HAND.h).setAngle(-90).setPosition(Math.round(r.x + r.w / 2 + bob), Math.round(r.y + Math.max(SIDE.dy, r.h / 2 - SIDE.fromMid)));
     } else if (s.dir === 'down') h.setOrigin(POINTER_TIP.x / HAND.w, 1).setPosition(Math.round(r.x), Math.round(r.y) - bob);
     else if (s.dir === 'left') h.setOrigin(POINTER_TIP.x / HAND.w, POINTER_TIP.y / HAND.h).setPosition(Math.round(r.x) + bob, Math.round(r.y));
     else h.setOrigin(POINTER_TIP.x / HAND.w, POINTER_TIP.y / HAND.h).setPosition(Math.round(r.x + r.w / 2), Math.round(r.y + r.h / 2) + bob);

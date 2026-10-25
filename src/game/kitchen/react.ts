@@ -5,10 +5,11 @@
  */
 import { DRINKS, KITCHEN, SAUCES, STARTERS } from '../../art/kitchen/keys';
 import type { GameAudio, KitchenSettings } from '../../contracts';
-import { COUNTER_VIEW, KITCHEN_COLORS, KITCHEN_FX, MONTAGGIO } from './config';
+import { COUNTER_VIEW, KITCHEN_COLORS, KITCHEN_FX, TOUCH } from './config';
+import type { Point } from './framing';
+import { haptic } from './haptic';
 import { hiRes } from './hiRes';
 import { lineWidth } from './labels';
-import type { Point } from './layout';
 import { BANNER, plusEuro, tipLine } from './logic/strings';
 import type { KitchenEvent, KitchenSnapshot, KitchenTarget, TrayPart } from './logic/types';
 import type { KitchenView } from './view';
@@ -27,14 +28,11 @@ const TIP_DELAY_MS = 450;
 const POINTS_DELAY_MS = 250;
 /** station texts start under the item: their rise stays clear of the ticket over the top of the plan */
 const FLOAT_DY = 8;
-const GREASE = [0xfff0c0, 0xffd23a];
-const SPLASH_BITS = 6;
 /** price, tip and points stand in a right-aligned column over the till, right of the customer, each on its
  * dark plate (11 px tall at 1x), one row over the other: they pop in turn and fade where they are, never
  * over each other, the customer or past the screen's edge (counterView.money) */
 const MONEY_ROW = 12;
 const MONEY = { plate: true, ms: KITCHEN_FX.moneyFloatMs, right: true, rise: 0 } as const;
-const TS = MONTAGGIO.trayScale;
 /** a plate's width at 1x (labels.ts 'plate': 3 px round the text) */
 const plateW = (text: string): number => lineWidth(text.toUpperCase()) + 6;
 /** COMBO and the end-of-shift banner: plates drawn at the counter, clear of the neon and the bubble */
@@ -51,8 +49,9 @@ export class Reactor {
     this.gen++;
   }
 
-  private vibrate(ms: number): void {
-    if (this.c.settings().vibration) navigator.vibrate?.(ms);
+  /** A short vibration when the player wants them (KitchenSettings.vibration): haptic.ts (an iPhone ticks instead). */
+  vibrate(ms: number): void {
+    if (this.c.settings().vibration) haptic(ms);
   }
 
   private later(ms: number, fn: () => void): void {
@@ -66,6 +65,11 @@ export class Reactor {
     return this.c.view;
   }
 
+  /** the tray's art scale on this plan */
+  private get ts(): number {
+    return this.k.station.layout?.art.tray ?? 1;
+  }
+
   private stationPoint(e: { station: 'griddle' | 'fryer'; index: number }): Point {
     return e.station === 'griddle' ? this.k.cook.slotPoint(e.index) : this.k.cook.wellPoint(e.index);
   }
@@ -77,15 +81,12 @@ export class Reactor {
     if (!at) return;
     st.hold(part, true);
     const { key, k } = hiRes(st.root.scene, pixelKey);
-    this.k.fx.fly(st.top, key, frame, from, () => ({ x: at.x, y: at.y - 12 * TS }), { scale: k, scaleTo: TS * k }, () => {
+    const ts = this.ts;
+    this.k.fx.fly(st.top, key, frame, from, () => ({ x: at.x, y: at.y - 12 * ts }), { scale: k, scaleTo: ts * k }, () => {
       st.hold(part, false);
       this.c.audio.sfx('plop');
+      this.vibrate(TOUCH.vibrate.drop);
     });
-  }
-
-  /** Grease / oil pops at a point of the kitchen view. */
-  private splash(p: Point): void {
-    this.k.fx.burst({ x: p.x + this.k.station.root.x, y: p.y }, GREASE, SPLASH_BITS);
   }
 
   private toTrash(key: string, frame: number, from: Point, scale = 1, scaleTo = 0.8): void {
@@ -108,15 +109,14 @@ export class Reactor {
         audio.sfx('doorbell');
         break;
       case 'griddlePlaced':
-        audio.sfx('sizzle');
+        audio.sfx('sizzleBig');
         st.press({ kind: 'bin', id: e.item }, false);
         k.cook.drop('griddle', e.slot);
-        this.splash(k.cook.slotPoint(e.slot));
+        this.vibrate(TOUCH.vibrate.drop);
         break;
       case 'flipped':
         audio.sfx('flip');
         k.cook.flip(e.slot);
-        this.splash(k.cook.slotPoint(e.slot));
         break;
       case 'perfect':
         audio.sfx('ding');
@@ -141,13 +141,14 @@ export class Reactor {
         break;
       }
       case 'fryDropped':
-        audio.sfx('fry');
+        audio.sfx('dunk');
         st.press({ kind: 'bin', id: e.item }, false);
         k.cook.drop('fryer', e.basket);
-        this.splash(k.cook.wellPoint(e.basket));
+        this.vibrate(TOUCH.vibrate.drop);
         break;
       case 'fryLifted': {
         const p = k.cook.wellPoint(e.basket);
+        audio.sfx('lift');
         k.cook.lift(e.basket);
         if (e.text) {
           k.fx.float(top, e.text, { x: p.x, y: p.y + FLOAT_DY });
@@ -162,6 +163,7 @@ export class Reactor {
         audio.sfx((SAUCES as readonly string[]).includes(e.layer.kind) ? 'squeeze' : 'plop');
         if (e.layer.quality === null) st.press({ kind: 'bin', id: e.layer.kind }, false);
         k.stack.from ??= st.centre({ kind: 'bin', id: e.layer.kind });
+        this.later(KITCHEN_FX.flightMs, () => this.vibrate(TOUCH.vibrate.drop));
         break;
       case 'wrapped': {
         // the top bun lands, the burger is shown off with its stars, then wrapped and sent to the tray
@@ -172,7 +174,7 @@ export class Reactor {
         const at = (): Point => st.layout?.trayAt.burger ?? { x: 0, y: 0 };
         k.stack.wrap(
           e.stars,
-          () => ({ x: at().x, y: at().y - 16 * TS }),
+          () => ({ x: at().x, y: at().y - 16 * this.ts }),
           () => audio.sfx('wrap'),
           () => {
             st.hold('burger', false);
@@ -199,7 +201,7 @@ export class Reactor {
         } else if (e.from === 'tray') {
           const part = e.what as TrayPart;
           const s = st.trayItem(part);
-          this.toTrash(s.texture.key, Number(s.frame.name), { x: s.x, y: s.y - 10 * TS }, s.scaleX, s.scaleX * (0.8 / TS));
+          this.toTrash(s.texture.key, Number(s.frame.name), { x: s.x, y: s.y - 10 * this.ts }, s.scaleX, s.scaleX * (0.8 / this.ts));
         } else this.later(KITCHEN_FX.flightMs, () => st.openTrash());
         break;
       case 'nope':

@@ -1,7 +1,7 @@
-/* Level 7 play area, part 2: the hint strip and the action button (kitchen/action.ts) in the bottom zone, the
-   customer's speech bubble (kitchen/bubble.ts), the served pins on the HUD rail, the HUD's INCASSO €, the landscape
-   column, and the touch band, which has nothing to hold in level 7 (no pads: everything is tapped on the canvas, the
-   button lives in the zone). */
+/* Level 7 play area, part 2: the tutorial hint under the ticket, the action button (kitchen/action.ts) alone in the
+   bottom zone, the customer's speech bubble (kitchen/bubble.ts), the served pins on the HUD rail, the HUD's
+   INCASSO €, the landscape column, and the touch band, which has nothing to hold in level 7 (no pads: everything is
+   tapped on the canvas, the button lives in the zone). */
 .is-touch .cc-controls[data-mode='kitchen'] {
   display: none;
 }
@@ -12,40 +12,38 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  /* inside the covered strip: the scene's lowest labels stay clear of the hint's ink outline */
+  /* inside the covered strip: the scene's lowest labels stay clear of the button's ink outline */
   padding-top: 6px;
 }
-/* two lines of room are always kept: most hints wrap once on a phone (a longer one grows over the game, the
-   covered strip stays put) */
+/* the tutorial line (customers 1-2 of the first shift only), in the ticket's slot under the paper: the bottom zone
+   keeps only the button, so the kitchen gets that room in every shift. The ticket shrinks (its lines scroll) to
+   leave it room; Pixelify at 16 px: one line on most phones, adult-readable. */
 .cc-khint {
-  position: relative;
-  width: 100%;
-  height: calc(3em + 12px);
-  margin: 0;
+  flex: none;
+  width: min(100%, 460px);
+  margin: 12px 0 0;
+  padding: 5px 10px 4px;
+  font-family: var(--f-ui);
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--yellow);
+  background: rgba(24, 24, 26, 0.92);
+  box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 2px #3c3016;
+}
+.cc-khint:not(.is-on) {
+  display: none;
 }
 .cc-khint > span {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  max-width: 100%;
-  padding: 6px 10px 5px;
-  line-height: 1.5;
-  text-align: center;
-  white-space: normal;
-  color: var(--yellow);
-  background: rgba(24, 24, 26, 0.9);
-  box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 2px #3c3016;
-  transform: translateX(-50%);
-  width: max-content;
-}
-.cc-khint:not(.is-on) > span {
-  visibility: hidden;
+  display: inline-block;
 }
 
 /* ------------------------------------------------------------ action button */
 .cc-kact {
   width: min(100%, 380px);
-  min-height: 60px;
+  /* an adult thumb: 64 px and up in both orientations */
+  min-height: 64px;
   pointer-events: auto;
   touch-action: none;
 }
@@ -264,15 +262,18 @@
 }
 .cc-ktill .cc-time__num {
   font-size: calc(var(--u) * 6);
+  /* the pop grows rightwards, away from INCASSO (kitchen/hud.ts TILL_POP) */
+  transform-origin: 0 100%;
 }
 
 /* ------------------------------------------------------- landscape column */
 @media (orientation: landscape) {
-  /* the column: under the HUD bar, the ticket on top, the hint + button at its foot */
+  /* the column: under the HUD bar, the ticket on top, the button at its foot. The ticket is at most 30% of the
+     width and 260 px (the notch's safe area comes on top): the kitchen gets the rest (insets.ts publishes it). */
   .cc-kcol {
     top: var(--play-inset-t, 0px);
     right: auto;
-    width: min(calc(35% - 1px), 330px);
+    width: calc(var(--safe-l) + 8px + min(30% - 8px, 260px));
     padding: 6px 0 calc(var(--safe-b) + 8px) calc(var(--safe-l) + 8px);
     gap: 8px;
   }
@@ -282,6 +283,7 @@
   }
   .cc-kzone {
     padding-top: 0;
+    container-type: inline-size;
   }
   .cc-kslot {
     flex: 1 1 auto;
@@ -294,22 +296,18 @@
   }
   .cc-kact {
     width: 100%;
-    min-height: 54px;
   }
+  /* PRENDI L'ORDINE on one line when the column allows it (15 Press Start cells), else on two */
   .cc-kact__label {
-    padding: 0 6px 3px;
-    font-size: clamp(11px, 1.5vw, 16px);
+    padding: 0 4px 3px;
+    font-size: clamp(13px, calc((100cqi - 24px) / 15.6), 17px);
+    line-height: 1.25;
+    white-space: normal;
+    text-align: center;
   }
   .cc-khint {
-    height: auto;
-    min-height: 30px;
-  }
-  .cc-khint > span {
-    position: static;
-    display: block;
-    width: auto;
-    transform: none;
-    padding: 5px 8px 4px;
+    width: 100%;
+    font-size: 15px;
   }
 }
 /* big screens: the same ticket and bubble, one size up */
@@ -324,13 +322,10 @@
     width: 19px;
     height: 19px;
   }
-  .cc-kcol {
-    width: min(calc(35% - 1px), 420px);
-  }
   .cc-kbubble {
     max-width: min(var(--room, 380px), calc(100% - 32px));
   }
   .cc-kact {
-    min-height: 64px;
+    min-height: 72px;
   }
 }

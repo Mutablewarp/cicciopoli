@@ -1,28 +1,26 @@
 /**
- * Everything level 7 draws, framed by one camera: the BANCONE at the world origin and the CUCINA
- * one screen to its right; the camera slides between them (eased, KITCHEN_TIMING.cameraMs; a cut
- * with reduced motion). Both views fill the whole canvas with their room / worktop art, so the
- * slide never shows a gap and the free area around the plan is never empty. A paged kitchen (a
- * phone too short for the whole plan) shows MONTAGGIO or COTTURA: the camera moves down / up between
- * them. The hi-res brand textures are drawn here at the density of the screen.
+ * Everything level 7 draws, framed by one camera: the BANCONE at the world origin and the CUCINA one
+ * screen to its right, MONTAGGIO then COTTURA. The camera glides between the stops (the counter, page 0,
+ * page 1: each edge of the screen's world rect in a straight line, so the zoom changes with it; a cut with
+ * reduced motion). Both views fill the whole canvas with their room / worktop art, so a glide never shows a
+ * gap. The hi-res brand textures are drawn here at the density of the screen.
  */
 import type Phaser from 'phaser';
-import { KITCHEN, SHEET_SPEC } from '../../art/kitchen/keys';
 import type { ViewportInfo } from '../../contracts';
 import { KITCHEN_TIMING } from '../../config/kitchen';
 import { ensureBrandTextures } from './brand';
-import { KITCHEN_VIEW, MONTAGGIO, PAGER } from './config';
+import { KITCHEN_VIEW, PAGER } from './config';
 import { CookView } from './cookView';
 import { CounterView } from './counterView';
+import { computeFraming, inRect, kitchenOffset, lerpRect, pageToWorld, toWorld, type KitchenFraming, type Point, type Rect } from './framing';
 import { Fx } from './fx';
 import { Guide } from './guide';
-import { computeFraming, inRect, kitchenOffset, pageOf, targetRect, toCss, toWorld, type KitchenFraming, type Point, type Rect } from './layout';
+import { targetRect } from './layout';
 import type { KitchenSnapshot, KitchenTarget } from './logic/types';
+import { pageOfX } from './plan';
 import { StackView } from './stackView';
 import { StationView } from './stationView';
 
-const [CAN_W, CAN_H] = SHEET_SPEC[KITCHEN.drink];
-const DRINK_CAN = { w: CAN_W, h: CAN_H } as const;
 
 export class KitchenView {
   readonly counter: CounterView;
@@ -34,7 +32,7 @@ export class KitchenView {
   framing: KitchenFraming;
   /** 0 = counter on screen, 1 = kitchen */
   slide = 0;
-  /** paged kitchen: the page shown (0 MONTAGGIO, 1 COTTURA) and the camera between them (0..1) */
+  /** the kitchen page wanted (0 MONTAGGIO, 1 COTTURA) and the camera between the pages (0..1) */
   page = 0;
   pageAt = 0;
   private want: 'counter' | 'kitchen' = 'counter';
@@ -47,11 +45,11 @@ export class KitchenView {
     private readonly viewport: ViewportInfo,
     readonly calm: () => boolean,
   ) {
-    // floating texts stay on screen: in counter px at the counter, in world px of the shown page in the kitchen
+    // floating texts stay on screen: in counter px at the counter, in kitchen px of the screen in the kitchen
     this.fx = new Fx(scene, calm, (box) => (box === this.counter.top ? this.counter.frame?.view : undefined) ?? this.pageView);
     this.counter = new CounterView(scene);
     this.station = new StationView(scene);
-    this.cook = new CookView(scene, this.station.cookLayer, this.station.barLayer);
+    this.cook = new CookView(scene, this.station.cookLayer, this.station.barLayer, this.fx, calm);
     this.stack = new StackView(scene, this.station.stackLayer, this.fx, () => this.station.trashMouth);
     this.guide = new Guide(scene);
     this.framing = computeFraming(viewport);
@@ -64,9 +62,8 @@ export class KitchenView {
     cam.setSize(this.scene.scale.width, this.scene.scale.height);
     const f = computeFraming(this.viewport);
     this.framing = f;
-    cam.setZoom(f.zoom);
-    ensureBrandTextures(this.scene, Math.max(f.zoom * MONTAGGIO.scale, f.counter.zoom));
-    if (this.page >= f.pages.length) this.page = this.pageAt = 0;
+    ensureBrandTextures(this.scene, Math.max(Math.max(...f.pages.map((p) => p.zoom)) * f.plan.art.stack, f.counter.zoom));
+    if (!this.paged) this.page = this.pageAt = 0;
     this.counter.layout(f.counter);
     this.station.setFraming(f);
     this.relayoutKitchen(true);
@@ -79,25 +76,32 @@ export class KitchenView {
     if (!l || (l === this.placed && !force)) return;
     this.placed = l;
     this.cook.setLayout(l);
-    this.stack.setBase(l.stackBase);
+    this.stack.setBase(l);
   }
 
-  /** Camera y offset of the kitchen page between pages (pageAt). */
-  private get pageDy(): number {
+  /** The kitchen page between the pages (pageAt), kitchen px. */
+  private get kitchenRect(): Rect {
     const p = this.framing.pages;
-    return p.length > 1 ? p[0] + (p[1] - p[0]) * this.pageAt : 0;
+    return p.length > 1 ? lerpRect(p[0].view, p[1].view, this.pageAt) : p[0].view;
   }
 
-  /** The world rect of the kitchen page on screen (kitchen px). */
+  /** The world rect on screen now. */
+  private get camRect(): Rect {
+    const k = this.kitchenRect;
+    return lerpRect(this.framing.view, { ...k, x: k.x + kitchenOffset(this.framing) }, this.slide);
+  }
+
+  /** The kitchen rect on screen now (kitchen px). */
   get pageView(): Rect {
-    const v = this.framing.view;
-    return { ...v, y: v.y + this.pageDy };
+    const r = this.camRect;
+    return { ...r, x: r.x - kitchenOffset(this.framing) };
   }
 
   private placeCamera(): void {
-    const f = this.framing;
-    const v = f.view;
-    this.scene.cameras.main.centerOn(v.x + v.w / 2 + this.slide * kitchenOffset(f), v.y + v.h / 2 + this.slide * this.pageDy);
+    const r = this.camRect;
+    const cam = this.scene.cameras.main;
+    cam.setZoom(this.scene.scale.width / r.w);
+    cam.centerOn(r.x + r.w / 2, r.y + r.h / 2);
   }
 
   /** Slides the camera to a view (instant = no animation: restart, reduced motion). */
@@ -124,12 +128,12 @@ export class KitchenView {
     });
   }
 
-  /** The kitchen is paged (one half on screen at a time). */
+  /** The kitchen shows one page at a time. */
   get paged(): boolean {
     return this.framing.pages.length > 1;
   }
 
-  /** Paged kitchen: shows page `p` (0 MONTAGGIO, 1 COTTURA). */
+  /** Shows page `p` (0 MONTAGGIO, 1 COTTURA) of a paged kitchen. */
   showPage(p: number, instant = false): void {
     if (!this.paged || (p === this.page && !instant)) return;
     this.page = p;
@@ -152,17 +156,16 @@ export class KitchenView {
     });
   }
 
-  /** The page a kitchen target is on (0 when the kitchen is not paged). */
+  /** The page a kitchen target is on (the shown one when the kitchen is not paged). */
   pageOfTarget(t: KitchenTarget): number {
     const l = this.station.layout;
     const r = l && targetRect(l, t, this.stack.topY);
-    return r && this.paged ? pageOf(this.framing.plan, r.y + r.h / 2) : this.page;
+    return r && this.paged ? pageOfX(this.framing.plan, r.x + r.w / 2) : this.page;
   }
 
   /** A point of the kitchen (local px) is on the shown page's tab. */
   onTab(p: Point): boolean {
-    const pages = this.paged ? this.framing.plan.pages : null;
-    return !!pages && inRect(pages[this.page].tab, p.x, p.y);
+    return this.paged && inRect(this.framing.plan.pages[this.page].tab, p.x, p.y);
   }
 
   /** The kitchen is on screen and still enough for taps. */
@@ -174,18 +177,30 @@ export class KitchenView {
     return this.want === 'counter' && this.slide <= 1 - KITCHEN_VIEW.tapSlide;
   }
 
-  /** A tap on the game host (CSS px) in the coordinates of the view (and page) the camera is going to. */
+  /** A point on the game host (CSS px) in the px of the view (and page) the camera is going to. */
   toLocal(cssX: number, cssY: number): Point {
-    const p = toWorld(this.framing, cssX, cssY);
-    const kitchen = this.want === 'kitchen';
-    const dy = kitchen && this.paged ? this.framing.pages[this.page] : 0;
-    return { x: p.x + (this.slide - (kitchen ? 1 : 0)) * kitchenOffset(this.framing), y: p.y + dy };
+    const f = this.framing;
+    return this.want === 'kitchen' ? pageToWorld(f, this.paged ? this.page : 0, cssX, cssY) : toWorld(f, cssX, cssY);
+  }
+
+  /** A world point -> CSS px on the game host, with the camera where it is now. */
+  private cssOfWorld(x: number, y: number): Point {
+    const r = this.camRect;
+    const k = this.scene.scale.width / r.w / this.framing.dpr;
+    return { x: (x - r.x) * k, y: (y - r.y) * k };
+  }
+
+  /** A kitchen point (local px) -> CSS px on the game host, with its page on screen (scripted taps). */
+  kitchenCss(x: number, y: number): Point {
+    const f = this.framing;
+    const g = f.pages[this.paged ? this.page : 0];
+    return { x: ((x - g.view.x) * g.zoom) / f.dpr, y: ((y - g.view.y) * g.zoom) / f.dpr };
   }
 
   /** Top of the customer's head in CSS px of the game host (the bubble's anchor). */
   headCss(): Point {
     const h = this.counter.world(this.counter.head);
-    const p = toCss(this.framing, h.x - this.slide * kitchenOffset(this.framing), h.y - this.slide * this.pageDy);
+    const p = this.cssOfWorld(h.x, h.y);
     return { x: Math.round(p.x), y: Math.round(p.y) };
   }
 
@@ -194,38 +209,41 @@ export class KitchenView {
     this.station.setOrder(snap.order);
     this.relayoutKitchen();
     this.counter.sync(snap, timeMs);
-    this.cook.sync(snap.griddle, snap.fryer);
+    this.cook.sync(snap.griddle, snap.fryer, timeMs);
     this.stack.sync(snap.stack, snap.tray.burger === null && snap.order !== null);
     this.station.syncTray(snap.tray);
-    this.station.tabs.sync(this.pageAt, snap.griddle, snap.fryer, timeMs);
+    this.station.tabs.sync(this.pageAt, snap.griddle, snap.fryer, timeMs, this.otherNeeds(snap));
     this.station.showPage(this.pageAt);
-    this.station.drawUrgent(snap.view === 'kitchen' ? snap.patience : null, timeMs, this.calm(), this.pageDy);
+    this.station.drawUrgent(snap.view === 'kitchen' ? snap.patience : null, timeMs, this.calm(), this.pageView);
+  }
+
+  /** Something on the page not shown needs the player: a cook ready to flip / take / lift or burning, or the next step. */
+  private otherNeeds(s: KitchenSnapshot): boolean {
+    if (!this.paged || s.view !== 'kitchen') return false;
+    const cookCalls = [...s.griddle, ...s.fryer].some((v) => v !== null && v.phase !== 'raw');
+    if (this.page === 0 && cookCalls) return true;
+    return !!s.guide && !s.guide.wait && this.pageOfTarget(s.guide.target) !== this.page;
   }
 
   /** World rect of a guide target, in the view it belongs to (null: nothing to show now); a target on
    * the other page of a paged kitchen = the tab that leads there. */
   targetWorld(t: KitchenTarget, actionCss: Rect | null): Rect | null {
     const f = this.framing;
+    const off = kitchenOffset(f);
     if (t.kind === 'action') {
       if (!actionCss) return null;
-      const a = toWorld(f, actionCss.x, actionCss.y);
-      const b = toWorld(f, actionCss.x + actionCss.w, actionCss.y + actionCss.h);
-      const dx = this.slide * kitchenOffset(f);
-      return { x: a.x + dx, y: a.y + this.slide * this.pageDy, w: b.x - a.x, h: b.y - a.y };
+      const r = this.camRect;
+      const k = r.w / this.scene.scale.width * f.dpr;
+      return { x: r.x + actionCss.x * k, y: r.y + actionCss.y * k, w: actionCss.w * k, h: actionCss.h * k };
     }
     const l = this.station.layout;
-    const pages = f.plan.pages;
-    if (pages && this.paged && this.pageOfTarget(t) !== this.page) return { ...pages[this.page].tab, x: pages[this.page].tab.x + kitchenOffset(f) };
-    // a drink: its can (the pulse rings it, the hand points at it from beside)
-    const can = t.kind === 'drink' ? l?.drinks.find((d) => d.id === t.id)?.at : undefined;
-    const r = can ? { x: can.x - DRINK_CAN.w / 2, y: can.y - DRINK_CAN.h, ...DRINK_CAN } : l && targetRect(l, t, this.stack.topY);
-    return r ? { ...r, x: r.x + kitchenOffset(f) } : null;
-  }
-
-  /** World x of the kitchen view's right edge (the guide's hand stays left of it). */
-  get kitchenRight(): number {
-    const v = this.framing.view;
-    return kitchenOffset(this.framing) + v.x + v.w;
+    if (this.paged && this.pageOfTarget(t) !== this.page) {
+      const tab = f.plan.pages[this.page].tab;
+      return { ...tab, x: tab.x + off };
+    }
+    // a pan or a drink: its whole place, contents and label (the hand lies on it beside its middle)
+    const r = l && targetRect(l, t, this.stack.topY);
+    return r ? { ...r, x: r.x + off } : null;
   }
 
   /** New shift: nothing in flight, the camera on the counter. */

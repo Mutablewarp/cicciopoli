@@ -5,11 +5,11 @@
  * the counter, orders (talk frames while the bubble types), tastes and walks out the other side.
  * Drawn in counter px in its own container, scaled so the room fills the screen (counterFrame.ts
  * CounterFrame). During the service the tray (printed liner, hi-res parcel and paper boats) rests on
- * the counter and the rating stars pop on its front; the till shows the shift's takings; the plates and
- * the straw cup of the photo stand on the counter at the right; the price, the tip and the points stack
- * in a column right of the customer, COMBO pops left of them. The golden finale dims the room under the
- * lit beam. Positions follow the shift's phase clock (no
- * tweens), so pause / skip / resize just work.
+ * the counter (landscape: left of the customer, bigger) and the rating stars pop on its front; the till
+ * shows the shift's takings; the plates and the straw cup of the photo stand on the counter at the right;
+ * the price, the tip and the points stack in a column right of the customer, COMBO pops left of them. The
+ * golden finale dims the room under the lit beam. Positions follow the shift's phase clock (no tweens), so
+ * pause / skip / resize just work.
  */
 import type Phaser from 'phaser';
 import { CUSTOMERS, CUSTOMER_POSE, DRINKS, KITCHEN, STARTERS, TRAY, type CustomerId } from '../../art/kitchen/keys';
@@ -21,7 +21,7 @@ import { CounterDecor } from './counterDecor';
 import { showHiRes } from './hiRes';
 import { labelTexture } from './labels';
 import type { CounterFrame } from './counterFrame';
-import type { Point } from './layout';
+import type { Point } from './framing';
 import type { KitchenSnapshot, TrayView } from './logic/types';
 
 const C = COUNTER_VIEW;
@@ -61,6 +61,8 @@ export class CounterView {
   private readonly trayItems: Record<Part, Phaser.GameObjects.Sprite>;
   private readonly stars: Phaser.GameObjects.Sprite[] = [];
   private f: CounterFrame | null = null;
+  /** landscape: where the served tray rests left of the customer (counter px) and its scale; null: in front of them */
+  private trayLeft: { x: number; k: number } | null = null;
   /** golden finale: bulbs flash, the wall disc gives way to the big gold face */
   gold = false;
 
@@ -136,6 +138,13 @@ export class CounterView {
     const right = Math.min(this.register.x + this.register.width / 2, v.x + v.w - 1);
     this.display.setPosition(Math.floor(right), this.register.y - this.register.height + C.tillDisplayDy).setScale(this.displayScale);
     this.placeProps();
+    // landscape: the served tray left of the customer (the ticket column is empty while serving), as big as that room
+    // allows in quarter steps, never over the body
+    const L = C.trayLeft;
+    const edge = this.spot.x - C.bodyHalfW - L.gapPx;
+    const k = Math.min(L.maxScale, Math.floor(((edge - v.x - 2) / TRAY.w) * 4) / 4);
+    this.trayLeft = f.orient === 'landscape' && k >= 1 ? { x: Math.round(edge - TRAY.w * k), k } : null;
+    this.tray.setScale(this.trayLeft?.k ?? 1);
     // the hi-res liner and packaging at the new density
     const linerOn = this.scene.textures.exists(BRAND.liner);
     this.liner.setVisible(linerOn);
@@ -194,7 +203,8 @@ export class CounterView {
     const scale = this.fit('right', w);
     const right = Math.min(v.x + v.w - 2, this.register.x + this.register.width / 2 + C.moneyReachPx);
     const x = Math.max(right, this.spot.x + C.bodyHalfW + scale * w + 2);
-    return { at: { x: Math.min(v.x + v.w - 2, x), y: Math.min(this.display.y - this.display.displayHeight, this.tray.y) - 4 }, scale };
+    const over = this.trayLeft ? Infinity : this.tray.y;
+    return { at: { x: Math.min(v.x + v.w - 2, x), y: Math.min(this.display.y - this.display.displayHeight, over) - 4 }, scale };
   }
 
   /** Where COMBO pops (a plate `w` px wide at 1x) and its scale: left of the customer, over the counter. */
@@ -202,7 +212,8 @@ export class CounterView {
     const v = this.f?.view ?? { x: 0, w: 0 };
     const scale = this.fit('left', w);
     const x = Math.max(v.x + 2 + (scale * w) / 2, Math.min((v.x + this.spot.x - C.bodyHalfW) / 2, this.spot.x - C.bodyHalfW - (scale * w) / 2 - 2));
-    return { at: { x, y: this.topY - C.comboLiftPx }, scale };
+    const y = this.trayLeft ? Math.min(this.topY - C.comboLiftPx, this.trayRestY - C.trayLeft.comboGapPx * scale) : this.topY - C.comboLiftPx;
+    return { at: { x, y }, scale };
   }
 
   /** Middle of the room between the beam and the counter (the end-of-shift banner: nobody at the counter). */
@@ -215,7 +226,13 @@ export class CounterView {
 
   /** Centre of the tray on the counter. */
   get trayCentre(): Point {
-    return { x: this.tray.x + TRAY.w / 2, y: this.tray.y + TRAY.h / 2 };
+    const k = this.tray.scaleX;
+    return { x: this.tray.x + (TRAY.w * k) / 2, y: this.tray.y + (TRAY.h * k) / 2 };
+  }
+
+  /** The served tray's top at rest: its bottom on the counter top (counter px). */
+  private get trayRestY(): number {
+    return this.topY + C.trayDy + 14 - TRAY.h * (this.trayLeft?.k ?? 1);
   }
 
   private pose(snap: KitchenSnapshot): number {
@@ -276,13 +293,13 @@ export class CounterView {
     this.tray.setVisible(on);
     if (!on) return;
     const at = this.spot;
-    const restY = this.topY + C.trayDy - TRAY.h + 14;
+    const restY = this.trayRestY;
     // it rises from under the counter while served; at the walk-out Ciccio clears it first (opaque:
     // the customer walking off behind it never shows through)
     const u = p === 'serving' ? easeOut(clamp01(snap.phaseMs / C.trayRiseMs)) : p === 'walkOut' ? 1 - easeIn(clamp01(snap.phaseMs / C.trayClearMs)) : 1;
     const low = (this.f?.view.y ?? 0) + (this.f?.view.h ?? 0);
     // in front of the customer, left of the till (a narrow screen: shifted left, the till's display stays readable)
-    const x = Math.min(at.x - TRAY.w / 2, this.register.x - this.register.width / 2 - TRAY.w - 2);
+    const x = this.trayLeft?.x ?? Math.min(at.x - TRAY.w / 2, this.register.x - this.register.width / 2 - TRAY.w - 2);
     this.tray.setVisible(u > 0).setPosition(Math.round(Math.max((this.f?.view.x ?? 0) + 1, x)), Math.round(low + (restY - low) * u));
     this.fillTray(snap.tray);
   }

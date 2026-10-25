@@ -1,28 +1,29 @@
 /**
- * What cooks: the patties / strips on the griddle (seen from above, frame from the logic), the
- * fryer baskets (lowered with the food in the oil, raised when empty), sizzle and smoke, and over
- * every item a big COOK BAR: raw red -> PERFETTO gold (rimmed in light gold: the target) -> troppo
- * cotto brown -> bruciato black, a tall marker moving along it (the frame blinks gold while the item
- * is PERFETTO) and a blinking cue under it ("GIRA!", "OK!", "AHIA!", each within its slot). Drops,
- * flips and lifts animate small offsets on top of the synced state.
+ * What cooks, at the manifest sizes: the patties / strips on the big griddle (seen from above, frame from the
+ * logic: the crust darkens state by state), fat bubbling at their edge and a wisp of steam while they cook;
+ * the fryer baskets (lowered with the food in the oil, a shake now and then, raised when empty); sizzle and
+ * smoke; over every item a big COOK BAR: raw red -> PERFETTO gold (rimmed in light gold: the target) -> troppo
+ * cotto brown -> bruciato black, a tall marker moving along it (the frame blinks gold while the item is
+ * PERFETTO) and a blinking cue under it ("GIRA!", "OK!", "AHIA!"). The slap-down, the spatula flip, the dunk
+ * and the lift are cookFx.ts animations on each slot's offsets.
  */
 import Phaser from 'phaser';
-import { KITCHEN, KITCHEN_ANIMS } from '../../art/kitchen/keys';
-import { KITCHEN_COLORS, KITCHEN_FX } from './config';
+import { BASKET, FRY_ITEM, FRYER, GRIDDLE_ITEM, KITCHEN, KITCHEN_ANIMS } from '../../art/kitchen/keys';
+import { BASKET_MOUTH } from '../../art/kitchen/station/fryer';
+import { COOK_FX, KITCHEN_COLORS, KITCHEN_FX } from './config';
+import { CookFx, type Slot } from './cookFx';
+import type { Point } from './framing';
+import type { Fx } from './fx';
 import { labelTexture } from './labels';
-import type { KitchenLayout, Point } from './layout';
+import type { KitchenLayout } from './layout';
 import type { BasketView, CookSlotView, GriddleSlotView } from './logic/types';
 
 const BAR = KITCHEN_FX.bar;
 /** the bar runs a bit past BRUCIATO so the black end shows */
 const BAR_TAIL = 1.08;
-/** item half height on the griddle, well centre, basket offsets (raised / lowered) */
-const ITEM_HALF = 14;
-const WELL_CX = 16;
-const WELL_CY = 11;
-const BASKET_UP = -3;
-const BASKET_DOWN = 2;
-const FRY_ITEM_DY = 1;
+const ITEM_HALF = GRIDDLE_ITEM.h / 2 - 4;
+/** a lowered basket sits with its rim centred on the well (the food is centred there too) */
+const BASKET_DOWN = BASKET.h / 2 - (BASKET_MOUTH.y + BASKET_MOUTH.h / 2);
 const Q = KITCHEN_FX.cue;
 const CUE: Readonly<Record<'flip' | 'take' | 'lift' | 'burning', { text: string; color: string }>> = {
   flip: { text: Q.flip, color: KITCHEN_COLORS.text.gold },
@@ -30,41 +31,49 @@ const CUE: Readonly<Record<'flip' | 'take' | 'lift' | 'burning', { text: string;
   lift: { text: Q.lift, color: KITCHEN_COLORS.text.gold },
   burning: { text: Q.burning, color: KITCHEN_COLORS.text.red },
 };
-
-interface Slot {
-  readonly item: Phaser.GameObjects.Sprite;
-  readonly fx: Phaser.GameObjects.Sprite;
-  readonly cue: Phaser.GameObjects.Image;
-  /** animated offset (drop, flip hop) and squash */
-  readonly off: { dy: number; sy: number };
-  basket?: Phaser.GameObjects.Sprite;
-}
+/** the art's frame sizes may differ from the manifest until the redraw lands: drawn at the manifest's */
+const fit = (s: Phaser.GameObjects.Sprite, w: number, h: number): { x: number; y: number } => ({ x: w / Math.max(1, s.width), y: h / Math.max(1, s.height) });
 
 export class CookView {
   private readonly griddle: Slot[];
   private readonly fryer: Slot[];
   private readonly bars: Phaser.GameObjects.Graphics;
+  private readonly fat: Phaser.GameObjects.Graphics;
+  readonly fxs: CookFx;
   private l: KitchenLayout | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
     layer: Phaser.GameObjects.Container,
     barLayer: Phaser.GameObjects.Container,
+    fx: Fx,
+    private readonly calm: () => boolean,
   ) {
     const make = (key: string, fried: boolean): Slot => {
       const item = scene.add.sprite(0, 0, key, 0).setVisible(false);
-      const fx = scene.add.sprite(0, 0, fried ? KITCHEN.smoke : KITCHEN.sizzle, 0).setVisible(false);
+      const smoke = scene.add.sprite(0, 0, fried ? KITCHEN.smoke : KITCHEN.sizzle, 0).setVisible(false);
+      const steam = scene.add.sprite(0, 0, KITCHEN.steam, 0).setOrigin(0.5, 1).setVisible(false);
+      if (scene.anims.exists(KITCHEN_ANIMS.steam[0])) steam.play(KITCHEN_ANIMS.steam[0]);
       const cue = scene.add.image(0, 0, KITCHEN.sparkle).setOrigin(0.5, 0.5).setVisible(false);
-      const slot: Slot = { item, fx, cue, off: { dy: 0, sy: 1 } };
-      if (fried) slot.basket = scene.add.sprite(0, 0, KITCHEN.basket, 0).setOrigin(0.5, 0.5);
-      layer.add([...(slot.basket ? [slot.basket] : []), item, fx]);
+      const base = fried ? fit(item, FRY_ITEM.w, FRY_ITEM.h) : fit(item, GRIDDLE_ITEM.w, GRIDDLE_ITEM.h);
+      const slot: Slot = { item, smoke, steam, cue, base, off: { dx: 0, dy: 0, sx: 1, sy: 1, rot: 0 } };
+      if (fried) {
+        const basket = scene.add.sprite(0, 0, KITCHEN.basket, 0).setOrigin(0.5, 0.5);
+        slot.basket = basket;
+        slot.basketBase = fit(basket, BASKET.w, BASKET.h);
+      }
+      // the food under the lowered basket's rim, steam and smoke over everything
+      layer.add([item, ...(slot.basket ? [slot.basket] : []), smoke, steam]);
       barLayer.add(cue);
       return slot;
     };
     this.griddle = [0, 1, 2].map(() => make(KITCHEN.griddleItem, false));
-    this.fryer = [0, 1].map(() => make(KITCHEN.fryItem, true));
+    this.fryer = FRYER.wells.map(() => make(KITCHEN.fryItem, true));
+    this.fat = scene.add.graphics();
+    layer.add(this.fat);
     this.bars = scene.add.graphics();
     barLayer.addAt(this.bars, 0);
+    this.fxs = new CookFx(scene, layer, fx, calm);
   }
 
   setLayout(l: KitchenLayout): void {
@@ -78,51 +87,85 @@ export class CookView {
 
   wellPoint(i: number): Point {
     const w = this.l?.wells[i] ?? { x: 0, y: 0 };
-    return { x: w.x + WELL_CX, y: w.y + WELL_CY };
+    return { x: w.x + FRYER.well.w / 2, y: w.y + FRYER.well.h / 2 };
   }
 
-  sync(griddle: readonly (GriddleSlotView | null)[], fryer: readonly (BasketView | null)[]): void {
+  sync(griddle: readonly (GriddleSlotView | null)[], fryer: readonly (BasketView | null)[], timeMs: number): void {
     const l = this.l;
     if (!l) return;
     this.bars.clear();
+    this.fat.clear();
+    const calm = this.calm();
     griddle.forEach((v, i) => {
       const s = this.griddle[i];
       const p = l.slots[i];
       s.item.setVisible(v !== null);
       if (!v) return this.hideFx(s);
-      s.item.setFrame(v.frame).setPosition(p.x, p.y + s.off.dy).setScale(1, s.off.sy);
-      this.fxFor(s, v, false, { x: p.x, y: p.y - 4 + s.off.dy });
+      const o = s.off;
+      s.item.setFrame(v.frame).setPosition(p.x + o.dx, p.y + o.dy).setScale(s.base.x * o.sx, s.base.y * o.sy).setRotation(o.rot);
+      this.smokeFor(s, v, false, { x: p.x, y: p.y - 6 + o.dy });
+      this.steamFor(s, v, { x: p.x, y: p.y + COOK_FX.steam.dy + o.dy });
+      if (v.phase !== 'burnt' && o.dy === 0) this.fatRing(p, timeMs + i * 131, calm);
       this.bar(s, v, { x: p.x, y: p.y - ITEM_HALF + BAR.dy }, v.tap === 'flip' ? 'flip' : 'take', { x: p.x, y: l.griddle.y + Q.griddleY });
     });
     fryer.forEach((v, i) => {
       const s = this.fryer[i];
       const p = this.wellPoint(i);
+      const o = s.off;
+      const shake = v && !calm && v.phase !== 'burnt' ? this.fxs.shakeX(i, timeMs) : 0;
+      const B = COOK_FX.basket;
+      const y = Math.max(this.basketTop + BASKET.h / 2, p.y + (v ? BASKET_DOWN : B.up) + o.dy);
+      s.basket?.setFrame(v ? 1 : 0).setPosition(p.x + shake, y).setScale(s.basketBase?.x ?? 1, s.basketBase?.y ?? 1);
       s.item.setVisible(v !== null);
-      s.basket?.setFrame(v ? 1 : 0).setPosition(p.x, p.y + (v ? BASKET_DOWN : BASKET_UP) + s.off.dy);
       if (!v) return this.hideFx(s);
-      s.item.setFrame(v.frame).setPosition(p.x, p.y + FRY_ITEM_DY + s.off.dy);
+      s.item.setFrame(v.frame).setPosition(p.x + shake, p.y + o.dy).setScale(s.base.x, s.base.y);
       // the art has no "over" frame: a troppo-cotto basket darkens
       s.item.setTint(v.phase === 'over' ? 0xb07040 : 0xffffff);
-      this.fxFor(s, v, true, { x: p.x, y: p.y - 8 });
+      this.smokeFor(s, v, true, { x: p.x, y: p.y - 10 });
+      this.steamFor(s, v, { x: p.x, y: p.y - FRYER.well.h / 2 });
       this.bar(s, v, { x: p.x, y: l.wells[i].y + BAR.dy - 1 }, 'lift', { x: p.x, y: l.fryer.y + Q.fryerY });
     });
   }
 
+  /** Fat bubbling at the patty's edge: dots popping round a ring (still with reduced motion). */
+  private fatRing(p: Point, t: number, calm: boolean): void {
+    const F = COOK_FX.fat;
+    for (let i = 0; i < F.dots; i++) {
+      const phase = calm ? 0 : (t + (i * F.periodMs) / F.dots) % F.periodMs;
+      if (phase > F.litMs) continue;
+      const turn = Math.floor((t + (i * F.periodMs) / F.dots) / F.periodMs);
+      const a = ((i * 2.399 + turn * 1.3) % (Math.PI * 2)) - Math.PI;
+      const r = F.r + ((i + turn) % 3) - 1;
+      const size = phase < F.litMs / 2 ? 2 : 1;
+      this.fat.fillStyle(F.colors[(i + turn) % F.colors.length], 1).fillRect(Math.round(p.x + Math.cos(a) * r), Math.round(p.y + Math.sin(a) * r * 0.8), size, size);
+    }
+  }
+
   private hideFx(s: Slot): void {
-    s.fx.setVisible(false);
+    s.smoke.setVisible(false);
+    s.steam.setVisible(false);
     s.cue.setVisible(false);
   }
 
   /** Sizzle while it cooks on the griddle, smoke once it is past the window (both stations). */
-  private fxFor(s: Slot, v: CookSlotView<string>, fried: boolean, at: Point): void {
+  private smokeFor(s: Slot, v: CookSlotView<string>, fried: boolean, at: Point): void {
     const smoking = v.phase === 'over' || v.phase === 'burnt';
     const key = smoking ? KITCHEN.smoke : KITCHEN.sizzle;
     const anim = smoking ? KITCHEN_ANIMS.smoke[0] : KITCHEN_ANIMS.sizzle[0];
     const on = smoking || !fried;
-    s.fx.setVisible(on).setPosition(at.x, at.y - (smoking ? 6 : 0));
+    s.smoke.setVisible(on).setPosition(at.x, at.y - (smoking ? 8 : 0));
     if (!on) return;
-    if (s.fx.texture.key !== key) s.fx.setTexture(key, 0);
-    if (s.fx.anims.currentAnim?.key !== anim && this.scene.anims.exists(anim)) s.fx.play(anim);
+    if (s.smoke.texture.key !== key) s.smoke.setTexture(key, 0);
+    if (s.smoke.anims.currentAnim?.key !== anim && this.scene.anims.exists(anim)) s.smoke.play(anim);
+  }
+
+  /** A wisp of steam over a cooking item, stronger as it nears PERFETTO (not while it smokes). */
+  private steamFor(s: Slot, v: CookSlotView<string>, at: Point): void {
+    const S = COOK_FX.steam;
+    const u = Math.min(1, v.ms / Math.max(1, v.perfectAtMs));
+    const on = (v.phase === 'raw' || v.phase === 'perfect') && u >= S.from;
+    s.steam.setVisible(on).setPosition(at.x, at.y);
+    if (on) s.steam.setAlpha(S.alpha * (v.phase === 'perfect' ? 1 : (u - S.from) / (1 - S.from)));
   }
 
   private bar(s: Slot, v: CookSlotView<string>, at: Point, ready: 'flip' | 'take' | 'lift', cueAt: Point): void {
@@ -159,34 +202,30 @@ export class CookView {
     s.cue.setTexture(labelTexture(this.scene, [cue.text], 'tape', cue.color, Q.w)).setPosition(cueAt.x, cueAt.y).setScale(Q.scale);
   }
 
-  /** Something lands in a slot / basket: it drops in from above. */
+  /** The raw patty / strips slap down on the griddle (sizzleBig, grease spits, a puff of steam). */
   drop(station: 'griddle' | 'fryer', i: number): void {
-    const s = (station === 'griddle' ? this.griddle : this.fryer)[i];
-    if (!s) return;
-    this.scene.tweens.killTweensOf(s.off);
-    s.off.dy = -8;
-    s.off.sy = 1;
-    this.scene.tweens.add({ targets: s.off, dy: 0, duration: KITCHEN_FX.plopMs, ease: 'Bounce.easeOut' });
+    if (station === 'griddle') this.fxs.slap(this.griddle[i], this.slotPoint(i));
+    else this.fxs.dunk(this.fryer[i], this.wellPoint(i));
   }
 
-  /** GIRA: the patty hops and turns over. */
+  /** GIRA: a spatula lifts the patty in an arc and turns it over. */
   flip(i: number): void {
-    const s = this.griddle[i];
-    if (!s) return;
-    this.scene.tweens.killTweensOf(s.off);
-    s.off.dy = 0;
-    s.off.sy = 1;
-    const half = KITCHEN_FX.flipMs / 2;
-    this.scene.tweens.add({ targets: s.off, dy: -7, sy: 0.1, duration: half, ease: 'Quad.easeOut', yoyo: true });
+    this.fxs.flip(this.griddle[i], this.slotPoint(i));
   }
 
-  /** The basket is lifted out of the oil (shown raised for a moment). */
+  /** Highest y a basket's top reaches: COOK_FX.basket.headroom over the COTTURA page's top. */
+  private get basketTop(): number {
+    return (this.l?.plan.pages[1].view.y ?? -Infinity) - COOK_FX.basket.headroom;
+  }
+
+  /** The basket lifts out of the oil, dripping, with steam: up past its hook and back down onto it, or, with no room
+   * over the fryer (a landscape page's top under the HUD), up from the oil onto its hook. */
   lift(i: number): void {
-    const s = this.fryer[i];
-    if (!s) return;
-    this.scene.tweens.killTweensOf(s.off);
-    s.off.dy = -6;
-    this.scene.tweens.add({ targets: s.off, dy: 0, duration: KITCHEN_FX.plopMs, ease: 'Quad.easeOut' });
+    const p = this.wellPoint(i);
+    const B = COOK_FX.basket;
+    const rise = COOK_FX.lift.risePx;
+    const room = p.y + B.up - BASKET.h / 2 - this.basketTop;
+    this.fxs.lift(this.fryer[i], p, room >= rise ? -rise : BASKET_DOWN - B.up);
   }
 
   /** Texture and frame of what is in a slot (a burnt patty flies to the bin with its look). */
@@ -197,12 +236,12 @@ export class CookView {
 
   clear(): void {
     for (const s of [...this.griddle, ...this.fryer]) {
-      this.scene.tweens.killTweensOf(s.off);
-      s.off.dy = 0;
-      s.off.sy = 1;
+      this.fxs.reset(s);
       s.item.setVisible(false);
       this.hideFx(s);
     }
+    this.fxs.clear();
     this.bars.clear();
+    this.fat.clear();
   }
 }

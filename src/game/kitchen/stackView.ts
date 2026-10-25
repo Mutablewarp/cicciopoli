@@ -1,7 +1,7 @@
 /**
  * MONTAGGIO: the burger on its paper as a big side-view stack (bottom bun, then every layer at the
- * LAYER / LAYER_H geometry of the manifest, raw / burnt looks from layerCook), drawn at
- * MONTAGGIO.scale; a pile taller than MONTAGGIO.room shrinks to fit. A new layer flies in from
+ * LAYER / LAYER_H geometry of the manifest, raw / burnt looks from layerCook), drawn at the plan's
+ * stack scale; a pile taller than the plan's room shrinks to fit. A new layer flies in from
  * where it came from (bin, griddle, fryer), growing on the way, and lands with a squash-and-settle
  * plop; the top layer taken off flies to the trash; CHIUDI drops the top bun, shows the finished
  * burger off with its stars, folds the hi-res kraft paper round it and sends the parcel to the tray.
@@ -9,10 +9,12 @@
 import Phaser from 'phaser';
 import { COOKABLE, KITCHEN, KITCHEN_ANIMS, LAYER, LAYER_H, layerCookFrame, layerFrame, type IngredientId, type LayerKind } from '../../art/kitchen/keys';
 import { BRAND, BRAND_WRAP_ANIM } from './brand';
-import { KITCHEN_FX, MONTAGGIO } from './config';
+import { KITCHEN_FX } from './config';
+import type { Point } from './framing';
 import type { Fx } from './fx';
 import { hiRes } from './hiRes';
-import { FRILLS, stackScale, type Point } from './layout';
+import { FRILLS, stackScale, type KitchenLayout } from './layout';
+import type { BoardArt } from './plan';
 import { BANNER } from './logic/strings';
 import type { StackLayer } from './logic/types';
 
@@ -34,7 +36,9 @@ export class StackView {
   private sprites: Phaser.GameObjects.Image[] = [];
   private sigs: string[] = [];
   private base: Point = { x: 0, y: 0 };
-  private k: number = MONTAGGIO.scale;
+  private art: BoardArt = { stack: 1, paper: 1, tray: 1, trash: 1 };
+  private room = 0;
+  private k = 1;
   /** where the next new layer flies in from (set by the reactor on 'stacked') */
   from: Point | null = null;
   /** the closed burger on show, its stars, the folding paper (cleared with the shift) */
@@ -51,10 +55,19 @@ export class StackView {
     layer.add(this.bun);
   }
 
-  setBase(p: Point): void {
-    this.base = p;
-    this.bun.setPosition(p.x, p.y);
-    this.sprites.forEach((s, i) => s.setPosition(p.x, this.yOf(i)));
+  /** The plan's board: the burger's base, scale and room. */
+  setBase(l: KitchenLayout): void {
+    this.base = l.stackBase;
+    this.art = l.art;
+    this.room = l.plan.room;
+    const k = stackScale(this.kinds(), this.art, this.room);
+    if (k !== this.k) {
+      this.k = k;
+      this.bun.setScale(k);
+      this.sprites.forEach((s) => s.setScale(k));
+    }
+    this.bun.setPosition(this.base.x, this.base.y);
+    this.sprites.forEach((s, i) => s.setPosition(this.base.x, this.yOf(i)));
   }
 
   /** Bottom edge of layer i's body. */
@@ -83,7 +96,7 @@ export class StackView {
     this.bun.setVisible(bunOn);
     const next = layers.map(sig);
     const same = (n: number): boolean => next.slice(0, n).every((s, i) => s === this.sigs[i]);
-    const k = stackScale(layers.map((l) => l.kind));
+    const k = stackScale(layers.map((l) => l.kind), this.art, this.room);
     if (k === this.k) {
       if (next.length === this.sigs.length && same(next.length)) return;
       if (next.length === this.sigs.length + 1) {
@@ -224,7 +237,7 @@ export class StackView {
     const fly = (): void => {
       paper.destroy();
       const from = { x: this.base.x, y: this.base.y - 14 * k };
-      const o = { ms: KITCHEN_FX.flightMs * 1.4, arc: 24, scale: k * wrap.k, scaleTo: MONTAGGIO.trayScale * wrap.k };
+      const o = { ms: KITCHEN_FX.flightMs * 1.4, arc: 24, scale: k * wrap.k, scaleTo: this.art.tray * wrap.k };
       this.fx.fly(this.layer, wrap.key, 3, from, to, o, onLand);
     };
     if (!this.scene.anims.exists(anim)) return fly();

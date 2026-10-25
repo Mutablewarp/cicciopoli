@@ -1,8 +1,13 @@
-/* Level 7 over the play area (kitchen/hud.ts): the order ticket (scontrino) in its slot, the patience meter, the
-   hint strip and the action button. Portrait: the slot under the HUD band (a fixed 30% of the play height, so the
-   covered strip never changes during a shift) and the hint + button at the bottom. Landscape: one column on the
-   left (35% of the width at most) under the HUD bar. `--dock` tells insets.ts which side each part covers.
-   Nothing here takes pointer events but the button: taps reach the game canvas. */
+/* Level 7 over the play area (kitchen/hud.ts): the order ticket (scontrino) in its slot with the tutorial hint under
+   it, the patience meter (patience.css) and the action button. Portrait: the slot under the HUD band (a fixed 26% of
+   the play height, so the covered strip never changes during a shift and the kitchen keeps the rest) and the button
+   alone at the bottom.
+   Landscape: one column on the left under the HUD bar, the ticket <= 30% of the width and <= 260 px (play.css).
+   Adult-readable everywhere: title 16 px, lines 13 px and up; an order too long for the slot scrolls its lines.
+   `--dock` tells insets.ts which side each part covers. Nothing here takes pointer events but the button and a
+   scrolling list: taps reach the game canvas. */
+@import './patience.css';
+
 .cc-kitchen {
   --paper: #fbf6ea;
   --paper-lo: #e6dcc6;
@@ -12,10 +17,10 @@
   inset: 0;
   z-index: 3;
   pointer-events: none;
-  /* the HUD's pixel font, 12 px and up: Pixelify draws B like G and C like O (BRIE, BACON, CIPOLLA) */
+  /* the HUD's pixel font, 13 px and up: Pixelify draws B like G and C like O (BRIE, BACON, CIPOLLA) */
   font-family: var(--f-pixel);
   font-weight: 400;
-  font-size: 12px;
+  font-size: 13px;
 }
 /* HUD hidden (screens on top): keeps its layout, so the covered strips stay put */
 .cc-kitchen.is-off {
@@ -33,18 +38,24 @@
   --dock: top;
   position: relative;
   flex: none;
-  height: calc(30% - 12px);
+  height: calc(26% - 12px);
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* a ticket even the tightest layout cannot fit is cut at the slot, never over the play area */
+  /* nothing ever hangs over the play area (a long order scrolls inside the ticket) */
   clip-path: inset(-12px -12px 0 -12px);
 }
 
 /* ------------------------------------------------------------------ ticket */
 .cc-kticket {
   position: relative;
+  flex: 0 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   width: min(100%, 460px);
+  /* the torn edge (8 px under the box) stays inside the slot: a longer order scrolls its lines */
+  max-height: calc(100% - 8px);
   padding: 9px 10px 5px;
   color: var(--ink);
   background: var(--paper);
@@ -52,7 +63,7 @@
   filter: drop-shadow(2px 0 0 var(--ink)) drop-shadow(-2px 0 0 var(--ink)) drop-shadow(0 2px 0 var(--ink)) drop-shadow(0 -2px 0 var(--ink))
     drop-shadow(0 4px 0 rgba(0, 0, 0, 0.35));
 }
-/* torn bottom edge, 8 px under the box (hud.ts TORN_EDGE) */
+/* torn bottom edge, 8 px under the box (room kept by the max-height above) */
 .cc-kticket::after {
   content: '';
   position: absolute;
@@ -76,14 +87,16 @@
   box-shadow: inset 0 -2px 0 rgba(200, 150, 0, 0.6);
 }
 .cc-kticket__head {
+  flex: none;
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 8px;
+  gap: 2px 8px;
 }
 .cc-kticket__title {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.25;
 }
 .cc-kticket__price {
@@ -103,6 +116,7 @@
   background: var(--orange);
 }
 .cc-kticket__meta {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -128,12 +142,32 @@
   flex: 1 0 100%;
 }
 .cc-kticket__lines {
+  flex: 0 1 auto;
+  min-height: 0;
   display: grid;
   grid-template-columns: 1fr;
-  gap: 4px 10px;
-  margin: 6px 0 0;
-  padding: 0;
+  align-content: start;
+  --gap: 4px 10px;
+  /* the fade that says more lines are hidden (ticket.ts keeps the line it shows above it) */
+  --fade: 18px;
+  gap: var(--gap);
+  /* room for the tick's pop and the shake inside the scroll box; 1 px under the last line: a list scrolled to its end
+     shows it whole (the scroll offset is a whole pixel) */
+  margin: 2px -4px 0;
+  padding: 4px 4px 1px;
   list-style: none;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+/* an order longer than the slot (hud.ts fit): the finger scrolls the lines, a fade says there is more below */
+.cc-kticket__lines.is-scroll {
+  pointer-events: auto;
+  touch-action: pan-y;
+}
+.cc-kticket__lines.has-more {
+  -webkit-mask-image: linear-gradient(#000 calc(100% - var(--fade)), transparent);
+  mask-image: linear-gradient(#000 calc(100% - var(--fade)), transparent);
 }
 .cc-kline {
   display: flex;
@@ -200,6 +234,12 @@
   color: #fff;
   background: var(--wrong);
 }
+/* rows scrolled away above the lines (ticket.ts more): the dashed rule over them turns orange, like the one over the
+   pinned menù parts, with an arrow (12 x 6) resting on its right end, pointing up at them (never over a line) */
+.cc-kticket.has-less > .cc-kticket__meta {
+  border-bottom-color: var(--orange);
+  background: conic-gradient(from 135deg at 50% 0, var(--orange) 90deg, transparent 0) right 2px bottom 0 / 12px 6px no-repeat;
+}
 /* the MENÙ parts under a dashed rule */
 .cc-ksep {
   grid-column: 1 / -1;
@@ -215,21 +255,78 @@
   flex: 1 1 auto;
   border-top: 2px dashed var(--paper-lo);
 }
+/* the MENÙ rule and parts sit in the list's flow; a scrolling list pins them at its bottom (ticket.ts pin) under an
+   orange rule, the burger lines scrolling under them, a fade over the lines when more of them are hidden */
+.cc-kmenu,
+.cc-kmenu__lines {
+  display: contents;
+}
+.cc-kticket__lines.is-stick {
+  --fade: 10px;
+}
+.cc-kticket__lines.is-stick > .cc-kmenu {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: block;
+  flex: 1 0 100%;
+  grid-column: 1 / -1;
+  padding: 3px 0 1px;
+  background: var(--paper);
+  border-top: 2px dashed var(--orange);
+}
+.cc-kticket__lines.is-stick .cc-kmenu__lines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cc-kticket__lines.is-stick .cc-ksep {
+  display: none;
+}
+.cc-kticket__lines.is-stick.has-more {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+.cc-kticket__lines.is-stick.has-more > .cc-kmenu::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 2px);
+  height: var(--fade);
+  background: linear-gradient(rgba(251, 246, 234, 0), var(--paper));
+}
 
-/* too long for one column (hud.ts fit): 1 = two columns; 2 = the lines packed as chips, MENÙ inline; 3 (phones
-   about 320 x 568 with the longest orders) = the same in the narrower Pixelify, the customer's name in what the
-   title row leaves */
+/* too long for one column (hud.ts fit): 1 = two columns; 2 = the lines packed as chips, MENÙ inline, the paper's
+   rows tighter (a smaller face, no spare gaps: one more row of lines on a 360 x 640 phone); 3 = the tightest (below);
+   what still does not fit scrolls */
 /* equal columns whatever the words: a label too wide for its column trips hud.ts fit into the chips */
 .cc-kslot[data-fit='1'] .cc-kticket__lines {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .cc-kslot[data-fit='2'] .cc-kticket,
 .cc-kslot[data-fit='3'] .cc-kticket {
-  padding: 6px 8px 3px;
+  padding: 5px 8px 3px;
 }
 .cc-kslot[data-fit='2'] .cc-kticket__title,
 .cc-kslot[data-fit='3'] .cc-kticket__title {
-  font-size: 12px;
+  line-height: 1.05;
+}
+.cc-kslot[data-fit='2'] .cc-kticket__form,
+.cc-kslot[data-fit='3'] .cc-kticket__form {
+  padding: 4px 5px 2px;
+}
+.cc-kslot[data-fit='2'] .cc-kface,
+.cc-kslot[data-fit='3'] .cc-kface {
+  width: 18px;
+  height: 18px;
+}
+.cc-kslot[data-fit='2'] .cc-khint,
+.cc-kslot[data-fit='3'] .cc-khint {
+  margin-top: 10px;
 }
 .cc-kslot[data-fit='2'] .cc-kticket__meta,
 .cc-kslot[data-fit='3'] .cc-kticket__meta {
@@ -240,15 +337,15 @@
 .cc-kslot[data-fit='3'] .cc-kticket__lines {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px 9px;
-  margin-top: 4px;
+  align-content: flex-start;
+  --gap: 2px 9px;
+  margin-top: 0;
+  padding-top: 3px;
 }
 .cc-kslot[data-fit='2'] .cc-kline,
 .cc-kslot[data-fit='3'] .cc-kline {
   gap: 4px;
-  line-height: 1.15;
-}
-.cc-kslot[data-fit='2'] .cc-kline {
+  line-height: 1.1;
   letter-spacing: -1px;
 }
 .cc-kslot[data-fit='2'] .cc-ksep,
@@ -266,125 +363,25 @@
   width: 14px;
   height: 14px;
 }
-/* fit 3: burger, SINGOLO / MENÙ, customer and patience on one row (the price comes with the stars at the counter) */
+/* fit 3 (the narrowest landscape column, about 320 x 568 portrait with the longest orders): fit 2 with the bins'
+   short names and every cell used; still Press Start, which keeps C, O, B, G and Z apart for an adult's eye */
 .cc-kslot[data-fit='3'] .cc-kticket {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  column-gap: 8px;
+  padding: 5px 6px 3px;
 }
-.cc-kslot[data-fit='3'] .cc-kticket__head,
-.cc-kslot[data-fit='3'] .cc-kticket__meta {
-  display: contents;
-}
+/* 14 px: BACON CHEESEBURGER keeps its price on its row on a 360 px phone */
 .cc-kslot[data-fit='3'] .cc-kticket__title {
-  flex: 0 1 auto;
+  font-size: 14px;
+  letter-spacing: -1px;
 }
 .cc-kslot[data-fit='3'] .cc-kticket__price {
-  display: none;
-}
-/* the name never wraps the row: it takes the room left (ticket.ts fitName: full name, last word or none) */
-.cc-kslot[data-fit='3'] .cc-kticket__who,
-.cc-kslot[data-fit='3'] .cc-kticket__meta.is-wrap > .cc-kticket__who {
-  order: 0;
-  flex: 1 1 0;
-  font-family: var(--f-ui);
-  font-size: 13px;
-}
-.cc-kslot[data-fit='3'] .cc-kpat {
-  flex: 0 0 72px;
-  max-width: none;
+  letter-spacing: -1px;
 }
 .cc-kslot[data-fit='3'] .cc-kticket__lines {
-  flex: 1 1 100%;
-  padding-top: 4px;
-  border-top: 2px dashed var(--paper-lo);
-}
-.cc-kslot[data-fit='3'] .cc-kface {
-  width: 16px;
-  height: 16px;
-}
-.cc-kslot[data-fit='3'] .cc-kpat__bar {
-  height: 10px;
-}
-.cc-kslot[data-fit='3'] .cc-kticket__lines {
-  gap: 2px 6px;
-}
-.cc-kslot[data-fit='3'] .cc-kline {
-  line-height: 1;
-}
-.cc-kslot[data-fit='3'] .cc-kline__label {
-  font-family: var(--f-ui);
-  font-size: 13px;
+  --gap: 2px 7px;
 }
 .cc-kslot[data-fit='3'] .cc-kline__box {
   width: 13px;
   height: 13px;
-}
-
-/* ---------------------------------------------------------------- patience */
-.cc-kpat {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  width: 42%;
-  max-width: 170px;
-}
-/* on the ticket the meter gives way to the customer's name (ticket.ts fitName), down to a short bar */
-.cc-kticket__meta > .cc-kpat {
-  flex: 1 1 0;
-  width: auto;
-  min-width: 64px;
-  margin-left: auto;
-}
-/* no ticket yet: the meter floats alone at the top of the slot */
-.cc-kslot > .cc-kpat {
-  width: min(70%, 220px);
-  max-width: none;
-  padding: 5px 8px;
-  background: rgba(24, 24, 26, 0.85);
-  box-shadow: 0 0 0 2px var(--ink);
-}
-.cc-kface {
-  flex: none;
-  width: 22px;
-  height: 22px;
-}
-.cc-kface svg {
-  width: 100%;
-  height: 100%;
-}
-.cc-kpat__bar {
-  position: relative;
-  flex: 1 1 auto;
-  height: 12px;
-  overflow: hidden;
-  background: #2c2a2e;
-  box-shadow: inset 0 0 0 2px var(--ink);
-}
-.cc-kpat__bar i {
-  position: absolute;
-  inset: 2px;
-  transform-origin: 0 50%;
-  background: linear-gradient(180deg, #8ee05a 0 40%, #5cc020 40%);
-  transition: transform 200ms linear, background-color 200ms;
-}
-.cc-kpat[data-mood='worried'] .cc-kpat__bar i {
-  background: linear-gradient(180deg, #fff07a 0 40%, var(--yellow) 40%);
-}
-.cc-kpat[data-mood='angry'] .cc-kpat__bar i {
-  background: linear-gradient(180deg, #ff7a6a 0 40%, var(--wrong) 40%);
-}
-.cc-kpat.is-low .cc-kpat__bar,
-.cc-kpat.is-low .cc-kface {
-  animation: cc-kpat-low 0.5s steps(2) infinite;
-}
-@keyframes cc-kpat-low {
-  50% {
-    box-shadow: inset 0 0 0 2px var(--ink), 0 0 0 2px var(--wrong);
-    transform: scale(1.06);
-  }
 }
 
 /* reduced motion (level 7 "movimento ridotto"): no pulses or bobbing */

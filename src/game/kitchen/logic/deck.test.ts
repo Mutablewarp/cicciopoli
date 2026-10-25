@@ -196,8 +196,10 @@ describe('order deck', () => {
         const decoys = [...cold, ...sauces].filter((k) => !need.includes(k)).length;
         expect(decoys).toBeLessThanOrEqual(KITCHEN_DECK.decoys[o.index]);
         expect(cold.length).toBeLessThanOrEqual(Math.max(KITCHEN_DECK.maxBins, need.filter((k) => STATION_OF[k] === 'bin').length));
-        expect(griddle.length + fryer.length + cold.length).toBeLessThanOrEqual(KITCHEN_DECK.maxRail);
+        expect(griddle.length + fryer.length).toBeLessThanOrEqual(KITCHEN_DECK.maxCook);
         expect(sauces.length).toBeLessThanOrEqual(KITCHEN_DECK.maxSauces);
+        // at most one decoy sauce (v7)
+        expect(sauces.filter((k) => !need.includes(k)).length).toBeLessThanOrEqual(1);
         const menuParts = o.starter ? ['patatine', o.starter] : [];
         for (const k of fryer) {
           if (isIngredient(k)) expect(need).toContain(k);

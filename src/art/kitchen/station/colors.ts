@@ -31,6 +31,7 @@ export const ST = {
   ironWorn: '#3a3431',
   ironDark: '#19191d',
   grease: '#c08a2a',
+  greaseHot: '#f4c862',
   // fryer oil
   oilDeep: '#94600e',
   oil: '#cf961e',
@@ -76,6 +77,10 @@ export const ST = {
   smokeLight: '#8c8c96',
   smoke: '#55555e',
   smokeShade: '#3c3c44',
+  // steam: soft white wisps (no partial alpha: a light rim, dithered thinning at the top)
+  steamHi: '#ffffff',
+  steam: '#eef1f5',
+  steamShade: '#c6ced8',
   spark: '#fffef0',
   sparkWarm: '#ffe6a0',
   goldLight: '#ffe27a',

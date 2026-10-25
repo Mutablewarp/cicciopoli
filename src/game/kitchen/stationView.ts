@@ -1,22 +1,23 @@
 /**
- * CUCINA, the kitchen view of level 7 (static part), laid out like the Good Pizza prep screen
- * (plan.ts): the brushed-steel worktop and the tiled wall, the steel panel of big pans (each with its
- * label tape; the sauce bottles stand in theirs, CHIUDI is the pan of brioche tops; places this order
- * does not use hold decoys, one of them a locked pan: dimmed, a padlock, a wiggle when tapped) framing the wooden board
- * with the paper, the bin at the panel's edge, the griddle with its heat shimmer and the fryer with
- * bubbling oil, the drinks racks and the tray with its printed liner and what stands on it (the
- * hi-res kraft parcel and paper boats). Every station casts a soft shadow. A paged kitchen covers the
- * half the shown page does not show with plain worktop. The cooking items, the burger and the guide
- * have their own views in the same container. Rebuilt per order (the pans change) and on rotation.
+ * CUCINA, the kitchen view of level 7 (static part): the brushed-steel worktop and the tiled wall; on
+ * MONTAGGIO the steel panel of big pans (each with its label tape; the sauce bottles stand in theirs, CHIUDI
+ * is the pan of brioche tops; every place this order does not use holds a decoy, a free bottle place a cold pan)
+ * round the wooden board with the paper, the trash, the tray with its printed
+ * liner and what stands on it (the hi-res kraft parcel and red boats); on COTTURA the big griddle with its
+ * heat shimmer and the fryer with bubbling oil at the manifest sizes, their raw pans, the drinks racks. Every
+ * station casts a soft shadow. A paged kitchen covers the page the camera leaves with plain worktop. The
+ * cooking items, the burger, the touch feedback and the guide have their own views in the same container.
+ * Rebuilt per order (the pans change) and on rotation.
  */
 import Phaser from 'phaser';
-import { BIN, DRINKS, GRIDDLE, INGREDIENTS, KITCHEN, KITCHEN_ANIMS, SAUCES, SIDES, STARTERS, type SideId } from '../../art/kitchen/keys';
+import { BIN, DRINKS, FRYER, GRIDDLE, INGREDIENTS, KITCHEN, KITCHEN_ANIMS, SAUCES, SHEET_SPEC, SIDES, STARTERS, type SideId } from '../../art/kitchen/keys';
 import { BRAND, BRAND_LINER_AT, brandScale } from './brand';
-import { FURNITURE, KITCHEN_COLORS, KITCHEN_FX, KITCHEN_VIEW, LABEL, MONTAGGIO, PAN, TRASH_SCALE } from './config';
-import { drawFurniture, padlock } from './furniture';
+import { KITCHEN_COLORS, KITCHEN_FX, KITCHEN_VIEW, PAN } from './config';
+import { kitchenOffset, type KitchenFraming, type Point, type Rect } from './framing';
+import { drawFurniture } from './furniture';
 import { showHiRes } from './hiRes';
 import { binLines, drinkLines, labelTexture } from './labels';
-import { inRect, kitchenLayout, kitchenOffset, targetRect, type KitchenFraming, type KitchenLayout, type LockedPan, type Point, type Rect } from './layout';
+import { kitchenLayout, targetRect, type BinPlace, type KitchenLayout } from './layout';
 import type { BinId, KitchenOrder, KitchenTarget, TrayPart, TrayView } from './logic/types';
 import { PageTabs } from './pager';
 
@@ -27,10 +28,8 @@ const WALL_TILE_H = 48;
 const TRASH_OPEN_MS = 380;
 /** the trash's mouth (art px of its frame), where thrown things land */
 const TRASH_MOUTH = { x: 13, y: 8 } as const;
-const SAUCE_H = 34;
-const LOCK = FURNITURE.lock;
+const SAUCE_H = SHEET_SPEC[KITCHEN.sauce][1];
 const isSide = (id: BinId): id is SideId => (SIDES as readonly string[]).includes(id);
-const TS = MONTAGGIO.trayScale;
 /** what each tray place shows: its pixel key and frame (the hi-res stand-in is picked when shown) */
 const TRAY_ART: Readonly<Record<TrayPart, { key: string; frame: number }>> = {
   burger: { key: KITCHEN.wrap, frame: 3 },
@@ -38,6 +37,14 @@ const TRAY_ART: Readonly<Record<TrayPart, { key: string; frame: number }>> = {
   side: { key: KITCHEN.starterBox, frame: 0 },
   drink: { key: KITCHEN.drink, frame: 0 },
 };
+
+/** A pan / bottle / can place drawn: its container (centred on the place: it squashes and wiggles), what is in it. */
+export interface PlaceView {
+  readonly g: Phaser.GameObjects.Container;
+  /** the contents (fill, brioche, bottle, can): what lifts when pressed */
+  readonly item: Phaser.GameObjects.Sprite | Phaser.GameObjects.Image;
+  readonly scale: number;
+}
 
 export class StationView {
   readonly root: Phaser.GameObjects.Container;
@@ -62,11 +69,10 @@ export class StationView {
   private readonly bins: Phaser.GameObjects.Container;
   private readonly trayItems: Record<TrayPart, Phaser.GameObjects.Sprite>;
   private readonly urgent: Phaser.GameObjects.Graphics;
-  /** paged kitchen: plain worktop under MONTAGGIO (0) / over COTTURA (1), shown with that page */
+  /** paged kitchen: plain worktop right of MONTAGGIO (0) / left of COTTURA (1), shown with that page */
   private readonly covers: Phaser.GameObjects.TileSprite[];
-  /** what each bin / drink place draws (tap squash, nope shake) */
-  private readonly groups = new Map<string, Phaser.GameObjects.Container>();
-  private locked: { hit: Rect; g: Phaser.GameObjects.Container }[] = [];
+  /** what each bin / drink place draws (tap squash, lift, nope shake) */
+  private readonly places = new Map<string, PlaceView>();
   /** tray places with something flying to them: hidden until it lands */
   private readonly held = new Set<TrayPart>();
   private trashTimer: Phaser.Time.TimerEvent | null = null;
@@ -80,17 +86,17 @@ export class StationView {
     this.worktop = add.tileSprite(0, 0, 8, 8, KITCHEN.worktop).setOrigin(0, 0);
     this.wall = add.tileSprite(0, 0, 8, 8, KITCHEN.wallTiles).setOrigin(0, 0);
     this.furniture = add.graphics();
-    this.griddle = add.image(0, 0, KITCHEN.griddle).setOrigin(0, 0);
-    this.heat = add.sprite(0, 0, KITCHEN.griddleHeat, 0).setOrigin(0, 0).setAlpha(KITCHEN_FX.heatAlpha);
-    this.fryer = add.image(0, 0, KITCHEN.fryer).setOrigin(0, 0);
-    this.oil = [0, 1].map(() => add.sprite(0, 0, KITCHEN.fryOil, 0).setOrigin(0, 0));
-    this.trash = add.sprite(0, 0, KITCHEN.trash, 0).setOrigin(0, 0).setScale(TRASH_SCALE);
-    this.paper = add.image(0, 0, KITCHEN.paper).setOrigin(0, 0).setScale(MONTAGGIO.scale);
-    this.trayImg = add.image(0, 0, KITCHEN.tray).setOrigin(0, 0).setScale(TS);
+    this.griddle = add.image(0, 0, KITCHEN.griddle).setOrigin(0, 0).setDisplaySize(GRIDDLE.w, GRIDDLE.h);
+    this.heat = add.sprite(0, 0, KITCHEN.griddleHeat, 0).setOrigin(0, 0).setAlpha(KITCHEN_FX.heatAlpha).setDisplaySize(GRIDDLE.surface.w, GRIDDLE.surface.h);
+    this.fryer = add.image(0, 0, KITCHEN.fryer).setOrigin(0, 0).setDisplaySize(FRYER.w, FRYER.h);
+    this.oil = FRYER.wells.map(() => add.sprite(0, 0, KITCHEN.fryOil, 0).setOrigin(0, 0).setDisplaySize(FRYER.well.w, FRYER.well.h));
+    this.trash = add.sprite(0, 0, KITCHEN.trash, 0).setOrigin(0, 0);
+    this.paper = add.image(0, 0, KITCHEN.paper).setOrigin(0, 0);
+    this.trayImg = add.image(0, 0, KITCHEN.tray).setOrigin(0, 0);
     this.liner = add.image(0, 0, KITCHEN.tray).setOrigin(0, 0).setVisible(false);
     this.shelves = [0, 1].map(() => add.image(0, 0, KITCHEN.shelf).setOrigin(0, 0));
     this.bins = add.container(0, 0);
-    const item = (p: TrayPart): Phaser.GameObjects.Sprite => add.sprite(0, 0, TRAY_ART[p].key, TRAY_ART[p].frame).setOrigin(0.5, 1).setScale(TS).setVisible(false);
+    const item = (p: TrayPart): Phaser.GameObjects.Sprite => add.sprite(0, 0, TRAY_ART[p].key, TRAY_ART[p].frame).setOrigin(0.5, 1).setVisible(false);
     this.trayItems = { burger: item('burger'), cone: item('cone'), side: item('side'), drink: item('drink') };
     this.cookLayer = add.container(0, 0);
     this.stackLayer = add.container(0, 0);
@@ -116,7 +122,7 @@ export class StationView {
   /** Framing changed (resize, rotation, new brand textures): everything is placed again. */
   setFraming(f: KitchenFraming): void {
     this.f = f;
-    const v = this.viewBounds(f);
+    const v = f.backdrop;
     this.root.setPosition(kitchenOffset(f), 0);
     this.worktop.setPosition(v.x - PAD, v.y - PAD).setSize(v.w + 2 * PAD, v.h + 2 * PAD);
     // the tiles only along the top of the worktop, their shelf lip just behind the top row of pans
@@ -124,17 +130,17 @@ export class StationView {
     const h = Math.min(WALL_TILE_H, wallH);
     this.wall.setPosition(v.x - PAD, WALL_BOTTOM - h).setSize(v.w + 2 * PAD, Math.max(1, h)).setVisible(wallH > 0);
     this.wall.tilePositionY = WALL_TILE_H - h;
-    const pages = f.pages.length > 1 ? f.plan.pages : null;
-    this.covers.forEach((c, i) => {
-      c.setVisible(pages !== null);
-      if (!pages) return;
-      // the cut: where COTTURA starts (page 0's tab sits on it, over the cover)
-      const cut = pages[1].view.y;
-      const y0 = i === 0 ? cut : v.y - PAD;
-      c.setPosition(v.x - PAD, y0).setSize(v.w + 2 * PAD, i === 0 ? v.y + v.h + PAD - cut : cut - y0);
-      c.tilePositionY = y0 - (v.y - PAD);
+    const paged = f.pages.length > 1;
+    const [m, c] = f.plan.pages.map((p) => p.view);
+    // the cut half way between the pages: each page's cover hides the other one's side
+    const cut = (m.x + m.w + c.x) / 2;
+    this.covers.forEach((cv, i) => {
+      cv.setVisible(paged);
+      const x0 = i === 0 ? cut : v.x - PAD;
+      cv.setPosition(x0, v.y - PAD).setSize(i === 0 ? v.x + v.w + PAD - cut : cut - x0, v.h + 2 * PAD);
+      cv.tilePositionX = x0 - (v.x - PAD);
     });
-    this.tabs.setPlan(f.plan, f.pages.length > 1);
+    this.tabs.setPlan(f.plan, paged);
     this.rebuild();
   }
 
@@ -142,13 +148,6 @@ export class StationView {
   showPage(at: number): void {
     this.covers[0].setAlpha(1 - at);
     this.covers[1].setAlpha(at);
-  }
-
-  /** The world rect any page of the kitchen shows (the backdrop covers them all). */
-  private viewBounds(f: KitchenFraming): Rect {
-    const ys = f.pages.map((dy) => f.view.y + dy);
-    const y0 = Math.min(...ys);
-    return { x: f.view.x, y: y0, w: f.view.w, h: Math.max(...ys) - y0 + f.view.h };
   }
 
   /** A new order: its pans, sauces and drinks. */
@@ -162,48 +161,54 @@ export class StationView {
     const f = this.f;
     const o = this.order;
     this.bins.removeAll(true);
-    this.groups.clear();
+    this.places.clear();
     if (!f) return;
     const empty = { griddle: [], fryer: [], cold: [], sauces: [], drinks: [] };
     const l = kitchenLayout(f.plan, o?.bins ?? empty);
     this.layout = l;
+    const a = l.art;
     drawFurniture(this.furniture, l);
     this.griddle.setPosition(l.griddle.x, l.griddle.y);
     this.heat.setPosition(l.griddle.x + GRIDDLE.surface.x, l.griddle.y + GRIDDLE.surface.y);
     this.fryer.setPosition(l.fryer.x, l.fryer.y);
     this.oil.forEach((s, i) => s.setPosition(l.wells[i].x, l.wells[i].y));
-    this.trash.setPosition(l.trash.x, l.trash.y);
-    this.paper.setPosition(l.paper.x, l.paper.y);
-    this.trayImg.setPosition(l.tray.x, l.tray.y);
+    this.trash.setPosition(l.trash.x, l.trash.y).setScale(a.trash);
+    this.paper.setPosition(l.paper.x, l.paper.y).setScale(a.paper);
+    this.trayImg.setPosition(l.tray.x, l.tray.y).setScale(a.tray);
     this.placeLiner(l);
-    this.shelves.forEach((s, i) => s.setPosition(l.shelves[i].x, l.shelves[i].y));
+    this.shelves.forEach((s, i) => s.setPosition(l.shelves[i].x, l.shelves[i].y).setScale(l.shelfScale).setVisible(i < l.shelves.length));
     for (const [part, s] of Object.entries(this.trayItems) as [TrayPart, Phaser.GameObjects.Sprite][]) s.setPosition(l.trayAt[part].x, l.trayAt[part].y);
     this.refreshTray();
-    const add = this.scene.add;
-    this.locked = l.locked.map((b) => ({ hit: b.hit, g: this.lockedPan(b) }));
-    for (const b of l.bins) {
-      const g = add.container(b.hit.x + b.hit.w / 2, b.hit.y + b.hit.h / 2);
-      const lx = -g.x;
-      const ly = -g.y;
-      g.add(add.image(b.x + lx, b.y + ly, KITCHEN.bin).setOrigin(0, 0));
-      const fx = b.x + BIN.fillX + lx;
-      const fy = b.y + BIN.fillY + ly;
-      if (b.kind === 'bottle') {
-        const frame = (SAUCES as readonly string[]).indexOf(b.id);
-        g.add(add.sprite(b.hit.x + b.hit.w / 2 + lx, b.hit.y + PAN.bottleBottom - SAUCE_H + ly, KITCHEN.sauce, frame).setOrigin(0.5, 0));
-      } else if (b.id === 'bun') g.add(add.image(fx, fy, KITCHEN.binBun).setOrigin(0, 0));
-      else g.add(this.contents(b.id, fx, fy));
-      g.add(this.tape(binLines(b.id), b.label.x + lx, b.label.y + ly));
-      this.bins.add(g);
-      this.groups.set(b.id === 'bun' ? 'bun' : `bin:${b.id}`, g);
-    }
+    for (const b of l.bins) this.places.set(b.id === 'bun' ? 'bun' : `bin:${b.id}`, this.pan(b));
     for (const d of l.drinks) {
-      const g = add.container(d.at.x, d.at.y);
-      g.add(add.sprite(0, 0, KITCHEN.drink, DRINKS.indexOf(d.id)).setOrigin(0.5, 1));
-      g.add(this.tape(drinkLines(d.id), d.label.x - d.at.x, d.label.y - d.at.y));
+      const k = d.can;
+      const g = this.scene.add.container(d.at.x, d.at.y);
+      const can = this.scene.add.sprite(0, 0, KITCHEN.drink, DRINKS.indexOf(d.id)).setOrigin(0.5, 1).setScale(k);
+      g.add([can, this.tape(drinkLines(d.id), d.label.x - d.at.x, d.label.y - d.at.y, d.art.label)]);
       this.bins.add(g);
-      this.groups.set(`drink:${d.id}`, g);
+      this.places.set(`drink:${d.id}`, { g, item: can, scale: k });
     }
+  }
+
+  /** A pan / bottle / CHIUDI place: the pan, what is in it, its label tape. */
+  private pan(b: BinPlace): PlaceView {
+    const add = this.scene.add;
+    const k = b.art.pan;
+    const g = add.container(b.hit.x + b.hit.w / 2, b.hit.y + b.hit.h / 2);
+    const lx = b.x - g.x;
+    const ly = b.y - g.y;
+    g.add(add.image(lx, ly, KITCHEN.bin).setOrigin(0, 0).setScale(k));
+    const fx = lx + BIN.fillX * k;
+    const fy = ly + BIN.fillY * k;
+    let item: Phaser.GameObjects.Sprite | Phaser.GameObjects.Image;
+    if (b.kind === 'bottle') {
+      const frame = (SAUCES as readonly string[]).indexOf(b.id);
+      item = add.sprite(lx + (BIN.w * k) / 2, ly + (PAN.bottleBottom - SAUCE_H) * k, KITCHEN.sauce, frame).setOrigin(0.5, 0).setScale(k);
+    } else if (b.id === 'bun') item = add.image(fx, fy, KITCHEN.binBun).setOrigin(0, 0).setScale(k);
+    else item = this.contents(b.id, fx, fy).setScale(k);
+    g.add([item, this.tape(binLines(b.id), b.label.x - g.x, b.label.y - g.y, b.art.label)]);
+    this.bins.add(g);
+    return { g, item, scale: k };
   }
 
   /** What a pan holds (fries / starter or an ingredient), its top-left at (x, y). */
@@ -212,42 +217,28 @@ export class StationView {
     return isSide(id) ? add.sprite(x, y, KITCHEN.binSide, SIDES.indexOf(id)).setOrigin(0, 0) : add.sprite(x, y, KITCHEN.binFill, INGREDIENTS.indexOf(id)).setOrigin(0, 0);
   }
 
-  /** A locked pan: pan and contents dimmed, a padlock on them, no label (a container centred on its place: it wiggles). */
-  private lockedPan(b: LockedPan): Phaser.GameObjects.Container {
-    const add = this.scene.add;
-    const g = add.container(b.hit.x + b.hit.w / 2, b.hit.y + b.hit.h / 2);
-    const x = b.x - g.x;
-    const y = b.y - g.y;
-    const lock = add.graphics();
-    padlock(lock, Math.round(x + BIN.fillX + (BIN.w - 2 * BIN.fillX - LOCK.w) / 2), Math.round(y + BIN.fillY + (BIN.h - 2 * BIN.fillY - LOCK.h) / 2));
-    g.add([add.image(x, y, KITCHEN.bin).setOrigin(0, 0).setTint(LOCK.panTint), this.contents(b.id, x + BIN.fillX, y + BIN.fillY).setTint(LOCK.fillTint), lock]);
-    this.bins.add(g);
-    return g;
-  }
-
-  /** A tap on nothing to do: a locked pan there wiggles (not for this order). */
-  nudge(p: Point): void {
-    const hit = this.locked.find((x) => inRect(x.hit, p.x, p.y));
-    if (hit) this.wiggle(hit.g, true);
-  }
-
-  /** A label tape (pixel font, LABEL.scale), its top centre at (x, y). */
-  private tape(lines: readonly string[], x: number, y: number): Phaser.GameObjects.Image {
-    return this.scene.add.image(x, y, labelTexture(this.scene, lines, 'tape', KITCHEN_COLORS.text.cream)).setOrigin(0.5, 0).setScale(LABEL.scale);
+  /** A label tape (pixel font at `scale`), its top centre at (x, y). */
+  private tape(lines: readonly string[], x: number, y: number, scale: number): Phaser.GameObjects.Image {
+    return this.scene.add.image(x, y, labelTexture(this.scene, lines, 'tape', KITCHEN_COLORS.text.cream)).setOrigin(0.5, 0).setScale(scale);
   }
 
   /** The printed hi-res liner over the pixel tray's floor (when the brand textures are there). */
   private placeLiner(l: KitchenLayout): void {
     const on = this.scene.textures.exists(BRAND.liner);
+    const ts = l.art.tray;
     this.liner.setVisible(on);
-    if (on) this.liner.setTexture(BRAND.liner).setPosition(l.tray.x + BRAND_LINER_AT.x * TS, l.tray.y + BRAND_LINER_AT.y * TS).setScale(TS * brandScale(this.scene, 'liner'));
+    if (on) this.liner.setTexture(BRAND.liner).setPosition(l.tray.x + BRAND_LINER_AT.x * ts, l.tray.y + BRAND_LINER_AT.y * ts).setScale(ts * brandScale(this.scene, 'liner'));
+  }
+
+  private get trayScale(): number {
+    return this.layout?.art.tray ?? 1;
   }
 
   /** Every tray place takes its (hi-res) texture again: after a redraw of the brand textures. */
   private refreshTray(): void {
     for (const [part, s] of Object.entries(this.trayItems) as [TrayPart, Phaser.GameObjects.Sprite][]) {
       const frame = part === 'burger' || part === 'cone' ? TRAY_ART[part].frame : Number(s.frame.name);
-      showHiRes(s, TRAY_ART[part].key, frame, TS);
+      showHiRes(s, TRAY_ART[part].key, frame, this.trayScale);
     }
   }
 
@@ -257,7 +248,7 @@ export class StationView {
     it.burger.setVisible(t.burger !== null && !this.held.has('burger'));
     it.cone.setVisible(t.cone !== null && !this.held.has('cone'));
     it.side.setVisible(t.side !== null && !this.held.has('side'));
-    if (t.side) showHiRes(it.side, KITCHEN.starterBox, STARTERS.indexOf(t.side.id), TS);
+    if (t.side) showHiRes(it.side, KITCHEN.starterBox, STARTERS.indexOf(t.side.id), this.trayScale);
     it.drink.setVisible(t.drink !== null && !this.held.has('drink'));
     if (t.drink) it.drink.setFrame(DRINKS.indexOf(t.drink));
   }
@@ -281,21 +272,24 @@ export class StationView {
 
   /** Mouth of the trash can (where thrown things land). */
   get trashMouth(): Point {
-    const t = this.layout?.trash ?? { x: 0, y: 0 };
-    return { x: t.x + TRASH_MOUTH.x * TRASH_SCALE, y: t.y + TRASH_MOUTH.y * TRASH_SCALE };
+    const l = this.layout;
+    const t = l?.trash ?? { x: 0, y: 0 };
+    const k = l?.art.trash ?? 1;
+    return { x: t.x + TRASH_MOUTH.x * k, y: t.y + TRASH_MOUTH.y * k };
   }
 
-  private group(t: KitchenTarget): Phaser.GameObjects.Container | null {
-    if (t.kind === 'bin') return this.groups.get(`bin:${t.id}`) ?? null;
-    if (t.kind === 'drink') return this.groups.get(`drink:${t.id}`) ?? null;
-    if (t.kind === 'bun') return this.groups.get('bun') ?? null;
+  /** The drawn place of a pan / bottle / CHIUDI / drink target. */
+  place(t: KitchenTarget): PlaceView | null {
+    if (t.kind === 'bin') return this.places.get(`bin:${t.id}`) ?? null;
+    if (t.kind === 'drink') return this.places.get(`drink:${t.id}`) ?? null;
+    if (t.kind === 'bun') return this.places.get('bun') ?? null;
     return null;
   }
 
   /** Tap feedback on a pan / drink: a quick squash (or a shake when the tap was refused). */
   press(t: KitchenTarget, refused: boolean): void {
-    const g = this.group(t);
-    if (g) this.wiggle(g, refused);
+    const p = this.place(t);
+    if (p) this.wiggle(p.g, refused);
   }
 
   private wiggle(g: Phaser.GameObjects.Container, refused: boolean): void {
@@ -311,13 +305,11 @@ export class StationView {
     return r ? { x: r.x + r.w / 2, y: r.y + r.h / 2 } : null;
   }
 
-  /** Red edges beating while the customer's patience runs out (kitchen view only); `dy` = the page's camera offset. */
-  drawUrgent(patience: number | null, timeMs: number, calm: boolean, dy: number): void {
+  /** Red edges beating while the customer's patience runs out (kitchen view only), round `v` (kitchen px on screen). */
+  drawUrgent(patience: number | null, timeMs: number, calm: boolean, v: Rect): void {
     const g = this.urgent;
     g.clear();
-    const f = this.f;
-    if (!f || patience === null || patience >= KITCHEN_FX.urgentPatience) return;
-    const v = { ...f.view, y: f.view.y + dy };
+    if (patience === null || patience >= KITCHEN_FX.urgentPatience) return;
     const beat = calm ? 0.5 : 1 - (timeMs % KITCHEN_FX.urgentBeatMs) / KITCHEN_FX.urgentBeatMs;
     const strength = 1 - patience / KITCHEN_FX.urgentPatience;
     const band = Math.round(4 + 4 * beat);

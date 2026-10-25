@@ -124,9 +124,14 @@ export const LAYER_H: Readonly<Record<LayerKind, number>> = {
 
 /** Griddle image: black steel surface inside a steel frame, knobs on the front panel. Slot centres
  * (where griddleItem frames are centred) in image px. */
-export const GRIDDLE = { w: 116, h: 60, slots: [{ x: 22, y: 26 }, { x: 58, y: 26 }, { x: 94, y: 26 }], surface: { x: 6, y: 6, w: 104, h: 40 } } as const;
+export const GRIDDLE = { w: 176, h: 92, slots: [{ x: 32, y: 40 }, { x: 88, y: 40 }, { x: 144, y: 40 }], surface: { x: 8, y: 8, w: 160, h: 62 } } as const;
+/** One griddleItem frame (a patty / strips seen from above, centred on a slot). */
+export const GRIDDLE_ITEM = { w: 40, h: 40 } as const;
 /** Fryer image: two oil wells (fryOil frames drawn at the well origin), front panel with dials. */
-export const FRYER = { w: 84, h: 60, wells: [{ x: 8, y: 10 }, { x: 44, y: 10 }], well: { w: 32, h: 22 } } as const;
+export const FRYER = { w: 132, h: 92, wells: [{ x: 10, y: 12 }, { x: 70, y: 12 }], well: { w: 52, h: 34 } } as const;
+/** One basket frame and one fryItem frame (what is in a raised basket). */
+export const BASKET = { w: 54, h: 46 } as const;
+export const FRY_ITEM = { w: 44, h: 28 } as const;
 /** Bin image (steel gastronorm pan); binFill / binSide / binBun frames are drawn at (fillX, fillY). */
 export const BIN = { w: 48, h: 36, fillX: 2, fillY: 4 } as const;
 /** Assembly paper on the worktop: the stack's bottom-centre is at (baseX, baseY). */
@@ -197,14 +202,14 @@ export const KITCHEN = {
   wallTiles: 'kitchen-wall-tiles',
   /** image GRIDDLE.w x GRIDDLE.h: the plancha (griddle) with 3 slots, grease sheen, steel frame, knobs */
   griddle: 'kitchen-griddle',
-  /** sheet 104x40 frames 0-3: heat shimmer over the griddle surface (sparse light pixels, mostly transparent;
+  /** sheet GRIDDLE.surface frames 0-3: heat shimmer over the griddle surface (sparse light pixels, mostly transparent;
    * the game draws it at low alpha) */
   griddleHeat: 'kitchen-griddle-heat',
   /** image FRYER.w x FRYER.h: double fryer (friggitrice) */
   fryer: 'kitchen-fryer',
-  /** sheet 32x22 frames 0-3: bubbling oil of one well */
+  /** sheet FRYER.well frames 0-3: bubbling oil of one well (big, lively bubbles, a hot glint) */
   fryOil: 'kitchen-fry-oil',
-  /** sheet 34x30 frames 0 raised (empty wire basket + handle, 3/4 top view), 1 lowered (rim + handle over the oil) */
+  /** sheet BASKET frames 0 raised (empty wire basket + handle, 3/4 top view), 1 lowered (rim + handle over the oil) */
   basket: 'kitchen-basket',
   /** image BIN.w x BIN.h: empty steel gastronorm pan — big, like the topping pans of ref/level7_gp_build_toppings.png */
   bin: 'kitchen-bin',
@@ -214,12 +219,15 @@ export const KITCHEN = {
    * parcel printed with dark-grey "CICCIO'S" lettering in rows (ref/level7_wrap_tray.jpg). Pixel fallback: the
    * game draws a high-resolution version with real lettering (src/game/kitchen/brand) */
   wrap: 'kitchen-wrap',
-  /** image TRAY.w x TRAY.h: black serving tray with the cream paper liner printed "CICCIO'S" (ref/level7_wrap_tray.jpg) */
+  /** image TRAY.w x TRAY.h: black serving tray with the PALE cream paper liner printed "CICCIO'S" (ref/level7_wrap_tray.jpg);
+   * v7: the kraft wrap and the red boats on it must read clearly darker / stronger than this liner */
   tray: 'kitchen-tray',
   /** image SHELF.w x SHELF.h: chilled drinks rack (black steel, frosty glass back) */
   shelf: 'kitchen-shelf',
   /** sheet 26x30 frames 0 closed, 1 lid open: steel pedal bin */
   trash: 'kitchen-trash',
+  /** sheet 16x24 frames 0-3: soft white steam wisp rising (a cooking patty, a basket lifted out of the oil) */
+  steam: 'kitchen-steam',
   /** sheet 16x16 frames 0-3: dark smoke puff (burning) */
   smoke: 'kitchen-smoke',
   /** sheet 16x12 frames 0-3: sizzle (grease pops, tiny white sparks) */
@@ -242,14 +250,16 @@ export const KITCHEN = {
   layer: 'kitchen-layer',
   /** sheet LAYER.w x LAYER.h, frame = layerCookFrame(): raw (pink / pale) and burnt (black) looks */
   layerCook: 'kitchen-layer-cook',
-  /** sheet 28x28, frame = GRIDDLE_ITEMS index * 5 + GRIDDLE_STATE: patties / strips on the griddle from above */
+  /** sheet GRIDDLE_ITEM, frame = GRIDDLE_ITEMS index * 5 + GRIDDLE_STATE: patties / strips on the griddle from above
+   * (juicy, grill marks and a crust that darkens state by state, fat bubbling at the edge) */
   griddleItem: 'kitchen-griddle-item',
-  /** sheet 28x18, frame = FRY_ITEMS index * 3 + FRY_STATE: what is in a raised basket */
+  /** sheet FRY_ITEM, frame = FRY_ITEMS index * 3 + FRY_STATE: what is in a raised basket */
   fryItem: 'kitchen-fry-item',
-  /** sheet 30x22 frames 0 empty, 1 full of golden fries: Ciccio's white paper BOAT (vaschetta, trapezoid, light
-   * grey line pattern of golf balls / tees / flags, as in ref/level7_wrap_tray.jpg) */
+  /** sheet 30x22 frames 0 empty, 1 full of golden fries: Ciccio's RED cardboard BOAT (vaschetta, trapezoid) like the
+   * level 1 fries box (ref/cup_run_scene.png, ref/cup_photo_front.jpg: Ciccio's red, the brand marks in white).
+   * v7: replaces the white golf-pattern boat. High-resolution version: src/game/kitchen/brand */
   cone: 'kitchen-cone',
-  /** sheet 30x22, frame = STARTERS index: the same white paper boat with the menù starter */
+  /** sheet 30x22, frame = STARTERS index: the same RED boat with the menù starter */
   starterBox: 'kitchen-starter-box',
   /** sheet 14x26, frame = DRINKS index: can or bottle in the drink's colours, name readable as colour + shape */
   drink: 'kitchen-drink',
@@ -270,9 +280,10 @@ export const SHEET_SPEC: Readonly<Record<string, readonly [number, number, numbe
   [KITCHEN.star]: [16, 16, 2, 'counter'],
   [KITCHEN.goldenBurger]: [96, 96, 4, 'counter'],
   [KITCHEN.confetti]: [4, 6, 6, 'counter'],
-  [KITCHEN.griddleHeat]: [104, 40, 4, 'station'],
-  [KITCHEN.fryOil]: [32, 22, 4, 'station'],
-  [KITCHEN.basket]: [34, 30, 2, 'station'],
+  [KITCHEN.griddleHeat]: [GRIDDLE.surface.w, GRIDDLE.surface.h, 4, 'station'],
+  [KITCHEN.fryOil]: [FRYER.well.w, FRYER.well.h, 4, 'station'],
+  [KITCHEN.basket]: [BASKET.w, BASKET.h, 2, 'station'],
+  [KITCHEN.steam]: [16, 24, 4, 'station'],
   [KITCHEN.wrap]: [44, 32, 4, 'station'],
   [KITCHEN.trash]: [26, 30, 2, 'station'],
   [KITCHEN.smoke]: [16, 16, 4, 'station'],
@@ -283,8 +294,8 @@ export const SHEET_SPEC: Readonly<Record<string, readonly [number, number, numbe
   [KITCHEN.binSide]: [44, 28, SIDES.length, 'food'],
   [KITCHEN.layer]: [LAYER.w, LAYER.h, 2 + INGREDIENTS.length, 'food'],
   [KITCHEN.layerCook]: [LAYER.w, LAYER.h, COOKABLE.length * 2, 'food'],
-  [KITCHEN.griddleItem]: [28, 28, GRIDDLE_ITEMS.length * GRIDDLE_STATE.count, 'food'],
-  [KITCHEN.fryItem]: [28, 18, FRY_ITEMS.length * FRY_STATE.count, 'food'],
+  [KITCHEN.griddleItem]: [GRIDDLE_ITEM.w, GRIDDLE_ITEM.h, GRIDDLE_ITEMS.length * GRIDDLE_STATE.count, 'food'],
+  [KITCHEN.fryItem]: [FRY_ITEM.w, FRY_ITEM.h, FRY_ITEMS.length * FRY_STATE.count, 'food'],
   [KITCHEN.cone]: [30, 22, 2, 'food'],
   [KITCHEN.starterBox]: [30, 22, STARTERS.length, 'food'],
   [KITCHEN.drink]: [14, 26, DRINKS.length, 'food'],
@@ -317,6 +328,7 @@ export const KITCHEN_ANIMS = {
   heat: ['kitchen-heat-loop', KITCHEN.griddleHeat, [0, 1, 2, 3], 8, -1],
   oil: ['kitchen-oil-loop', KITCHEN.fryOil, [0, 1, 2, 3], 10, -1],
   smoke: ['kitchen-smoke-loop', KITCHEN.smoke, [0, 1, 2, 3], 8, -1],
+  steam: ['kitchen-steam-loop', KITCHEN.steam, [0, 1, 2, 3], 7, -1],
   sizzle: ['kitchen-sizzle-loop', KITCHEN.sizzle, [0, 1, 2, 3], 12, -1],
   sparkle: ['kitchen-sparkle-once', KITCHEN.sparkle, [0, 1, 2, 3], 14, 0],
   wrap: ['kitchen-wrap-once', KITCHEN.wrap, [0, 1, 2, 3], 10, 0],

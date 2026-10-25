@@ -8,9 +8,10 @@ import type Phaser from 'phaser';
 import type { ButtonState, ControlsLayout, KitchenResultInfo, KitchenSettings, Services } from '../../contracts';
 import { KITCHEN_SHIFT } from '../../config/kitchen';
 import { mulberry32 } from '../rush/logic/rng';
-import { KITCHEN_FX } from './config';
+import { KITCHEN_FX, PAGER } from './config';
 import { GoldenFinale } from './golden';
 import { actionTip } from './guide';
+import { actOn, Hands } from './hands';
 import { hitKitchen } from './layout';
 import { CAREFUL, KitchenBot } from './logic/bot';
 import { KitchenProgress } from './logic/progress';
@@ -20,6 +21,7 @@ import { BUTTON } from './logic/strings';
 import type { KitchenEvent, KitchenOptions, KitchenSnapshot, KitchenTarget } from './logic/types';
 import { listenPointer } from './pointer';
 import { Reactor } from './react';
+import { TouchFx } from './touch';
 import type { KitchenView } from './view';
 
 export type SessionState = 'setup' | 'play' | 'ending' | 'finale' | 'results';
@@ -56,6 +58,8 @@ export class KitchenSession {
   private timeMs = 0;
   /** the view of the last frame drawn: entering the kitchen picks its page */
   private shownView: KitchenSnapshot['view'] | null = null;
+  /** the player's hands in the kitchen: pick up, drag, drop */
+  private readonly hands: Hands;
   private readonly cleanups: Array<() => void> = [];
 
   constructor(
@@ -72,13 +76,23 @@ export class KitchenSession {
       snapshot: () => this.snapshot,
       later: (ms, fn) => void scene.time.delayedCall(ms, fn),
     });
+    this.hands = new Hands({
+      view,
+      touch: new TouchFx(scene, view.station.top, () => this.calm),
+      audio: svc.audio,
+      vibrate: (ms) => this.reactor.vibrate(ms),
+      ready: () => !this.paused() && this.inKitchen && view.kitchenReady,
+      act: (t) => this.act(t),
+    });
     this.apply(this.progress.data.settings);
-    // a paged kitchen taps on release: a vertical swipe switches the page instead
     this.cleanups.push(
       listenPointer(svc.ui.gameHost, {
+        press: (x, y) => this.hands.press(x, y),
+        drag: (x, y) => this.hands.drag(x, y),
         tap: (x, y) => this.tap(x, y),
+        drop: (x, y) => this.hands.drop(x, y),
         swipe: (page) => this.swipe(page),
-        swipes: () => this.view.paged && this.inKitchen,
+        cancel: () => this.hands.release(true),
       }),
     );
   }
@@ -88,8 +102,9 @@ export class KitchenSession {
     return this.state === 'play' && this.shift?.snapshot.view === 'kitchen';
   }
 
-  /** Paged kitchen: a swipe up shows COTTURA (1), down MONTAGGIO (0). */
+  /** Paged kitchen: a flick to the left shows COTTURA (1), to the right MONTAGGIO (0). */
   private swipe(page: number): void {
+    this.hands.release(true);
     if (!this.paused() && this.inKitchen && this.view.kitchenReady) this.view.showPage(page);
   }
 
@@ -188,7 +203,7 @@ export class KitchenSession {
 
   /** A tap on the game (CSS px of the host). */
   private tap(cssX: number, cssY: number): void {
-    if (this.paused()) return;
+    if (this.paused()) return this.hands.release(true);
     if (this.state === 'finale') {
       this.finale?.skip();
       return;
@@ -200,43 +215,39 @@ export class KitchenSession {
       if (this.view.counterReady && (s.phase === 'walkIn' || s.phase === 'reaction' || s.phase === 'walkOut')) this.handle(shift.skipDialog());
       return;
     }
-    if (!this.view.kitchenReady) return;
+    if (!this.view.kitchenReady) return this.hands.release(true);
     const l = this.view.station.layout;
     const p = this.view.toLocal(cssX, cssY);
     if (this.view.onTab(p)) return this.view.showPage(1 - this.view.page);
     const t = l && hitKitchen(l, p.x, p.y, this.view.stack.topY);
-    if (t) this.act(shift, s, t);
-    else this.view.station.nudge(p);
+    if (t) this.hands.done(this.act(t));
   }
 
-  private act(shift: KitchenShift, s: KitchenSnapshot, t: KitchenTarget): void {
-    let events: KitchenEvent[] = [];
-    switch (t.kind) {
-      case 'bin':
-        events = shift.tapBin(t.id);
-        break;
-      case 'bun':
-        events = shift.closeBurger();
-        break;
-      case 'griddle':
-        if (s.griddle[t.slot]) events = shift.flipOrTake(t.slot);
-        break;
-      case 'fryer':
-        if (s.fryer[t.basket]) events = shift.lift(t.basket);
-        break;
-      case 'drink':
-        events = shift.pickDrink(t.id);
-        break;
-      case 'tray':
-        if (s.tray[t.part] !== null) events = shift.trashItem({ from: 'tray', part: t.part });
-        break;
-      case 'stackTop':
-        if (s.stack.length > 0) events = shift.removeTop();
-        break;
-      case 'action':
-        return this.fire();
+  /** What a tap on `t` does in the kitchen (or a drop where it goes); the events it caused. */
+  private act(t: KitchenTarget): readonly KitchenEvent[] {
+    const shift = this.shift;
+    if (!shift) return [];
+    if (t.kind === 'action') {
+      this.fire();
+      return [];
     }
+    const events = actOn(shift, t);
     this.handle(events, t);
+    this.handoff(events);
+    return events;
+  }
+
+  /** A cooked item off the griddle / fryer: the camera slides to MONTAGGIO a moment later, unless something on COTTURA
+   * needs the player now (PERFETTO, burning) or the next step is there (fries lifted while the patty still cooks). */
+  private handoff(events: readonly KitchenEvent[]): void {
+    if (!this.view.paged || !events.some((e) => e.type === 'griddleTaken' || e.type === 'fryLifted')) return;
+    this.scene.time.delayedCall(PAGER.handoffMs, () => {
+      const s = this.shift?.snapshot;
+      if (!s || !this.inKitchen || this.view.page !== 1) return;
+      const next = this.shift?.guideNow();
+      if ([...s.griddle, ...s.fryer].some((v) => v !== null && v.phase !== 'raw') || (next && next.target.kind !== 'action' && this.view.pageOfTarget(next.target) !== 0)) return;
+      this.view.showPage(0);
+    });
   }
 
   /** SERVI: a wrapped burger on the tray, at once (the guide's 'Tutto pronto' and the button agree; the
@@ -309,7 +320,7 @@ export class KitchenSession {
     // pans and cans have their label under them: the hand points from beside (a target on the other page: at its tab)
     const here = action || v.pageOfTarget(g.target) === v.page;
     const side = here && (g.target.kind === 'bin' || g.target.kind === 'bun' || g.target.kind === 'drink');
-    v.guide.update({ rect, hand: s.tutorial, pulse: !action, dir: tip?.dir ?? (side ? 'side' : 'up'), maxX: v.kitchenRight }, this.timeMs, this.calm);
+    v.guide.update({ rect, hand: s.tutorial, pulse: !action, dir: tip?.dir ?? (side ? 'side' : 'up') }, this.timeMs, this.calm);
   }
 
   /* ------------------------------------------------------------------- end */

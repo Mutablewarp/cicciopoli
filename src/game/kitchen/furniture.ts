@@ -2,12 +2,13 @@
  * What the CUCINA's things stand on, drawn under them in world px: the soft shadows every station,
  * pan, rack, the tray and the bin cast on the worktop (light from the top-left), the steel panel the
  * MONTAGGIO pans sit in (a recess: dark top / left inner edge, lit bottom / right) and the wooden
- * board under the paper where the burger grows (Good Pizza's peel). Also the padlock of a locked pan.
+ * board under the paper where the burger grows (Good Pizza's peel).
  */
 import type Phaser from 'phaser';
 import { BIN, FRYER, GRIDDLE, SHEET_SPEC, SHELF, TRAY, KITCHEN } from '../../art/kitchen/keys';
-import { FURNITURE, MONTAGGIO, TRASH_SCALE } from './config';
-import type { KitchenLayout, Rect } from './layout';
+import { FURNITURE } from './config';
+import type { Rect } from './framing';
+import type { KitchenLayout } from './layout';
 
 const F = FURNITURE;
 const [TRASH_W, TRASH_H] = SHEET_SPEC[KITCHEN.trash];
@@ -22,15 +23,15 @@ function rounded(g: Phaser.GameObjects.Graphics, r: Rect, color: number, alpha =
 
 /** Everything that casts a shadow, world px. */
 function casters(l: KitchenLayout): Rect[] {
-  const ts = MONTAGGIO.trayScale;
+  const a = l.art;
+  const k = l.shelfScale;
   return [
     { ...l.griddle, w: GRIDDLE.w, h: GRIDDLE.h },
     { ...l.fryer, w: FRYER.w, h: FRYER.h },
-    ...l.shelves.map((s) => ({ ...s, w: SHELF.w, h: SHELF.h })),
-    { ...l.tray, w: TRAY.w * ts, h: TRAY.h * ts },
-    { ...l.trash, w: TRASH_W * TRASH_SCALE, h: TRASH_H * TRASH_SCALE },
-    ...l.bins.map((b) => ({ x: b.x, y: b.y, w: BIN.w, h: BIN.h })),
-    ...l.locked.map((b) => ({ x: b.x, y: b.y, w: BIN.w, h: BIN.h })),
+    ...l.shelves.map((s) => ({ ...s, w: SHELF.w * k, h: SHELF.h * k })),
+    { ...l.tray, w: TRAY.w * a.tray, h: TRAY.h * a.tray },
+    { ...l.trash, w: TRASH_W * a.trash, h: TRASH_H * a.trash },
+    ...l.bins.map((b) => ({ x: b.x, y: b.y, w: BIN.w * b.art.pan, h: BIN.h * b.art.pan })),
   ];
 }
 
@@ -64,19 +65,4 @@ export function drawFurniture(g: Phaser.GameObjects.Graphics, l: KitchenLayout):
   panel(g, l.panel);
   board(g, l.board);
   for (const [o, r] of [S.far, S.near].flatMap((o) => casters(l).map((r) => [o, r] as const))) rounded(g, { ...r, x: r.x + o.dx, y: r.y + o.dy }, S.color, o.alpha);
-}
-
-/** A padlock (FURNITURE.lock px) with its top-left at (x, y): a thick shackle over a light body with a keyhole. */
-export function padlock(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
-  const L = F.lock;
-  // shackle: outer rim, two metal columns, inner rim round a 2 px hole
-  g.fillStyle(L.rim, 1).fillRect(x + 4, y, 8, 1).fillRect(x + 3, y + 1, 1, 7).fillRect(x + 12, y + 1, 1, 7);
-  g.fillRect(x + 6, y + 3, 4, 1).fillRect(x + 6, y + 4, 1, 4).fillRect(x + 9, y + 4, 1, 4);
-  g.fillStyle(L.metal, 1).fillRect(x + 4, y + 1, 8, 2).fillRect(x + 4, y + 3, 2, 5).fillRect(x + 10, y + 3, 2, 5);
-  // body: rim, lit top / left, dark bottom row, keyhole
-  rounded(g, { x, y: y + 8, w: L.w, h: L.h - 8 }, L.rim);
-  g.fillStyle(L.body, 1).fillRect(x + 1, y + 9, L.w - 2, L.h - 10);
-  g.fillStyle(L.lit, 1).fillRect(x + 1, y + 9, L.w - 2, 1).fillRect(x + 1, y + 9, 1, L.h - 10);
-  g.fillStyle(L.dark, 1).fillRect(x + 2, y + L.h - 2, L.w - 3, 1);
-  g.fillStyle(L.rim, 1).fillRect(x + 7, y + 11, 2, 4).fillRect(x + 6, y + 12, 4, 1);
 }

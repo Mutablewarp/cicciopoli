@@ -126,6 +126,15 @@
 .cc-kitchen-card .cc-btn--go.is-selected::after {
   display: none;
 }
+/* adult thumbs: every button of the card and of its panels (switches, INDIETRO) is 56 px tall and up */
+.cc-kitchen-card .cc-rush__more .cc-btn,
+.cc-kitchen-card .cc-switch,
+.cc-kitchen-card .cc-rpanel__back {
+  min-height: 56px;
+}
+.cc-kitchen-card .cc-setting__name {
+  font-size: clamp(10px, 3vw, 12px);
+}
 
 /* COME SI GIOCA: four illustrated steps, then the real menù rule */
 .cc-khelp {
@@ -225,7 +234,7 @@
     height: 76px;
   }
   .cc-kitchen-card .cc-btn--go {
-    min-height: 54px;
+    min-height: 56px;
   }
 }
 @media (orientation: landscape) {

@@ -2,16 +2,19 @@
  * Level 7 "CICCIO'S KITCHEN" sound effects: griddle sizzle, spatula flip, fryer basket, PERFETTO
  * timer ding, burning warning, topping plop, sauce squeeze, paper wrap, tray served, till, happy and
  * unhappy customer, shop doorbell, bin lid and the YOU ARE SO GOLDEN fanfare.
+ * v7 tactile kitchen (sfx-kitchen-touch.ts): one pick-up sound per ingredient family, the big patty
+ * sizzle, the basket dunk and lift.
  * Same recipe contract as sfx.ts, which spreads this table into SFX. Plop, sizzle and flip fire every
  * few seconds over the 'kitchen' track, so they stay short and soft; ding is the reward cue.
  */
 import { hiss, tone, type Voice } from './synth';
 import { hz } from './theory';
 import type { Recipe } from './sfx';
+import { TOUCH_SFX, type TouchSfx } from './sfx-kitchen-touch';
 
 export type KitchenSfx =
   | 'sizzle' | 'flip' | 'fry' | 'ding' | 'burn' | 'plop' | 'squeeze' | 'wrap' | 'serve' | 'cash'
-  | 'yum' | 'grumble' | 'doorbell' | 'trash' | 'golden';
+  | 'yum' | 'grumble' | 'doorbell' | 'trash' | 'golden' | TouchSfx;
 
 /** Each topping lands a little higher than the last (the stack grows), wrapping after six. */
 const plop: Recipe = (() => {
@@ -223,4 +226,6 @@ export const KITCHEN_SFX: Readonly<Record<KitchenSfx, Recipe>> = {
       tone(v, { wave: 'triangle', t: t + 1.32 + i * 0.09, f: hz(n) * p, a: 0.002, d: 0.18, peak: 0.045 - i * 0.002 });
     }
   },
+
+  ...TOUCH_SFX,
 };

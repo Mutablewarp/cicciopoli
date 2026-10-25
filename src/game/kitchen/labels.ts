@@ -36,14 +36,15 @@ const EXTRA: Readonly<Record<string, readonly string[]>> = {
   '€': ['.##', '###', '#..', '###', '.##'],
 };
 
-/** Bin labels that would not fit their place in full (the ticket keeps the menu's names). */
+/** Bin labels whose words would not fit a line: the ticket's words, broken at a syllable (CIPOLLA CARAMELLATA and the
+ * GREEN NUGGETS VEGGIE would need a third line: cut). */
 const SHORT: Partial<Record<BinId, string>> = {
-  polloPastellato: 'POLLO PASTELL.',
+  polloPastellato: 'POLLO PA- STELLATO',
   cipollaCaramellata: 'CIPOLLA CARAMELL.',
-  pere: 'PERE',
+  pere: 'PERE CARA- MELLATE',
   peperoncino: 'PEPE- RONCINO',
   gorgonzola: 'GORGON- ZOLA',
-  fichi: 'CONFETT. DI FICHI',
+  fichi: 'CONFETTU- RA DI FICHI',
   greenNuggets: 'GREEN NUGGETS',
 };
 

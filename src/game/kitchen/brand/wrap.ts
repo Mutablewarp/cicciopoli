@@ -1,9 +1,9 @@
 /**
  * The wrapped burger like the real one (ref/level7_wrap_tray.jpg): a crumpled KRAFT paper parcel
  * printed with rows of dark-grey "CICCIO'S", the rows cut by the folds (every paper panel prints at
- * its own angle / phase), warm tan paper broken in straight creases and facets, a slanted crumpled
- * front flap. Four frames of 44x32 art px, same as KITCHEN.wrap:
- * 0 the burger on the open paper, 1 the front and the sides fold up, 2 the top flap comes down,
+ * its own angle / phase), warm kraft-brown paper (darker than the pale tray liner) broken in straight
+ * creases and facets, a slanted crumpled front flap, a soft shadow on the liner. Four frames of
+ * 44x32 art px, same as KITCHEN.wrap: 0 the burger on the open paper, 1 the front and the sides fold up, 2 the top flap comes down,
  * 3 the parcel. The burger in frames 0-2 is the pixel-art layer sheet (KITCHEN.layer), hard pixels.
  */
 import { KITCHEN, LAYER, LAYER_H, layerFrame, type LayerKind } from '../../../art/kitchen/keys';
@@ -13,19 +13,25 @@ import { printSheet, type PrintSpec } from './print';
 export const WRAP_W = 44;
 export const WRAP_H = 32;
 
-const KRAFT = {
-  light: '#f4dcbf',
-  base: '#dfbf9c',
-  shade: '#b38c66',
-  rim: 'rgba(104,70,38,0.14)',
-  edge: 'rgba(98,68,38,0.45)',
-  ink: 'rgba(56,50,46,0.88)',
-  fold: 'rgba(100,70,40,0.3)',
-  under: 'rgba(84,56,30,0.4)',
-  wrinkle: 'rgba(104,74,44,0.1)',
-  crest: 'rgba(255,246,228,0.38)',
-  lit: 'rgba(255,246,228,0.24)',
-  dim: 'rgba(104,72,42,0.14)',
+/**
+ * Kraft brown from the shaded paper of ref/level7_wrap_tray.jpg (measured #a98968 / #b09178, L* 59-62),
+ * kept clearly DARKER than the pale liner (liner.ts) so the parcel pops off the tray (v7 point 7).
+ */
+export const KRAFT = {
+  light: '#cfa472',
+  base: '#b3865a',
+  shade: '#8a5b33',
+  rim: 'rgba(62,38,16,0.22)',
+  edge: 'rgba(46,28,12,0.85)',
+  ink: 'rgba(34,29,26,0.9)',
+  fold: 'rgba(60,38,18,0.42)',
+  under: 'rgba(46,28,12,0.5)',
+  wrinkle: 'rgba(60,38,18,0.14)',
+  crest: 'rgba(255,236,206,0.4)',
+  lit: 'rgba(255,236,206,0.18)',
+  dim: 'rgba(60,36,14,0.2)',
+  /** the parcel's shadow on the liner: [offset art px, alpha] of each soft copy (light from the top-left) */
+  shadow: [[1.5, 0.14], [0.8, 0.24]],
 } as const;
 
 /** The burger shown in the paper (pixel art, scaled to fit the parcel). */
@@ -119,7 +125,7 @@ function fillPaper(ctx: CanvasRenderingContext2D, angle: number, phase: number):
   ctx.fillRect(0, 0, WRAP_W, WRAP_H);
   printSheet(ctx, WRAP_W, WRAP_H, spec(angle, phase), KRAFT.ink);
   const hi = ctx.createRadialGradient(12, 6, 1, 12, 6, 26);
-  hi.addColorStop(0, 'rgba(255,250,238,0.30)');
+  hi.addColorStop(0, 'rgba(255,240,214,0.16)');
   hi.addColorStop(1, 'rgba(255,250,238,0)');
   ctx.fillStyle = hi;
   ctx.fillRect(0, 0, WRAP_W, WRAP_H);
@@ -141,8 +147,21 @@ function panel(ctx: CanvasRenderingContext2D, outline: (c: CanvasRenderingContex
   ctx.beginPath();
   outline(ctx);
   ctx.strokeStyle = KRAFT.edge;
-  ctx.lineWidth = 0.3;
+  ctx.lineWidth = 0.4;
   ctx.stroke();
+}
+
+/** The parcel's soft shadow on the liner: offset copies of its outline. */
+function dropShadow(ctx: CanvasRenderingContext2D, outline: (c: CanvasRenderingContext2D) => void): void {
+  for (const [d, a] of KRAFT.shadow) {
+    ctx.save();
+    ctx.translate(d, d);
+    ctx.beginPath();
+    outline(ctx);
+    ctx.fillStyle = `rgba(24,14,6,${a})`;
+    ctx.fill();
+    ctx.restore();
+  }
 }
 
 /** Front flap: the region under the crumpled `edge`, down past the bottom of the frame. */
@@ -205,8 +224,9 @@ function burger(ctx: CanvasRenderingContext2D, pick: PixelPick): void {
 /** Paints wrap frame `i` (0..3) at the context's origin, in art px. */
 export function paintWrap(ctx: CanvasRenderingContext2D, i: number, pick: PixelPick): void {
   const f = FRAMES[i];
-  contactShadow(ctx, WRAP_W / 2, WRAP_H - 1.4, f.burger ? 20 : 18, 1.6, 0.4);
+  contactShadow(ctx, WRAP_W / 2 + 0.8, WRAP_H - 1.2, f.burger ? 21 : 19, 1.7, 0.6);
   const back = (c: CanvasRenderingContext2D): void => smoothPath(c, f.back, true);
+  dropShadow(ctx, back);
   panel(ctx, back, -0.22, 0);
   if (f.burger) burger(ctx, pick);
   ctx.save();

@@ -193,7 +193,8 @@ export class KitchenShift {
     if (g) out.push({ type: 'tutorialStep', step: g.step, text: g.text, target: g.target });
   }
 
-  private guideNow(): KitchenGuide | null {
+  /** The next useful step, also with AIUTI off (the paged kitchen's hand-offs follow it). */
+  guideNow(): KitchenGuide | null {
     if (this.phase !== 'ordering' && this.phase !== 'cooking') return null;
     const b = this.bench;
     return guide({ phase: this.phase, order: this.order, griddle: b.griddle.view(), fryer: b.fryer.view(), stack: b.stack.layers, tray: b.tray });

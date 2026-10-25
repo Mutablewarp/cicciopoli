@@ -1,7 +1,9 @@
 /**
- * Menù packaging, after the real Ciccio's white paper BOATS (ref/level7_wrap_tray.jpg): an open
- * rectangular tray with flared walls seen 3/4 from the front, cream-white paper with a faint light-grey
- * line pattern of golf balls and tees, the food heaped inside and over the rim.
+ * Menù packaging, after the real Ciccio's RED cardboard BOATS (ref/photo_provola_fries_nuggets.jpg) and
+ * the level 1 fries box (src/art/items/food.ts): an open rectangular tray with flared walls seen 3/4
+ * from the front, matte Ciccio's red board with the white cut edge on the near rim, the black-and-white
+ * checkered paper peeking inside, the food heaped inside and over the rim. Pixel fallback only: the game
+ * shows the high-resolution boat with the owner's face logo (src/game/kitchen/brand/boat.ts).
  * KITCHEN.cone (30x22: 0 the empty boat, 1 full of golden fries) and KITCHEN.starterBox (30x22,
  * frame = STARTERS index: nuggets, meatballs, chicken pop corn, green nuggets).
  */
@@ -10,7 +12,7 @@ import { Raster, hash2 } from '../../hills/raster';
 import { FRY_STATE, STARTERS, type StarterId } from '../keys';
 import { lumps, LOOK, type Shape } from './fried';
 import { capsuleMask, inkEdge, piece, type Pt } from './kit';
-import { C, T, WHITE } from './palette';
+import { T, WHITE } from './palette';
 
 const W = 30;
 const H = 22;
@@ -18,55 +20,50 @@ const H = 22;
 const RIM = { x0: 1, x1: 28, y0: 5, y1: 13 } as const;
 const FLOOR = { x0: 5, x1: 24, y: 10 } as const;
 const BOTTOM = { x0: 4, x1: 25, y: 21 } as const;
+/** Ciccio's red board (the level 1 fries box tones). */
+const RED = { light: '#c24c48', base: '#a5363a', shade: '#7e2429', dark: '#5a161c' } as const;
+/** Checkered paper: rows y0..y1 along the inside of the far wall. */
+const CHECK = { y0: 6, y1: 8, dark: '#201c1c' } as const;
 
-type Motif = 'ball' | 'tee' | 'club';
-const MOTIF: Readonly<Record<Motif, readonly Pt[]>> = {
-  ball: [[0, -1], [-1, 0], [1, 0], [0, 1]], // a small ring
-  tee: [[-1, -1], [1, -1], [0, 0], [1, 1], [2, 2]], // a leaning tee
-  club: [[0, 0], [1, 1], [2, 2], [3, 3], [4, 4], [5, 4], [6, 4]], // shaft and head
-};
-
-/** Faint golf line print (balls, tees, clubs) in light grey, only over paper pixels of `p`. */
-function golf(p: Raster, motifs: readonly (readonly [Motif, number, number])[], color: string): void {
-  for (const [kind, x, y] of motifs) {
-    for (const [dx, dy] of MOTIF[kind]) if (p.get(x + dx, y + dy) !== 0) p.set(x + dx, y + dy, color);
-  }
+/** Inside pixel (x, y) between the side walls' inner edges `left` / `right`. */
+function insideTone(x: number, y: number, left: number, right: number): string {
+  if (x < left) return RED.dark;
+  if (x > right) return RED.base;
+  if (y >= CHECK.y0 && y <= CHECK.y1) return (x + y) % 2 ? WHITE : CHECK.dark;
+  return y >= FLOOR.y ? RED.shade : RED.light;
 }
 
-/** Inside of the boat: back wall (lit), left wall (in shade), right wall (lit) and the floor between the rims. */
+/** Inside of the boat: back wall (lit), left wall (in shade), right wall (lit), the floor, the checkered paper. */
 function inside(r: Raster): void {
-  piece(r, T.boat, (m) => m.rect(RIM.x0, RIM.y0, RIM.x1 - RIM.x0 + 1, RIM.y1 - RIM.y0 + 1, 1), {
-    line: T.boat.dark,
+  piece(r, RED, (m) => m.rect(RIM.x0, RIM.y0, RIM.x1 - RIM.x0 + 1, RIM.y1 - RIM.y0 + 1, 1), {
+    line: RED.dark,
     detail: (p) => {
       for (let y = RIM.y0 + 1; y < RIM.y1; y++) {
         const t = Math.min(1, (y - RIM.y0) / (FLOOR.y - RIM.y0));
         const left = Math.round(RIM.x0 + (FLOOR.x0 - RIM.x0) * t);
         const right = Math.round(RIM.x1 - (RIM.x1 - FLOOR.x1) * t);
         for (let x = RIM.x0 + 1; x < RIM.x1; x++) {
-          const tone = x < left ? T.boat.shade : x > right ? T.boat.light : y >= FLOOR.y ? T.boat.shade : T.boat.base;
-          p.set(x, y, tone);
+          p.set(x, y, insideTone(x, y, left, right));
         }
       }
-      golf(p, [['ball', 6, 7], ['club', 10, 6], ['tee', 21, 7], ['ball', 25, 10]], C.golfInside);
     },
   });
 }
 
-/** Front wall: flared trapezoid, rolled white lip on the near rim, the faint golf print. */
+/** Front wall: flared trapezoid, the white cut edge on the near rim, lit left side, shaded right side. */
 function front(r: Raster): void {
-  piece(r, T.boat, (m) => m.poly([[0, RIM.y1], [W, RIM.y1], [BOTTOM.x1 + 1, BOTTOM.y + 1], [BOTTOM.x0, BOTTOM.y + 1]], 1), {
-    line: T.boat.dark,
+  piece(r, RED, (m) => m.poly([[0, RIM.y1], [W, RIM.y1], [BOTTOM.x1 + 1, BOTTOM.y + 1], [BOTTOM.x0, BOTTOM.y + 1]], 1), {
+    line: RED.dark,
     detail: (p, m) => {
       for (let y = RIM.y1; y <= BOTTOM.y; y++) {
         for (let x = 0; x < W; x++) {
           if (!m.get(x, y)) continue;
-          if (y === RIM.y1) p.set(x, y, x < 16 ? WHITE : T.boat.light); // the lip catching the light
-          else if (!m.get(x - 1, y)) p.set(x, y, T.boat.light);
-          else if (!m.get(x + 1, y) || y === BOTTOM.y) p.set(x, y, T.boat.shade);
-          else p.set(x, y, T.boat.base);
+          if (y === RIM.y1) p.set(x, y, WHITE); // the board's white core on the cut rim
+          else if (!m.get(x - 1, y)) p.set(x, y, RED.light);
+          else if (!m.get(x + 1, y) || y === BOTTOM.y) p.set(x, y, RED.dark);
+          else p.set(x, y, x > 20 ? RED.shade : RED.base);
         }
       }
-      golf(p, [['club', 3, 14], ['ball', 12, 16], ['tee', 16, 14], ['ball', 23, 15], ['club', 18, 16], ['tee', 8, 18]], C.golf);
     },
   });
 }

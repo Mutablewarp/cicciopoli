@@ -5,7 +5,7 @@
  */
 import { IMAGE_SPEC, KITCHEN, SHEET_SPEC, STAGE } from '../../art/kitchen/keys';
 import { COUNTER_VIEW, KITCHEN_VIEW } from './config';
-import type { FramingInput, Point, Rect } from './layout';
+import type { FramingInput, Point, Rect } from './framing';
 import type { Orient } from './plan';
 
 /**

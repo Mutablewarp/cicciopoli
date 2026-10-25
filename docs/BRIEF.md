@@ -503,6 +503,56 @@ fries / starters with a light golf line pattern, black tray with a "CICCIO'S" pr
 Ownership addition: BRAND lane = src/game/kitchen/brand/** (high-resolution packaging + logo textures for the
 scene, with a small API the game lane calls).
 
+### v7 — level 7 for ADULT fingers (owner feedback after playing the live level on a phone, 2026-10-25)
+Owner: icons too small for an adult finger in BOTH orientations (landscape especially), building the burger is
+awkward; make lettuce, patty and every pan bigger, building direct, easy to tap and recognisable at a glance;
+the wrap darker than the tray; a BIG griddle and fryer ("sei un'hamburgeria"), the cooking and frying beautiful
+to watch; ingredients "belli da sentire mentre le prendi con le mani"; RED fries / starter boats like the level 1
+fries box. Overrides the points above where they differ. Measurable targets:
+1. **Tap areas >= 60 CSS px** on every side (KITCHEN_VIEW.tapCss 60) at 360x640, 375x667, 390x844, 430x932,
+   667x375, 844x390, 932x430 and 1280x720 (layout.test.ts). Ingredient pans drawn >= 72 CSS px wide, label tapes
+   with letters >= 11 CSS px tall, the burger on the board >= 150 CSS px wide.
+2. **One station per screen on phones (both orientations)**, like the Good Pizza prep screens: page COTTURA
+   (griddle + fryer + their raw pans + the drinks racks) and page MONTAGGIO (the board with the growing burger, the
+   cold pans, sauces, CHIUDI, trash, the tray). Tab + swipe switch, plus automatic hand-offs (an order that needs
+   cooking opens on COTTURA; taking a cooked item off the griddle / fryer slides to MONTAGGIO; the tab of the other
+   page pulses with its mini cook bars when something there needs you). Desktop may keep one screen when 1. holds.
+3. **Fewer, bigger, recognisable pans**: the MONTAGGIO page shows at most 8 pan places + the sauces the order
+   needs (+ at most 1 decoy sauce); decoys only fill places up to that cap (src/config/kitchen.ts).
+4. **Big griddle and fryer** (manifest: GRIDDLE 176x92, GRIDDLE_ITEM 40x40, FRYER 132x92, well 52x34, BASKET
+   54x46, FRY_ITEM 44x28, new steam sheet): on the COTTURA page the griddle spans >= 80% of a portrait page's width,
+   a patty >= 64 CSS px. Beautiful process: the raw patty slaps down (sizzleBig, grease spits, steam), fat bubbles at
+   its edge, the crust darkens state by state, GIRA! flips it with a spatula in an arc, PERFETTO sparkles; the basket
+   dunks into big bubbling oil (dunk), shakes, lifts out dripping with steam (lift).
+5. **Tactile pick-up**: pressing a pan lifts its contents (squash + stretch, a shadow, a little bounce of the pan),
+   the piece flies in an arc to where it goes and squashes on landing; one grab sound per family (grabMeat,
+   grabLeaf, grabCheese, grabCrisp, grabBun, grabCan; squeeze for sauces), a short vibration when
+   KitchenSettings.vibration is on (navigator.vibrate ~10 ms grab, ~18 ms drop); press-and-drag from a pan to the
+   board / griddle / basket also works (the drop target lights up), tap-tap stays the main way.
+6. **Landscape**: the order ticket is compact (<= 30% of the width, <= 260 CSS px) so the kitchen gets the rest;
+   action button (PRENDI L'ORDINE / SERVI) >= 64 CSS px tall.
+7. **Tray**: the kraft wrap clearly DARKER than the pale cream liner (kraft brown of ref/level7_wrap_tray.jpg, a
+   visible edge and shadow on the liner); fries and starters in RED boats like the level 1 fries box
+   (ref/cup_run_scene.png, ref/cup_photo_front.jpg), replacing the white golf boats; the drink reads against the liner.
+8. **Adult playtest** (QA): fat-finger taps (contact ~ 18 CSS px radius, tap point = target centre + gaussian
+   offset sigma 9 CSS px), ~1 tap per second, full orders in portrait and landscape; mis-tap rate < 5%, no order
+   impossible, nothing hidden under the action button or the ticket.
+
+**As built (v7):** phones show MONTAGGIO | COTTURA side by side, each page with its own zoom (src/game/kitchen/
+framing.ts), switched by the tab, a horizontal flick and the hand-offs; three plans (tall / short / wide, plan.ts),
+the framing picks the one keeping every tap >= 60 CSS px with the biggest stations; taps act on release (press-and-drag
+works); deck caps maxBins 6, maxSauces 2, maxCook 5, at most one decoy sauce; the guide holds a page >= 4 s (no
+back-and-forth). Known: on short portrait screens (360x640, 375x667, iPhone Safari 390x664) pans are 60-71 CSS px and
+labels ~10 px (only the 60 px taps are guaranteed there); iOS Safari has no navigator.vibrate (no haptics on iPhone).
+
+### v7 ownership
+- GAME: src/game/kitchen/** except brand/**, src/config/kitchen.ts (layout, pages, framing, feel, FX, haptics).
+- COOK-ART: src/art/kitchen/station/**, src/art/kitchen/food/griddleItems.ts, src/art/kitchen/food/fried.ts.
+- BRAND: src/game/kitchen/brand/**, src/art/kitchen/food/sides.ts (red boats, kraft vs liner).
+- AUDIO: src/audio/sfx-kitchen.ts (+ its tests): the 9 new v7 sfx.
+- UI: src/ui/kitchen/** (compact landscape ticket, action button, setup panel).
+- Integrator: src/art/kitchen/keys.ts, src/contracts*.ts, docs, scripts/e2e.mjs.
+
 ---------------------------------------------------------------------------------------
 ## 10. Level 8 — CICCIO'S GOLDEN TICKET · LA SFIDA DELLE MASCOTTE (owner request, 2026-10-25)
 Owner: "qualcosa come il gioco Cuphead, però utilizzando tutte le grafiche di Ciccio's". A run-and-gun

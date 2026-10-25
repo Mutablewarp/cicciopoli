@@ -87,6 +87,12 @@ export const KITCHEN_FRYER = {
   } as Readonly<Record<FryItemId, CookSpec>>,
 } as const;
 
+/** The AIUTI / tutorial guide: a wanted item on the griddle / fryer this close to PERFETTO keeps the player at the
+ * stations (on a phone the board is a page away: the hand-off, the glide, a look, a topping and the tab back take
+ * ~3 s at 1 tap a second; at 2500 a menù with a fried chicken burger sent the player to the board and back to lift
+ * the starter before any tap there). */
+export const KITCHEN_GUIDE = { holdMs: 4000 } as const;
+
 /** MONTAGGIO. */
 export const KITCHEN_STACK = {
   /** ingredient layers between the buns (DOUBLE TRIPLE needs 8) */
@@ -101,11 +107,13 @@ export const KITCHEN_DECK = {
   decoys: [0, 1, 2, 2, 3, 3, 4, 4],
   /** one of the decoys is a sauce bottle from this order on */
   sauceDecoyFrom: 2,
-  /** most cold bins / sauce bottles on screen; at most maxRail pans in all (griddle, fryer, cold): decoys
-   * go first (fryer ones, then cold ones) so the worktop keeps every pan >= 44 CSS px on a small phone */
-  maxBins: 8,
+  /** v7 (adult fingers: fewer, bigger pans): most cold pans the deck sends to MONTAGGIO (needed + decoys; the
+   * smallest plan has this many places, a bigger one fills its spare place with one more decoy, never more than
+   * 8 pans), most sauce bottles (the order's + at most one decoy), most raw pans on COTTURA (griddle + fryer,
+   * needed first: a burger needs at most 4 with its menù) */
+  maxBins: 6,
   maxSauces: 2,
-  maxRail: 11,
+  maxCook: 5,
   /** decoy fryer bins (fries / starters the order does not want) */
   fryDecoys: [0, 0, 1, 1, 1, 2, 2, 2],
   /** places on the drinks shelf */

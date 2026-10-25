@@ -2,11 +2,11 @@
  * Publishes how much of the game host the overlaid UI covers, as CSS vars on the play area
  * (inherited by .game-host, where main.ts reads them into ViewportInfo):
  *   --play-inset-t  HUD bar height when it overlays the canvas (landscape / desktop), else 0;
- *                   level 7 portrait: down to the bottom of the order ticket
+ *                   level 7 portrait: down to the bottom of the order ticket slot (ticket + tutorial hint)
  *   --play-inset-b  height from the host bottom to the top of the highest visible touch
  *                   control when the controls overlay the canvas (landscape), else 0;
- *                   includes the safe-area bottom. Level 7 portrait: the hint + action button area
- *   --play-inset-l  level 7 landscape: width of the ticket column (ticket, hint, action button), else 0
+ *                   includes the safe-area bottom. Level 7 portrait: the action button area
+ *   --play-inset-l  level 7 landscape: width of the ticket column (ticket, hint, action button; the ticket <= 30% and <= 260 px), else 0
  * Level 7 parts are the `[data-inset]` elements; CSS tells each one's side with `--dock: top | left | bottom`.
  * main.ts only re-reads them on resize events, so a change outside a resize dispatches one.
  */

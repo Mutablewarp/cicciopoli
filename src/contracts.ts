@@ -317,6 +317,11 @@ export type SfxName =
   // happy customer, unhappy customer, shop doorbell, item into the bin, YOU ARE SO GOLDEN fanfare
   | 'sizzle' | 'flip' | 'fry' | 'ding' | 'burn' | 'plop' | 'squeeze' | 'wrap' | 'serve' | 'cash'
   | 'yum' | 'grumble' | 'doorbell' | 'trash' | 'golden'
+  // level 7 v7 (tactile kitchen): picking an ingredient up with the hand, one sound per family (raw meat
+  // wet slap, leaves / soft veg rustle, cheese soft press, fried / crunchy / nuts crackle, bun puffy
+  // squeeze, drink can / bottle clink), the patty hitting the hot griddle (loud sizzle burst), the basket
+  // dunked into the oil (whoosh + bubbling), the basket lifted out (drip, shake)
+  | 'grabMeat' | 'grabLeaf' | 'grabCheese' | 'grabCrisp' | 'grabBun' | 'grabCan' | 'sizzleBig' | 'dunk' | 'lift'
   // level 8 cartoon: provola shot, meatball lob, meatball blast, nugget shot, PIOGGIA DI PATATINE super,
   // EX shot, parry, dash, boss hit, knockout bell / announcer sting, round-start bell, a card filled,
   // the golden ticket reveal, player hurt (cartoon), boss phase change

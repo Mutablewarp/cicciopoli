@@ -1,10 +1,11 @@
 /**
- * Kitchen fx sheets: grey smoke puff of a burning item (16x16 x4), grease sizzle pops (16x12 x4),
+ * Kitchen fx sheets: grey smoke puff of a burning item (16x16 x4), the white steam wisp of hot food
+ * (16x24 x4), grease sizzle pops (16x12 x4),
  * the gold PERFETTO sparkle (12x12 x4) and the white-glove tutorial hand (20x22: 0 hover, 1 press;
  * the fingertip is the hot spot, at POINTER_TIP in frame 0).
  */
 import { Mask, paintMask } from '../../hills/mask';
-import { Raster, gridR, outlineRaster } from '../../hills/raster';
+import { Raster, gridR, hash2, outlineRaster } from '../../hills/raster';
 import { ST } from './colors';
 
 /** Puffs in the rising column at once; each frame they climb 1/(4 * PUFF_COUNT) of the way, so the
@@ -34,6 +35,68 @@ export function buildSmoke(): Raster[] {
     outlineRaster(r, ST.smokeShade);
     return r;
   });
+}
+
+/** Steam loop: puffs born STEAM_GAP rows apart climb a quarter of the gap per frame, so the 4-frame loop
+ * hands every puff on to the next one's place (a bigger step would read as the column sliding back). */
+const STEAM_H = 24;
+const STEAM_GAP = 8;
+const STEAM_STEP = STEAM_GAP / 4;
+/** Puff radius (art px) when born on the food and when it leaves the top: a fist of steam swelling into a cloud. */
+const STEAM_R0 = 2.8;
+const STEAM_R1 = 6.5;
+/** Rows a puff climbs per row of `rise` (it swells as it goes, so it must not leave the frame too soon). */
+const RISE = 0.72;
+/** Rows at the top of the frame where the steam frays away. */
+const STEAM_FRAY = 12;
+
+/** White steam cloud rising (16x24 x4), big enough to read over the black iron at a glance: a column of
+ * round puffs, each with a swinging side lobe, that swell, sway and thin out as they climb (oldest at the top,
+ * painted first, so every younger puff's grey rim shows where it overlaps). Bright white faces, a pale
+ * grey rim only on the far (bottom-right) side; the top frays away (fray). */
+export function buildSteam(): Raster[] {
+  return [0, 1, 2, 3].map((f) => {
+    const r = new Raster(16, STEAM_H);
+    for (let k = STEAM_H / STEAM_GAP - 1; k >= 0; k--) {
+      const rise = (k * STEAM_GAP + f * STEAM_STEP) % STEAM_H;
+      const p = rise / STEAM_H; // 0 = just born on the food, close to 1 = leaving the frame
+      const rad = STEAM_R0 + p * (STEAM_R1 - STEAM_R0);
+      const cx = 8 + Math.sin(p * 2 * Math.PI + 0.5) * 1.8 * p;
+      const cy = STEAM_H - 1 - STEAM_R0 - rise * RISE;
+      // the side lobe swings round as the puff climbs (a function of p: no jump when the loop hands it on)
+      const lobes = [[cx, cy, rad], [cx + Math.sin(p * 3 * Math.PI + 0.8) * rad * 0.55, cy + rad * 0.25, rad * 0.62]] as const;
+      for (let y = Math.floor(cy - rad); y <= Math.ceil(cy + rad); y++) {
+        for (let x = 0; x < 16; x++) {
+          // distance to the nearest lobe edge (0 = centre, 1 = rim) and the light side of that lobe
+          let d = 2;
+          let far = 0;
+          for (const [lx, ly, lr] of lobes) {
+            const dl = Math.hypot(x + 0.5 - lx, (y + 0.5 - ly) * 1.1) / lr;
+            if (dl < d) [d, far] = [dl, (x + 0.5 - lx + (y + 0.5 - ly)) / lr];
+          }
+          if (d > 1) continue;
+          r.set(x, y, d > 0.5 && far > 0.45 ? ST.steamShade : far > 0 ? ST.steam : ST.steamHi);
+        }
+      }
+    }
+    fray(r, Math.round(f * STEAM_STEP * RISE));
+    return r;
+  });
+}
+
+/** The top STEAM_FRAY rows thin out: edge pixels fray away, more near the top, in a pattern that rises with
+ * the steam (`drift` rows). Only the edge, two pixels deep: never holes inside (they read as eyes). */
+function fray(r: Raster, drift: number): void {
+  for (let pass = 0; pass < 2; pass++) {
+    const src = r.px.slice();
+    const clear = (x: number, y: number): boolean => x < 0 || x >= r.w || y < 0 || src[y * r.w + x] === 0;
+    for (let y = 0; y < STEAM_FRAY; y++) {
+      for (let x = 0; x < r.w; x++) {
+        const edge = clear(x - 1, y) || clear(x + 1, y) || clear(x, y - 1) || clear(x, y + 1);
+        if (src[y * r.w + x] !== 0 && edge && hash2(x, y + drift, pass + 41) < (1 - y / STEAM_FRAY) * 0.8) r.set(x, y, null);
+      }
+    }
+  }
 }
 
 /** [x, y, kind] grease bits per frame: 0 = flying drop (white head, warm tail), 1 = pop (warm cross). */

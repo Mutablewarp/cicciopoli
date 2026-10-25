@@ -2,7 +2,7 @@
  * Ciccio's REAL branding for level 7, drawn in HIGH RESOLUTION (canvas 2D at the screen's density,
  * shown with LINEAR filtering), never as pixel art (docs/BRIEF.md §9 v5.1 points 4-5): the owner's
  * original face logo (plain, on the white disc, gold), the kraft wrap with its fold animation, the
- * white paper boats with the golf pattern (the pixel-art food inside), the printed tray liner.
+ * RED cardboard boats with the face logo (the pixel-art food inside), the pale printed tray liner.
  *
  * Use (game lane):
  *   await loadBrandLogo(scene)                       // once, in boot; false = logo missing
@@ -35,9 +35,9 @@ export const BRAND = {
   faceDisc: 'brand-face-disc',
   /** frames 0-3 the fold, 3 = the wrapped burger (as KITCHEN.wrap) */
   wrap: 'brand-wrap',
-  /** frames 0 empty paper boat, 1 with golden fries (as KITCHEN.cone) */
+  /** frames 0 empty red boat, 1 with golden fries (as KITCHEN.cone) */
   cone: 'brand-cone',
-  /** frame = STARTERS index: the paper boat with the menù starter (as KITCHEN.starterBox) */
+  /** frame = STARTERS index: the red boat with the menù starter (as KITCHEN.starterBox) */
   starterBox: 'brand-starter-box',
   /** the printed liner, laid over the pixel tray at BRAND_LINER_AT */
   liner: 'brand-liner',
@@ -79,8 +79,8 @@ const PAINT: Readonly<Record<BrandPiece, { logo: boolean; paint: Painter }>> = {
   faceGold: { logo: true, paint: (ctx, _f, k, s) => s.logo && paintGoldFace(ctx, s.logo, k) },
   faceDisc: { logo: true, paint: (ctx, f, k, s) => s.logo && paintDisc(ctx, s.logo, f === 1, k) },
   wrap: { logo: false, paint: (ctx, f, _k, s) => paintWrap(ctx, f, s.pick) },
-  cone: { logo: false, paint: (ctx, f, _k, s) => paintBoat(ctx, f === 1 ? s.pick(KITCHEN.fryItem, fried('patatine')) : null) },
-  starterBox: { logo: false, paint: (ctx, f, _k, s) => paintBoat(ctx, s.pick(KITCHEN.fryItem, fried(STARTERS[f]))) },
+  cone: { logo: false, paint: (ctx, f, _k, s) => paintBoat(ctx, f === 1 ? s.pick(KITCHEN.fryItem, fried('patatine')) : null, s.logo) },
+  starterBox: { logo: false, paint: (ctx, f, _k, s) => paintBoat(ctx, s.pick(KITCHEN.fryItem, fried(STARTERS[f])), s.logo) },
   liner: { logo: false, paint: (ctx) => paintLiner(ctx) },
 };
 

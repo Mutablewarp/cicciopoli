@@ -9,7 +9,7 @@ import Phaser from 'phaser';
 import { KITCHEN, KITCHEN_ANIMS } from '../../art/kitchen/keys';
 import { KITCHEN_COLORS, KITCHEN_FX } from './config';
 import { labelTexture } from './labels';
-import type { Point, Rect } from './layout';
+import type { Point, Rect } from './framing';
 import { KITCHEN_PX } from './placeholders';
 
 type Box = Phaser.GameObjects.Container;

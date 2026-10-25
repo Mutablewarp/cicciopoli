@@ -140,3 +140,7 @@
     justify-content: space-between;
   }
 }
+/* adult thumbs: RIPROVA, CONDIVIDI, SCOPRI IL MENÙ and MENU 56 px tall and up */
+.cc-kres-card .cc-btn {
+  min-height: 56px;
+}

@@ -1,8 +1,8 @@
 /**
  * Level 7 HUD over the play area (HudState.kitchen): the order ticket in its slot (under the HUD band in portrait,
- * a column on the left in landscape), the patience meter with its face, the hint strip above the action button
- * (index.ts mounts the button in `zone`), the customer's speech bubble, the served pins for the HUD progress rail and
- * the INCASSO € that takes TIME's place in the HUD. The slot and the zone are `[data-inset]` parts: insets.ts publishes
+ * a column on the left in landscape) with the tutorial hint under it, the patience meter with its face, the action
+ * button's zone (index.ts mounts the button in `zone`), the customer's speech bubble, the served pins for the HUD
+ * progress rail and the INCASSO € that takes TIME's place in the HUD. The slot and the zone are `[data-inset]` parts: insets.ts publishes
  * what they cover, so the scene keeps its stations, customer and taps clear of them. Nothing here takes pointer events:
  * taps reach the game canvas.
  */
@@ -20,14 +20,14 @@ const MAX_FIT = 3;
 const FREE_MARGIN = 8;
 /** Patience bar steps (no DOM write for smaller changes). */
 const PATIENCE_STEPS = 50;
-/** The zig-zag edge hangs under the paper box. */
-const TORN_EDGE = 8;
 const POP: Keyframe[] = [{ transform: 'scale(1)' }, { transform: 'scale(1.35)' }, { transform: 'scale(1)' }];
+/** The INCASSO number hops from its left end (kitchen/play.css): it never runs into its label or the pause button. */
+const TILL_POP: Keyframe[] = [{ transform: 'none' }, { transform: 'translateY(-2px) scale(1.2)' }, { transform: 'none' }];
 
 export interface KitchenLayer {
   /** overlay over the game host (inside .cc-play) */
   readonly root: HTMLElement;
-  /** hint + action button area */
+  /** action button area */
   readonly zone: HTMLElement;
   /** served pins, laid on the HUD progress rail */
   readonly pins: HTMLElement;
@@ -56,14 +56,13 @@ export function createKitchenLayer(): KitchenLayer {
   const bar = el('span', 'cc-kpat__bar');
   bar.append(fill);
   pat.append(face, bar);
-  slot.append(pat, ticket.paper);
-  const zone = el('div', 'cc-kzone');
-  zone.dataset.inset = '';
   const hint = el('p', 'cc-khint');
   hint.setAttribute('aria-live', 'polite');
   const hintLine = el('span');
   hint.append(hintLine);
-  zone.append(hint);
+  slot.append(pat, ticket.paper, hint);
+  const zone = el('div', 'cc-kzone');
+  zone.dataset.inset = '';
   col.append(slot, zone);
   const bubble = createBubble();
   root.append(col, bubble.root);
@@ -89,8 +88,9 @@ export function createKitchenLayer(): KitchenLayer {
   }
 
   /**
-   * The first layout whose paper (and its torn edge) fits the slot with every line inside its column; the last one
-   * stays even if it does not. The customer's name is fitted first in each: a name on its own row adds height.
+   * The first layout whose lines all fit the paper (kept inside the slot by CSS, torn edge included) with every word
+   * inside its box; the last one stays even if it does not, its lines scrolling. The customer's name is fitted first
+   * in each: a name on its own row adds height.
    */
   function fit(): void {
     if (ticket.paper.hidden) return;
@@ -98,8 +98,11 @@ export function createKitchenLayer(): KitchenLayer {
       slot.dataset.fit = String(f);
       ticket.short(f === MAX_FIT);
       ticket.fitName();
-      if (ticket.paper.offsetHeight + TORN_EDGE <= slot.clientHeight && !ticket.overflows()) break;
+      if (!ticket.overflows()) break;
     }
+    // still too long: the customer's name gives its own row back to the lines
+    if (ticket.overflows()) ticket.fitName(false);
+    ticket.scroll(hintText);
   }
 
   function renderTicket(k: KitchenHud): void {
@@ -166,25 +169,27 @@ export function createKitchenLayer(): KitchenLayer {
     const up = cents > shownCents;
     shownCents = cents;
     setText(tillNum, takings(cents));
-    if (up && !calm) tillNum.animate(POP, { duration: 320, easing: 'ease-out' });
+    if (up && !calm) tillNum.animate(TILL_POP, { duration: 320, easing: 'ease-out' });
   }
 
   function renderHint(text: string | null): void {
     if (text === hintText) return;
     hintText = text;
     hint.classList.toggle('is-on', !!text);
-    if (!text) return;
-    hintLine.innerHTML = pixelHtml(text);
-    // `translate`, not `transform`: CSS centres the line with a transform
-    if (!calm) hintLine.animate([{ translate: '0 6px', opacity: 0 }, { translate: '0 0', opacity: 1 }], { duration: 220, easing: 'ease-out' });
+    if (text) hintLine.innerHTML = pixelHtml(text);
+    // the hint shares the slot with the ticket: the ticket gets more or less room
+    fit();
+    if (text && !calm) hintLine.animate([{ transform: 'translateY(6px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 220, easing: 'ease-out' });
   }
 
   new ResizeObserver(() => {
     fit();
     bubble.place(free());
   }).observe(slot);
-  // the slot keeps its size when a late web font reflows the paper: measure again once the fonts are in
+  // the slot keeps its size when a late web font reflows the paper: measure again once the fonts are in (`ready` alone
+  // resolves at once when no font has started loading yet, so every later load counts too)
   void document.fonts.ready.then(fit);
+  document.fonts.addEventListener('loadingdone', fit);
   // insets.ts dispatches a resize once the covered strips are measured: the bubble follows them
   window.addEventListener('resize', () => {
     if (!root.hidden) bubble.place(free());

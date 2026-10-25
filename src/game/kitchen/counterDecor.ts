@@ -15,7 +15,7 @@ import { KITCHEN } from '../../art/kitchen/keys';
 import { COUNTER_VIEW, KITCHEN_VIEW } from './config';
 import { showHiRes } from './hiRes';
 import { bubbleTop, roomPlace, type CounterFrame } from './counterFrame';
-import type { Point } from './layout';
+import type { Point } from './framing';
 
 const C = COUNTER_VIEW;
 const S = C.signs;
