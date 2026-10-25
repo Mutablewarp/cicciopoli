@@ -82,6 +82,17 @@ describe('compileSong', () => {
     expect(s.steps[8]).toContainEqual({ ch: 'lead', midi: 60, len: 3 }); // second pass of A
   });
 
+  it('plays "+" chords as one held event per note', () => {
+    const s = compileSong(tiny({ patterns: { A: { bars: 1, harm: 'F3+A3+C4 - . E4' } }, order: ['A'] }));
+    expect(s.steps[0]).toEqual([
+      { ch: 'harm', midi: 53, len: 2 },
+      { ch: 'harm', midi: 57, len: 2 },
+      { ch: 'harm', midi: 60, len: 2 },
+    ]);
+    expect(s.steps[3]).toEqual([{ ch: 'harm', midi: 64, len: 1 }]);
+    expect(() => compileSong(tiny({ patterns: { A: { bars: 1, harm: 'F3+X3 . . .' } } }))).toThrow(/bad note/);
+  });
+
   it('rejects authoring mistakes', () => {
     expect(() => compileSong(tiny({ patterns: { A: { bars: 1, lead: 'C4 - -' } } }))).toThrow(/3 steps/);
     expect(() => compileSong(tiny({ patterns: { A: { bars: 1, lead: 'C4 - - Q9' } } }))).toThrow(/bad note/);

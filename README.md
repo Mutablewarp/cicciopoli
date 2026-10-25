@@ -1,6 +1,6 @@
 # CICCIO'S — The Burger Adventure
 
-Demo concept di un gioco 2D in pixel art (platform, sparatutto, labirinto, picchiaduro) ispirato al bicchiere e alla confezione
+Demo concept di un gioco 2D in pixel art (platform, sparatutto, labirinto, picchiaduro, guida, cucina) ispirato al bicchiere e alla confezione
 delle alette di **Ciccio's Burger** (Palermo). Si gioca nel browser, da telefono
 (iOS / Android, verticale e orizzontale) o da computer. Nessuna installazione,
 nessun account.
@@ -16,8 +16,10 @@ nessun account.
 | 03 | Ciccio's Invaders | spazio: la navicella di Ciccio's contro hamburger, pianeti e asteroidi | FUOCO + FULMINE (trasforma i nemici in cibo) |
 | 04 | CICCIO-MAN | labirinto a vassoio con nuggets e provola | bastoncino di provola (mangia i fantasmi) |
 | 05 | Spacca Tutto | città demolita al tramonto: Ciccio in versione furia spacca muri e nemici | PUGNO + SPACCA (botta a terra), strappa la bandierina |
+| 06 | Ciccio's Rush | consegne col burger truck: centro di Palermo, zona Stadio, lungomare di Terrasini | power-up del menù, easter egg ROADCOASTER |
+| 07 | Ciccio's Kitchen | il bancone d'acciaio di La Lumia e il verde di Sperlinga: cucina e servi il vero menù di Ciccio's | piastra, monta, servi (singolo o menù); premio YOU ARE SO GOLDEN |
 
-Arriva alla bandierina e… **VAI IN BUCA!**
+Nei livelli platform arriva alla bandierina e… **VAI IN BUCA!**
 
 ## Comandi
 
@@ -28,6 +30,8 @@ Arriva alla bandierina e… **VAI IN BUCA!**
 | Scendere in volo | ↓, S | SCENDI |
 | Provola Goat / fuoco / spacca | J, X | GOAT / FUOCO / SPACCA |
 | Alette Thai / fulmine / pugno | K, C | THAI / FULMINE / PUGNO |
+| Cambiare corsia / frenare (livello 6) | ← → / A D, ↓ S | ◀ ▶ o swipe, FRENA |
+| Cucinare (livello 7) | mouse | tocca piastra, friggitrice, ingredienti; PRENDI L'ORDINE / SERVI (Invio) |
 | Pausa | Esc, P | ‖ |
 
 ## Sviluppo

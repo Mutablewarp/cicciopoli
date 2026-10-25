@@ -1,4 +1,4 @@
-/** 32x18 pixel thumbnails of the six levels for the title cards (deterministic; level 5 is 64x18, cropped to its centre). */
+/** 32x18 pixel thumbnails of the seven levels for the title cards (deterministic; level 5 is 64x18, cropped to its centre). */
 import type { LevelId } from '../contracts';
 import { PAL } from '../art/pixel';
 import { FACE_URL } from '../art/space/keys';
@@ -6,6 +6,7 @@ import { CUTOUT_URL } from './cutout';
 import { seeded } from './dom';
 import { Grid } from './grid';
 import { LOGO_URL } from './loading';
+import { kitchenThumb } from './kitchen/scene';
 import { rushThumb } from './rush/scene';
 
 const W = 32;
@@ -179,7 +180,7 @@ function spacca(): string {
   return g.svg(pal).replace('</svg>', `<g class="cc-thumb__fallback">${art.replace(/^<svg[^>]*>|<\/svg>$/g, '')}</g>${cutout}</svg>`);
 }
 
-const BUILDERS: Record<LevelId, () => string> = { 1: hills, 2: inferno, 3: invaders, 4: maze, 5: spacca, 6: rushThumb };
+const BUILDERS: Record<LevelId, () => string> = { 1: hills, 2: inferno, 3: invaders, 4: maze, 5: spacca, 6: rushThumb, 7: kitchenThumb };
 
 export function levelThumb(level: LevelId): string {
   return BUILDERS[level]();

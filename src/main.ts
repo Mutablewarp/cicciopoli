@@ -17,6 +17,7 @@ import { GameScene } from './game/GameScene';
 import { InvadersScene } from './game/invaders/InvadersScene';
 import { MazeScene } from './game/maze/MazeScene';
 import { RushScene } from './game/rush/RushScene';
+import { KitchenScene } from './game/kitchen/KitchenScene';
 import { buildCiccioArt } from './art/ciccio';
 import { buildItemsArt } from './art/items';
 import { effectiveDpr } from './game/viewport';
@@ -33,7 +34,7 @@ const audio = createAudio();
 audio.setMuted(save.data.muted);
 
 const host = ui.gameHost;
-const viewport: ViewportInfo = { cssW: 0, cssH: 0, dpr: 1, portrait: false, insetBottom: 0, insetTop: 0 };
+const viewport: ViewportInfo = { cssW: 0, cssH: 0, dpr: 1, portrait: false, insetBottom: 0, insetTop: 0, insetLeft: 0 };
 
 function measure(): boolean {
   const r = host.getBoundingClientRect();
@@ -48,7 +49,9 @@ function measure(): boolean {
   const inset = parseFloat(style.getPropertyValue('--play-inset-b'));
   viewport.insetBottom = Number.isFinite(inset) ? Math.min(inset, h * 0.4) : 0;
   const top = parseFloat(style.getPropertyValue('--play-inset-t'));
-  viewport.insetTop = Number.isFinite(top) ? Math.min(top, h * 0.25) : 0;
+  viewport.insetTop = Number.isFinite(top) ? Math.min(top, h * 0.3) : 0;
+  const left = parseFloat(style.getPropertyValue('--play-inset-l'));
+  viewport.insetLeft = Number.isFinite(left) ? Math.min(left, w * 0.4) : 0;
   return true;
 }
 if (!measure()) {
@@ -83,7 +86,7 @@ const game = new Phaser.Game({
   input: { keyboard: false, mouse: false, touch: false, gamepad: false },
   audio: { noAudio: true },
   render: { antialias: false, powerPreference: 'high-performance' },
-  scene: [BootScene, GameScene, InvadersScene, MazeScene, RushScene],
+  scene: [BootScene, GameScene, InvadersScene, MazeScene, RushScene, KitchenScene],
 });
 
 let currentLevel: LevelId | null = null;
@@ -164,7 +167,7 @@ function applyResize(): void {
     window.setTimeout(scheduleResize, 120);
     return;
   }
-  const key = `${viewport.cssW}x${viewport.cssH}@${viewport.dpr}+${viewport.insetBottom}+${viewport.insetTop}`;
+  const key = `${viewport.cssW}x${viewport.cssH}@${viewport.dpr}+${viewport.insetBottom}+${viewport.insetTop}+${viewport.insetLeft}`;
   if (key === lastKey || !game.isBooted) return;
   lastKey = key;
   const w = Math.round(viewport.cssW * viewport.dpr);

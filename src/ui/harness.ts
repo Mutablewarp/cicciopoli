@@ -3,6 +3,9 @@
  * ?state=loading|loaddone|title|hud|pause|victory|gameover|banner|icons|logo|rushsetup|rushresults
  * &level=1..6 &fire=&club=&down=enabled|disabled|hidden &bolts=N  &tone=goal|power|danger|info
  * level 6: &low=1 (last 10 s) &win=0 (CORSA TERMINATA) &daily=1 &calm=1 &panel=help|settings|trophies
+ * level 7: state=kitchensetup (&golden=1 &calm=1 &panel=…) | kitchenresults (&win=0 &golden=1 &calm=1) |
+ *          hud&level=7 (&view=counter|kitchen &ticket=long|wide|tale|double|short|none &say=0 &hint=0 &patience=0..1
+ *          &mood=neutral|happy|angry &label=SERVI &fire=enabled|disabled|hidden)
  */
 import type { ButtonState, ControlsLayout, LevelId } from '../contracts';
 import { LEVEL_IDS } from '../contracts';
@@ -10,12 +13,14 @@ import { startTitleRunner } from '../titleRunner';
 import { boltSvg, brieSvg, fistSvg, fuocoSvg, goatSvg, headSvg, hulkHeadSvg, nuggetSvg, pelletSvg, slamSvg, thaiSvg, wingsSvg } from './icons';
 import { createUI } from './index';
 import { LOGO_FACE_VIEWBOX, WORDMARK_VIEWBOX, logoFaceSvg, wordmarkSvg } from './logo';
+import { KITCHEN_HUD, type SampleTicket, drawKitchen, headAnchor, kitchenHud, kitchenResults, kitchenSetup } from './kitchen/samples';
 import { RUSH_HUD, rushResults, rushSetup } from './rush/samples';
 
 const params = new URLSearchParams(location.search);
 const root = document.getElementById('app') as HTMLElement;
 const state = params.get('state') ?? 'hud';
 const level: LevelId = LEVEL_IDS.find((l) => String(l) === params.get('level')) ?? 1;
+const view = params.get('view') === 'kitchen' ? 'kitchen' : 'counter';
 const log = (msg: string) => () => {
   (window as unknown as { __log: string[] }).__log.push(msg);
 };
@@ -50,6 +55,7 @@ function fakeGame(host: HTMLElement): void {
     4: ['#1e1a1e', '#1e1a1e'],
     5: ['#2a0e4a', '#a81c7c', '#f08a3c'],
     6: ['#5a4a52', '#6a5a5e'],
+    7: ['#3a3036', '#3a3036'],
   }[level];
   const hill = level === 1 ? '#489c30' : level === 5 ? '#3a1456' : '#2a1018';
   const ground = level === 1 ? '#a8cc00' : level === 5 ? '#a6d62c' : '#fc7a10';
@@ -63,6 +69,11 @@ function fakeGame(host: HTMLElement): void {
       c.height = h;
       c.style.width = `${r.width}px`;
       c.style.height = `${r.height}px`;
+    }
+    if (level === 7) {
+      drawKitchen(ctx, host, s, view);
+      requestAnimationFrame(frame);
+      return;
     }
     const g = ctx.createLinearGradient(0, 0, 0, h);
     sky.forEach((col, i) => g.addColorStop(i / (sky.length - 1), col));
@@ -125,6 +136,10 @@ function layoutFor(lv: LevelId): ControlsLayout {
     return { level: 3, mode: 'shooter', fire: pick('fire', 'enabled'), club: pick('club', bolts > 0 ? 'enabled' : 'disabled'), down: 'hidden', jumpLabel: 'SALTA', clubCount: bolts };
   }
   if (lv === 4) return { level: 4, mode: 'maze', fire: 'hidden', club: 'hidden', down: 'hidden', jumpLabel: 'SALTA' };
+  if (lv === 7) {
+    const label = params.get('label') ?? (view === 'counter' ? "PRENDI L'ORDINE" : 'SERVI');
+    return { level: 7, mode: 'kitchen', fire: pick('fire', 'enabled'), club: 'hidden', down: 'hidden', jumpLabel: 'SALTA', actionLabel: label };
+  }
   if (lv === 6) return { level: 6, mode: 'driver', fire: 'hidden', club: 'hidden', down: 'hidden', jumpLabel: 'SALTA', swipe: 'mid' };
   if (lv === 5) return { level: 5, mode: 'platform', fire: pick('fire', 'enabled'), club: pick('club', 'enabled'), down: 'hidden', jumpLabel: 'SALTA' };
   return lv === 1
@@ -152,12 +167,25 @@ function mount(): void {
       level,
       hearts: 3,
       maxHearts: 4,
-      score: [161, 1240, 3150, 870, 2260, 2350][level - 1],
+      score: [161, 1240, 3150, 870, 2260, 2350, 4280][level - 1],
       timeMs: 96000,
       progress: 0.42,
       powers: { brie: level === 1, goat: level === 1, thai: false, wings: level === 2, bolt: level === 3, pellet: false },
     });
     if (level === 6) ui.updateHud({ ...RUSH_HUD, timeMs: params.get('low') === '1' ? 8400 : RUSH_HUD.timeMs });
+    if (level === 7) {
+      const k = kitchenHud((params.get('ticket') as SampleTicket | null) ?? 'long', view, {
+        say: params.get('say') !== '0',
+        hint: params.get('hint') !== '0',
+        patience: Number(params.get('patience') ?? '0.7'),
+        mood: (params.get('mood') as 'happy' | 'angry' | null) ?? 'neutral',
+      });
+      // the scene re-anchors the bubble on every resize (the free area moves with the insets)
+      const place = (): void => ui.updateHud({ kitchen: { ...k, say: k.say && { ...k.say, anchor: headAnchor(ui.gameHost) } } });
+      ui.updateHud({ ...KITCHEN_HUD, kitchen: k });
+      window.addEventListener('resize', place);
+      requestAnimationFrame(place);
+    }
     ui.setControls(layoutFor(level));
     if (params.get('anim') === '1') {
       const tick = (): void => {
@@ -213,6 +241,17 @@ function mount(): void {
       // "movimento ridotto" reaches the results through the setup panel, as in the game
       if (params.get('calm') === '1') ui.showRushSetup(rushSetup(false, true), { onPlay: log('play'), onSettings: log('settings'), onMenu: log('menu') });
       ui.showRushResults(rushResults(params.get('win') !== '0', params.get('daily') === '1'), { onRetry: log('retry'), onMenu: log('menu') });
+      break;
+    case 'kitchensetup':
+      ui.showKitchenSetup(kitchenSetup(params.get('golden') === '1', params.get('calm') === '1'), { onPlay: log('play'), onSettings: (st) => log(`settings-${JSON.stringify(st)}`)(), onMenu: log('menu') });
+      if (params.get('panel')) {
+        const i = ['help', 'settings', 'trophies'].indexOf(params.get('panel') ?? '');
+        window.setTimeout(() => document.querySelectorAll<HTMLElement>('.cc-btn--more')[i]?.click(), 400);
+      }
+      break;
+    case 'kitchenresults':
+      if (params.get('calm') === '1') ui.showKitchenSetup(kitchenSetup(false, true), { onPlay: log('play'), onSettings: log('settings'), onMenu: log('menu') });
+      ui.showKitchenResults(kitchenResults(params.get('win') !== '0', params.get('golden') === '1'), { onRetry: log('retry'), onMenu: log('menu') });
       break;
     case 'gameover':
       hudOn();

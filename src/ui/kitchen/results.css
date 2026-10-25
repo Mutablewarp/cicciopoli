@@ -1,0 +1,142 @@
+/* Level 7 results card (kitchen/results.ts) on the level 6 layout (rush/results.css): the gold YOU ARE SO
+   GOLDEN! banner, the takings on a scontrino strip, the 2x2 shift stats, the new achievements. In landscape the
+   achievements fill the score column under the TRAGUARDI SBLOCCATI line, the shift figures the other column. */
+.cc-kres__golden {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 8px 14px 7px;
+  font-family: var(--f-pixel);
+  font-size: clamp(16px, 5.4vw, 26px);
+  line-height: 1.1;
+  color: var(--yellow);
+  background: #2a2006;
+  box-shadow: 0 0 0 3px var(--ink), inset 0 0 0 2px var(--yellow-lo);
+  text-shadow: 0 3px 0 #a86a00, 2px 2px 0 var(--ink);
+  animation: cc-win-pop 620ms cubic-bezier(0.3, 1.6, 0.5, 1) both, cc-kgolden 1.4s 620ms steps(2) infinite;
+}
+.cc-kres__golden span:first-child {
+  font-size: 0.6em;
+  color: #fff3a0;
+}
+@keyframes cc-kgolden {
+  50% {
+    color: #fff3a0;
+    box-shadow: 0 0 0 3px var(--ink), inset 0 0 0 2px var(--yellow), 0 0 18px rgba(252, 212, 0, 0.6);
+  }
+}
+.cc-kres-card.is-golden .cc-bigtitle--rwin {
+  font-size: clamp(16px, 5vw, 24px);
+}
+/* the takings, printed on a strip of the ticket paper */
+.cc-kres__till {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  margin: 2px 0 0;
+  padding: 8px 12px 7px;
+  font-family: var(--f-pixel);
+  color: var(--ink);
+  background: #fbf6ea;
+  box-shadow: 0 0 0 2px var(--ink);
+}
+.cc-kres__till span {
+  font-size: 10px;
+}
+.cc-kres__till b {
+  font-weight: 400;
+  font-size: clamp(14px, 4.6vw, 18px);
+}
+.cc-kres__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+/* the new achievements announced under the score, where they are seen without scrolling; a tap scrolls to the list */
+.cc-kres__unlocked {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 5px 10px 4px;
+  font-family: var(--f-pixel);
+  font-size: 9px;
+  line-height: 1.4;
+  color: var(--yellow);
+  background: #3c3016;
+  box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 2px var(--yellow-lo);
+  cursor: pointer;
+  animation: cc-rise 320ms ease-out calc(var(--reveal) + 1000ms) both;
+}
+.cc-kres__unlocked .cc-glyph {
+  flex: none;
+  width: 15px;
+  height: 16px;
+}
+.cc-kres__stats > div {
+  max-width: none;
+  padding: 6px 4px 7px;
+}
+.cc-kres__stats dt {
+  font-size: 7px;
+  line-height: 1.4;
+}
+.cc-kres__stats dd {
+  margin-top: 5px;
+  font-size: 13px;
+}
+/* the achievements land as one quick cascade right after the TRAGUARDI SBLOCCATI line, not one by one */
+.cc-kres-card .cc-rtoast-item {
+  animation-delay: calc(var(--reveal) + 1000ms + var(--i) * 110ms);
+}
+
+@media (orientation: landscape) {
+  /* two columns: score + achievements | takings, stats, tip, breakdown (the list is the third child of the scroll) */
+  .cc-kres-card .cc-rres__scroll {
+    display: grid;
+    grid-template:
+      'top side' auto
+      'list side' 1fr
+      / minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px 16px;
+  }
+  .cc-kres-card .cc-rres__top {
+    grid-area: top;
+  }
+  .cc-kres-card .cc-rres__side {
+    grid-area: side;
+  }
+  .cc-kres-card .cc-rres__toasts {
+    grid-area: list;
+  }
+  /* either column may run long */
+  .cc-kres-card .cc-rres__more {
+    left: 50%;
+  }
+  /* the four shift stats on one row: the tip stays above the fold */
+  .cc-kres__stats {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  /* the gold banner and TURNO FINITO! on one line each: the TRAGUARDI SBLOCCATI line stays above the fold */
+  .cc-kres__golden {
+    flex-direction: row;
+    justify-content: center;
+    align-items: baseline;
+    gap: 0.5em;
+    font-size: clamp(14px, 2.6vw, 24px);
+  }
+  .cc-kres-card .cc-rres__top br {
+    display: none;
+  }
+  .cc-kres-card.is-golden .cc-bigtitle--rwin {
+    font-size: clamp(14px, 2.6vw, 24px);
+  }
+  .cc-kres__stats > div {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+}

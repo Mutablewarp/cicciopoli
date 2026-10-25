@@ -1,5 +1,5 @@
 /* Title screen — black, official logo + level cards (stacked in portrait, side by side in
-   landscape): six cards, 2x3 in portrait and 3x2 in landscape.
+   landscape): seven cards, 2x4 in portrait and 4x2 in landscape, the 7th a wide card (kitchen/screens.css).
    The logo takes whatever height the cards leave; on short screens the cards shrink instead
    (title-short.css), so the logo and tagline never leave the screen. */
 .cc-title {
@@ -74,7 +74,7 @@
 .cc-title__menu {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: repeat(3, 1fr);
+  grid-template-rows: repeat(4, 1fr);
   gap: 10px;
   width: 100%;
 }
@@ -175,8 +175,9 @@
   text-shadow: 2px 2px 0 var(--ink);
   white-space: nowrap;
 }
-/* level 6: a one-line name, so its two-line tagline keeps the row as tall as the others */
-.cc-level--6 .cc-level__name {
+/* levels 6-7: a one-line name, so the two-line tagline keeps the row as tall as the others */
+.cc-level--6 .cc-level__name,
+.cc-level--7 .cc-level__name {
   min-height: 0;
 }
 .cc-level__tag {
@@ -227,7 +228,7 @@
   color: #6e6862;
 }
 
-/* Portrait: three rows of cards. The brand block never shrinks below the logo + tagline and takes the
+/* Portrait: four rows of cards (the wide 7th a little lower: its text sits beside the thumbnail). The brand block never shrinks below the logo + tagline and takes the
    spare height; on shorter phones the cards give way instead (their thumbnails shrink first, and in an
    uneven row the thumbnails grow to fill it). */
 @media (orientation: portrait) {
@@ -241,7 +242,7 @@
   .cc-title__menu {
     flex: 0 1 auto;
     min-height: 0;
-    grid-template-rows: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, 1fr)) minmax(0, 0.8fr);
   }
   .cc-level__thumb {
     flex: 1 1 auto;
@@ -270,7 +271,7 @@
     padding-top: 4px;
   }
   .cc-title__brand {
-    flex: 0 1 34%;
+    flex: 0 1 30%;
     height: 100%;
   }
   .cc-logo {
@@ -281,7 +282,7 @@
   }
   .cc-title__levels {
     flex: 0 1 auto;
-    width: min(640px, 64vw);
+    width: min(760px, 68vw);
     height: 100%;
     max-height: 460px;
     justify-content: center;
@@ -290,7 +291,7 @@
     flex: 0 1 auto;
     min-height: 0;
     height: 100%;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     grid-template-rows: 1fr 1fr;
   }
   /* the card height is set by the screen: the thumbnail takes what the text leaves */
@@ -303,9 +304,11 @@
     min-height: 0;
     font-size: clamp(8px, 1.25vw, 14px);
   }
+  /* four narrow columns: a long record or hero name wraps instead of leaving the card */
   .cc-level__best,
   .cc-level__hero {
     font-size: clamp(7px, 1vw, 11px);
+    white-space: normal;
   }
   .cc-level__tag {
     font-size: clamp(6px, 0.9vw, 10px);
@@ -342,7 +345,7 @@
 }
 @media (min-width: 1100px) and (min-height: 650px) {
   .cc-title__levels {
-    width: 680px;
+    width: min(780px, 62vw);
   }
   .cc-title__menu {
     gap: 16px;
@@ -367,7 +370,7 @@
 }
 @media (min-width: 1600px) and (min-height: 900px) {
   .cc-title__levels {
-    width: 900px;
+    width: 1000px;
     max-height: 600px;
   }
   .cc-title__menu {

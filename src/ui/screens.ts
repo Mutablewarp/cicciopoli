@@ -1,4 +1,4 @@
-/** Modal end/pause screens: PAUSA, IN BUCA! (victory), GAME OVER; level 6 brings its own cards (rush/*). */
+/** Modal end/pause screens: PAUSA, IN BUCA! (victory), GAME OVER; levels 6 and 7 bring their own cards (rush/*, kitchen/*). */
 import type { GameOverInfo, LevelId, VictoryInfo } from '../contracts';
 import { button, el, formatTime, seeded } from './dom';
 import { heroHtml, mountHero } from './hero';
@@ -12,9 +12,10 @@ export const LEVEL_NAMES: Record<LevelId, string> = {
   4: 'CICCIO-MAN',
   5: 'SPACCA TUTTO',
   6: "CICCIO'S RUSH",
+  7: "CICCIO'S KITCHEN",
 };
 /** Tagline under a level name on its title card. */
-export const LEVEL_TAGS: Partial<Record<LevelId, string>> = { 6: 'MISSIONE CONSEGNA A PALERMO' };
+export const LEVEL_TAGS: Partial<Record<LevelId, string>> = { 6: 'MISSIONE CONSEGNA A PALERMO', 7: "IL TURNO DA CICCIO'S" };
 /** Name of the hero of a level, shown under its title on the end screens. */
 export const LEVEL_HEROES: Partial<Record<LevelId, string>> = { 5: 'CICCIO SPACCA!' };
 export const levelTitle = (l: LevelId): string => `0${l} · ${LEVEL_NAMES[l]}`;
@@ -37,6 +38,7 @@ const PAUSE_KEYS: [string[], string] = [['ESC', 'P'], 'pausa'];
 
 /** Desktop key legend per level (title: the platform keys plus the shooter extras). */
 export function keyLegend(level?: LevelId): string {
+  if (level === 7) return keys([['INVIO', 'SPAZIO'], "prendi l'ordine / servi"], [['MOUSE'], 'cucina'], PAUSE_KEYS);
   if (level === 6) return keys([['←', '→', 'A', 'D'], 'corsia'], [['↓', 'S', 'SPAZIO'], 'frena'], PAUSE_KEYS);
   if (level === 5) return keys([['←', '→', 'A', 'D'], 'muovi'], [['↑', 'W', 'SPAZIO'], 'salta'], [['K', 'C'], 'pugno'], [['J', 'X'], 'spacca'], PAUSE_KEYS);
   if (level === 3) return keys([['←', '→', 'A', 'D'], 'muovi'], [['SPAZIO', 'J', 'X'], 'fuoco'], [['K', 'C'], 'fulmine'], PAUSE_KEYS);

@@ -20,6 +20,16 @@ export class Menu {
   private armedAt = 0;
   private done = false;
   private onBack: (() => void) | undefined;
+  /** Last mouse position seen anywhere on the page. */
+  private mouse = { x: NaN, y: NaN };
+
+  constructor() {
+    const track = (e: PointerEvent): void => {
+      if (e.pointerType === 'mouse') this.mouse = { x: e.clientX, y: e.clientY };
+    };
+    window.addEventListener('pointermove', track, { capture: true, passive: true });
+    window.addEventListener('pointerdown', track, { capture: true, passive: true });
+  }
 
   /** Buttons (or links) in reading order; Enter / Space click the selected one. */
   open(items: HTMLElement[], opts: MenuOptions = {}): void {
@@ -27,9 +37,14 @@ export class Menu {
     this.armedAt = performance.now() + (opts.armMs ?? 0);
     this.done = false;
     this.onBack = opts.onBack;
+    // a button that opens under a resting cursor (the one that clicked) is not a hover: wait for the mouse to move
+    let rest: { x: number; y: number } | null = this.mouse;
     items.forEach((b, i) => {
-      b.onpointerenter = (e) => {
-        if (e.pointerType === 'mouse') this.select(i, false);
+      b.onpointermove = (e) => {
+        if (e.pointerType !== 'mouse' || i === this.sel) return;
+        if (rest && e.clientX === rest.x && e.clientY === rest.y) return;
+        rest = null;
+        this.select(i, false);
       };
     });
     this.select(opts.initial ?? 0, false);

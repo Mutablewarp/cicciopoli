@@ -1,9 +1,15 @@
-/** Top HUD: hearts, coin + score, level progress, power chips, TIME (a countdown in level 6) and pause button. */
+/**
+ * Top HUD: hearts, coin + score, level progress, power chips, TIME (a countdown in level 6) and pause button.
+ * Level 7 adds its layer over the play area (kitchen/hud.ts: ticket, bubble, hint), drives the rail by customers served
+ * and shows INCASSO € in place of TIME.
+ */
 import type { HudState, LevelId, PowerState } from '../contracts';
 import { el, onActivate, setText } from './dom';
 import { FLAG_SVG, PAUSE_GLYPH, boltSvg, brieSvg, goatSvg, headSvg, heartSvg, hulkHeadSvg, nuggetSvg, pelletSvg, thaiSvg, wingsSvg } from './icons';
+import { type KitchenLayer, createKitchenLayer } from './kitchen/hud';
+import { faceLogoHtml } from './kitchen/icons';
 import { createRushHud } from './rush/hud';
-import { finishSvg, truckSvg } from './rush/icons';
+import { finishSvg, starSvg, truckSvg } from './rush/icons';
 import { LOW_TIME_MS, countdownLabel } from './rush/text';
 
 type PowerKey = keyof PowerState;
@@ -26,12 +32,15 @@ const LEVEL_CHIPS: Record<LevelId, readonly PowerKey[]> = {
   5: [],
   // level 6 powers live in their own row (rush/hud.ts)
   6: [],
+  7: [],
 };
 
-/** Progress marker and finish icon per level: Ciccio's head, the green head (5), the truck and a checkered flag (6). */
+/** Progress marker and finish icon per level: Ciccio's head, the green head (5), the truck and a checkered flag (6),
+ *  the owner's original face logo and the end of the shift as a gold star (7). */
 const MARKERS: Partial<Record<LevelId, { skin: string; marker: () => string; flag: string }>> = {
   5: { skin: 'hulk', marker: hulkHeadSvg, flag: FLAG_SVG },
   6: { skin: 'truck', marker: truckSvg, flag: finishSvg() },
+  7: { skin: 'kitchen', marker: faceLogoHtml, flag: starSvg() },
 };
 const HEAD = { skin: 'head', marker: headSvg, flag: FLAG_SVG };
 
@@ -44,6 +53,8 @@ export interface Hud {
   onPause(cb: () => void): void;
   /** Level of the last HUD update (pause card key legend). */
   readonly level: LevelId;
+  /** level 7 layer over the play area (index.ts mounts it in .cc-play) */
+  readonly kitchen: KitchenLayer;
 }
 
 export function createHud(): Hud {
@@ -62,8 +73,9 @@ export function createHud(): Hud {
   track.appendChild(fill);
   const marker = el('div', 'cc-progress__marker', headSvg());
   const rush = createRushHud();
+  const kitchen = createKitchenLayer();
   const rail = el('div', 'cc-progress__rail');
-  rail.append(track, rush.pins, marker);
+  rail.append(track, rush.pins, kitchen.pins, marker);
   const flag = el('div', 'cc-progress__flag', FLAG_SVG);
   progress.append(rail, flag);
   const powers = el('div', 'cc-powers');
@@ -75,7 +87,7 @@ export function createHud(): Hud {
     powers.appendChild(chip);
   }
   const mid = el('div', 'cc-hud__mid');
-  mid.append(progress, powers);
+  mid.append(progress, powers, kitchen.till);
 
   const time = el('div', 'cc-time', '<span class="cc-time__label">TIME</span>');
   const timeNum = el('span', 'cc-time__num');
@@ -138,6 +150,8 @@ export function createHud(): Hud {
       flag.innerHTML = skin.flag;
     }
     root.classList.toggle('is-rush', level === 6);
+    root.classList.toggle('is-kitchen', level === 7);
+    kitchen.show(level === 7, !root.classList.contains('is-hidden'));
     let shown = 0;
     for (const c of CHIPS) {
       const chip = chipEls.get(c.key) as HTMLElement;
@@ -190,17 +204,21 @@ export function createHud(): Hud {
     else if (s.level !== undefined && s.level !== cur.level) countdown = false;
     if (s.timeMs !== undefined) cur.timeMs = s.timeMs;
     if ((s.timeMs !== undefined || s.countdown !== undefined) && cur.timeMs >= 0) renderTime(cur.timeMs);
-    if (s.progress !== undefined) {
-      const q = Math.round(Math.max(0, Math.min(1, s.progress)) * 400) / 400;
+    const level = s.level ?? cur.level;
+    // level 7: the rail is the shift, customers served out of its size
+    const served = s.kitchen?.served;
+    const progress = level !== 7 ? s.progress : served && served.done / Math.max(1, served.total);
+    if (progress !== undefined) {
+      const q = Math.round(Math.max(0, Math.min(1, progress)) * 400) / 400;
       if (q !== shownProgress) {
         shownProgress = q;
         fill.style.transform = `scaleX(${q})`;
         marker.style.left = `${q * 100}%`;
       }
     }
-    const level = s.level ?? cur.level;
     const p = s.powers;
     rush.update(s);
+    if (s.kitchen) kitchen.update(s.kitchen);
     const powersChanged = !!p && CHIPS.some((c) => !!p[c.key] !== !!cur.powers[c.key]);
     if (powersChanged || level !== cur.level) {
       if (p) cur.powers = { ...p };
@@ -214,6 +232,7 @@ export function createHud(): Hud {
     root,
     setVisible(v) {
       root.classList.toggle('is-hidden', !v);
+      kitchen.show(cur.level === 7, v);
     },
     update,
     onPause(cb) {
@@ -222,5 +241,6 @@ export function createHud(): Hud {
     get level() {
       return cur.level;
     },
+    kitchen,
   };
 }

@@ -363,3 +363,142 @@ AUDIO lane      src/audio/** (9 sfx, 'rush' music: Palermo street-food tarantell
                 setMusicMuted)
 integrator      src/contracts.ts, src/art/rush/keys.ts, src/game/save.ts, docs/**, scripts/e2e.mjs
 ```
+
+---------------------------------------------------------------------------------------
+## 9. Level 7 — CICCIO'S KITCHEN · IL TURNO DA CICCIO'S (owner request, 2026-10-24)
+Owner, in short: the player **cooks the burgers and serves the customers**, like the "Good Pizza,
+Great Pizza" screenshots he sent (customer at the counter → kitchen → serve). While serving, the
+background is **the stainless / corrugated-steel counter of Ciccio's La Lumia plus the greenery of
+Ciccio's Sperlinga**. Everything in Italian. **The menu is the real online Ciccio's Palermo menu**:
+Ciccio's burgers, classic burgers, the starters, and the real order forms **PANINO SINGOLO or MENÙ**
+(menù = burger + patatine + starter a scelta + bibita, **+5,00 € on the burger price**). The player
+**piastra** (griddles) the meat, puts the **bacon**, the **cheddar**, the toppings, the sauce.
+"Dinamica accattivante, interessante, CHIARA soprattutto", it must keep you glued to the screen.
+Final award like **"YOU ARE SO GOLDEN"**. Same pixel-art style as the other levels. Publish when done.
+
+References (ref/, not shipped): `level7_lalumia_counter.jpg` (corrugated steel counter + steel top,
+a row of warm bare bulbs on a black beam, white neon "CICCIO'S" letters, two black menu boards
+CLASSIC BURGER / CICCIO'S BURGER / STARTERS / CICCIO'S MENU, round white disc with the face logo,
+white tiles with blue grout), `level7_sperlinga_plants.jpg` (trailing pothos / ferns on black iron
+arches with circle motifs, red-brick wall panels, thin ring lights on the ceiling, dark planters,
+black tables and chairs, CICCIOPOLY poster: Ciccio as the board-game tycoon, orange neon script),
+`level7_gp_*.png` (Good Pizza flow: counter dialog, prep board, topping bins, oven / conveyor),
+`ciccios_menu_palermo.json` (the real menu, fetched 2026-10-24 from api.cicciosburger.it, Palermo
+stores La Lumia / Sperlinga / Stadio). The game data lives in `src/config/kitchenMenu.ts` and must
+not drift from it: **never invent a product, an ingredient or a price**.
+
+**Naming / legal:** same rules as §8 (no "Tesla", "Elon", "SpaceX", "Starman", "Hulk", "Pac-Man",
+"Mondello" in visible text; no prizes, discounts, QR codes, analytics; "Demo concept non ufficiale"
+stays). The € amounts are in-game takings only. No alcoholic drinks in the game (the beers on the
+real menu are left out: family game). Drink cans are generic coloured cans with the drink name, never
+a copied brand logo.
+
+### The loop (scene key 'kitchen', LevelId 7, music 'kitchen')
+One **turno** (shift) = **8 customers**, one at a time (~25–45 s each), ~4 minutes.
+1. **BANCONE (counter view)** — POV from behind the counter, like Good Pizza: at the bottom the
+   stainless-steel counter top with its corrugated-steel lip (La Lumia), at the top the black beam with
+   the row of warm bulbs and the white "CICCIO'S" neon; behind the customer the dining room of
+   Sperlinga (plants on black iron arches, brick panels, ring lights, black tables, blue-grout tiles,
+   the CICCIOPOLY poster, the round face-logo disc on a pillar). The doorbell rings, a customer walks
+   in, stops at the counter (waist-up, expressive) and orders in a speech bubble, in natural Italian
+   with a Sicilian touch: "Ciao Ciccio! Un BRIE in menù: nuggets e Coca Cola, grazie!" The **ticket**
+   (scontrino) appears. Button **PRENDI L'ORDINE** → the camera slides to the kitchen.
+2. **CUCINA (kitchen view)** — 3/4 top-down, brushed-steel worktop, Good Pizza layout. The ticket stays
+   pinned on top: burger name, SINGOLO / MENÙ, the ingredient checklist (ticks as items go on, a red
+   ✗ for a wrong item), menù parts (patatine, starter, bibita), the customer's patience bar (face goes
+   from happy to angry). Stations, all on screen at once, no scrolling, both orientations:
+   - **PIASTRA** (griddle, 3 slots): tap the meat bin → a burger lands and sizzles. A cook ring fills:
+     CRUDO → **PERFETTO** (golden window, "ding" + sparkle) → troppo cotto → BRUCIATO (smoke). Burgers
+     need **2 sides**: tap to **GIRA** (flip) inside the window, tap again when side 2 is perfect: it goes
+     onto the burger. Double-patty burgers need two. **Bacon and guanciale** also go on the griddle
+     (one side, faster). Burnt items: tap = into the bin.
+   - **FRIGGITRICE** (fryer, 2 baskets): chicken burgers (Crispy Goat, Super Crispy, Gomu Gomu), the
+     patatine and the menù starter. Tap the bin → the basket drops and bubbles; lift it when golden.
+   - **MONTAGGIO** (assembly): the bottom bun is already on the paper; tap a bin / bottle / a cooked
+     item to put it on the stack. The burger grows as a **side-view stack** (every layer readable),
+     cheddar drapes and melts on a hot burger. Tap the top layer to take it back off. Tap the top bun
+     to **close**: the burger is wrapped in Ciccio's paper and goes on the tray.
+   - **Bins** shown = the ones this order needs + a few decoys (so the player reads the ticket), never a
+     wall of 30 bins. Sauce bottles (Salsa Ciccio's, white, BBQ, maionese, special jalapeño).
+   - **BIBITE**: a fridge rack with the right drink + decoys. **Patatine / starter** come from the fryer.
+   - Button **SERVI** (enabled once a wrapped burger is on the tray) → camera slides back to the counter.
+3. **SERVIZIO** — the tray goes over the counter, the customer tastes: 1–5 stars, a reaction line
+   ("MIZZICA, CHE BONTÀ!", "Talìa che panino!", "Ma... e il bacon?", "È crudo!"), the real price
+   ("+14,90 €") and a tip if fast; then walks out and the next one comes in.
+Rating per order: right ingredients (missing / wrong / extra), cooking quality (raw, perfect, burnt),
+menù parts right (patatine, starter, drink), speed (patience left). A customer whose patience runs out
+leaves angry ("Troppo lento, me ne vado!") = −1 heart; **3 hearts**, 0 = "TURNO CHIUSO!" early.
+Streak of 5-star orders = **COMBO** multiplier. Points come mainly from well-made orders (scaled by the
+real price), with bonuses for speed and every PERFETTO cook. All numbers in `src/config/kitchen.ts`.
+
+Order deck (seeded): 1 HAMBURGER singolo (guided), 2 CHEESEBURGER in menù (guided: fryer + drink),
+3 BACON CHEESEBURGER singolo (bacon on the griddle), then 5 random Ciccio's burgers of growing
+complexity (at least one fried chicken burger, one double patty, ~half in menù), real prices.
+Menù starter choices (real rule): nuggets, meatball, chicken pop corn, green nuggets (green only for the
+GREEN menù). Drinks: acqua naturale / frizzante, Fuze Tea pesca / limone, Lemon Soda, Sprite, Fanta,
+Coca Cola, Coca Cola Zero, Chinotto.
+
+**First run**: customers 1–2 are a guided tutorial (a pixel hand points at the next step, patience is
+frozen, one short line per step: "Tocca la carne: va sulla piastra!", "Girala quando è dorata!", …).
+Never repeated. Setting **AIUTI** (default on): the next useful bin / station pulses softly.
+
+**End of the shift** → stars: 1 = ≥ 3 customers served with ≥ 3 stars; 2 = all 8 served, average
+≥ 3.5; 3 = all 8 served, average ≥ 4.5, nobody left angry. **3 stars = the golden finale**: the bulbs
+flash, a golden burger trophy descends in sparkles and confetti, huge golden lettering
+**"YOU ARE SO GOLDEN!"**, Ciccio's face logo in gold, then the results. Results (DOM): TURNO FINITO! /
+TURNO CHIUSO!, incasso €, clienti serviti, stelle medie, piastrate perfette, breakdown, stars, record,
+new achievements (PRIMO PANINO, PIASTRA D'ORO = 10 perfect burgers, RE DEL BACON, MENÙ COMPLETO,
+NESSUNO SCONTENTO, YOU ARE SO GOLDEN), one tip ("Gira la carne nella zona dorata!"), RIPROVA (primary),
+CONDIVIDI RISULTATO, SCOPRI IL MENÙ CICCIO'S (https://cicciosburger.it/, new tab), MENU.
+Pre-shift panel (DOM): CICCIO'S KITCHEN / IL TURNO DA CICCIO'S, a big pixel burger, record, GIOCA ORA,
+COME SI GIOCA (4 illustrated steps: ordine, piastra, monta, servi), IMPOSTAZIONI (aiuti, vibration,
+reduced motion, music). Persistence: best via SaveStore.recordWin(7, …) at the end of any shift with
+≥ 1 customer served; settings, achievements, tutorial flag in 'cicciopoli.kitchen.v1'.
+Controls: everything by tap (mouse on desktop); drag is a bonus, never required. Tap targets ≥ 44 CSS px
+on a 375 px wide phone. The one big action button (PRENDI L'ORDINE / SERVI) is a DOM control
+(ControlsMode 'kitchen', fires the 'fire' action; keyboard Enter / Space too); Esc / P pause.
+Deferred (named, not built): Happy Ciccio's kids menù, separate starters / sauces orders, two-burger
+orders, daily challenge, online leaderboard.
+
+### v5 ownership
+```
+KITCHEN-COUNTER-ART lane  src/art/kitchen/counter/**  (dining-room backgrounds, counter top, bulb beam,
+                          neon, face disc, register, customers, golden award art)
+KITCHEN-STATION-ART lane  src/art/kitchen/station/**  (worktop, griddle, fryer, bins, layers, cooking
+                          states, sauces, cans, tray, wraps, fx, pointer)
+KITCHEN-GAME lane         src/game/kitchen/**, src/config/kitchen.ts, src/main.ts (only: import + register)
+UI lane                   src/ui/** (7th title card + thumb, 'kitchen' controls mode, kitchen HUD: ticket,
+                          speech bubble, patience; kitchen setup + results screens)
+AUDIO lane                src/audio/** (kitchen sfx + 'kitchen' music + golden fanfare)
+integrator                src/contracts*.ts, src/art/kitchen.ts, src/art/kitchen/keys.ts,
+                          src/config/kitchenMenu.ts, src/game/save.ts, docs/**, scripts/e2e.mjs, README.md
+```
+
+### v5.1 — owner feedback on level 7 (2026-10-24, evening) — overrides the points above where they differ
+New references (ref/): `level7_gp_build_toppings.png` + `level7_gp_build_cut.png` (Good Pizza prep screens),
+`level7_pov_order.png` (Ciccio's Sperlinga seen from behind the steel counter: the ORDER view),
+`level7_wrap_tray.jpg` (real Ciccio's tray: kraft-paper burger wraps printed "CICCIO'S", white paper boats for
+fries / starters with a light golf line pattern, black tray with a "CICCIO'S" printed liner, sauce cups),
+`ciccio_face_logo2.jpg` (the owner's face logo again; same as ciccio_face_logo.jpg).
+1. **Kitchen = the Good Pizza prep screen**: "la persona deve facilmente scegliere gli ingredienti". A big central
+   assembly board with the burger growing on it, BIG ingredient pans framing it in a neat panel (a top row and a
+   side column, like the sauce / cheese / pepperoni pans around the dough), the bin at the edge, the cooking
+   stations (griddle, fryer) on the other side like the oven conveyor. Pans big, contents recognisable, labels
+   readable, nothing tiny, nothing far away.
+2. **Order view = the POV photo**: polished steel counter top in the foreground, the Sperlinga dining room behind
+   (pergola with ring lights, plants, brick, orange neon, CICCIOPOLY poster, window, black tables, blue-grout
+   tiles); the customer stands in it. No empty bands.
+3. **More customer types** so every criterion of the real menu is satisfied: 10 regulars (keys.ts CUSTOMERS),
+   each with tastes mapped to a slice of the menu (classic lovers, big eater, chicken fan, spicy lover, vegetarian
+   for the GREEN + green nuggets, gourmet for TALÈ / ZOLA / TUMA / PANCETTA, tourist, …); together they order all
+   17 burgers, singolo and menù, every starter and drink; consecutive shifts favour what the player has not cooked
+   yet, so a few shifts show the whole menu.
+4. **Packaging identical to the real one**: the wrapped burger is a crumpled kraft-paper parcel printed with rows
+   of "CICCIO'S"; fries and starters come in white paper boats with the light golf pattern; tray liner printed
+   "CICCIO'S". Drawn in HIGH RESOLUTION (canvas 2D at screen resolution, like the level 3 jet logo), not pixel art,
+   so the lettering is crisp; the food inside stays pixel art.
+5. **The Ciccio's logo is always the ORIGINAL** (public/brand/ciccio-face-hd.png, 358x512, cut from the owner's
+   file; ciccio-face.png 167x239 for small uses), never redrawn in pixels: face disc on the wall, golden finale
+   (gold-tinted original), setup / title / results wherever the face appears.
+Ownership addition: BRAND lane = src/game/kitchen/brand/** (high-resolution packaging + logo textures for the
+scene, with a small API the game lane calls).

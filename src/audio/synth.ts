@@ -103,6 +103,8 @@ function shape(p: AudioParam, t: number, a: number, hold: number, d: number, pea
   const end = decayAt + d;
   const tc = d / 4;
   const fadeAt = end - Math.min(0.01, d / 4);
+  // a new GainNode is 1 until its first event: a source starting a sub-sample earlier leaked one loud sample
+  p.value = 0;
   p.setValueAtTime(0, t);
   p.linearRampToValueAtTime(peak, t + a);
   if (hold > 0) p.setValueAtTime(peak, decayAt);

@@ -35,6 +35,7 @@ function pluckEnvelope(gain: AudioParam, t: number, tOff: number, vol: number, p
   const period = p.trem ? 1 / p.trem : Infinity;
   let level = vol;
   let last = t;
+  gain.value = 0; // silent before the first pluck (see shape() in synth.ts)
   gain.setValueAtTime(0, t);
   for (let tk = t; tk < tOff - 0.02; tk += period) {
     if (tk > t) {

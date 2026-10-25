@@ -107,6 +107,19 @@ export function brandImage(cls: string, src: string): { img: HTMLImageElement; r
   return { img, ready };
 }
 
+const HTML_ESCAPES: Readonly<Record<string, string>> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+
+/**
+ * `text` as HTML for the pixel font. Press Start 2P draws À È Ì Ò Ù as small lowercase letters or drops the accent
+ * (MENÙ, BONTÀ, TALÈ): each becomes its plain capital in a `.cc-acc` span that draws the accent on the pixel grid
+ * (styles.css). Everything else is escaped.
+ */
+export function pixelHtml(text: string): string {
+  return text
+    .replace(/[&<>"]/g, (c) => HTML_ESCAPES[c])
+    .replace(/[ÀÈÉÌÒÙ]/g, (c) => `<span class="cc-acc${c === 'É' ? ' is-acute' : ''}">${c.normalize('NFD')[0]}</span>`);
+}
+
 /** Sets textContent only when it changes (HUD writes run every frame). */
 export function setText(node: Node, text: string): void {
   if (node.textContent !== text) node.textContent = text;

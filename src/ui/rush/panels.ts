@@ -4,22 +4,16 @@
  * A panel takes the menu over until INDIETRO / Esc hands it back to the card.
  */
 import type { RushAchievementCard, RushSettings } from '../../contracts';
-import { button, el, scrollPane } from '../dom';
+import { button, el, pixelHtml, scrollPane } from '../dom';
 import type { Menu } from '../menu';
 import { legendSvg, trophySvg } from './icons';
 import { LEGEND, RULES, SWIPE_OPTIONS, isSecret } from './text';
 
 export type PanelKind = 'help' | 'settings' | 'trophies';
 
-export interface PanelHost {
-  /** card the panel slides over (its body may scroll on tiny screens) */
-  readonly body: HTMLElement;
-  readonly menu: Menu;
-  readonly achievements: readonly RushAchievementCard[];
+export interface PanelHost extends SlideHost {
   settings(): RushSettings;
   setSettings(s: RushSettings): void;
-  /** gives the menu back to the card */
-  back(): void;
 }
 
 const TITLES: Readonly<Record<PanelKind, string>> = { help: 'COME SI GIOCA', settings: 'IMPOSTAZIONI', trophies: 'TRAGUARDI' };
@@ -103,14 +97,14 @@ function settings(content: HTMLElement, host: PanelHost): HTMLElement[] {
   return [...segBtns, ...switches.map((s) => s.b)];
 }
 
-function trophies(list: readonly RushAchievementCard[]): HTMLElement {
+/** TRAGUARDI list, shared with level 7 (kitchen/panels.ts). */
+export function trophyList(list: readonly RushAchievementCard[]): HTMLElement {
   const ul = el('ul', 'cc-trophies');
   for (const a of list) {
     const secret = isSecret(a);
     const li = el('li', `cc-trophy${a.unlocked ? ' is-unlocked' : ''}${secret ? ' is-secret' : ''}`, trophySvg());
     const text = el('span', 'cc-trophy__text');
-    const name = el('strong');
-    name.textContent = secret ? '???' : a.name;
+    const name = el('strong', '', pixelHtml(secret ? '???' : a.name));
     const desc = el('span');
     desc.textContent = secret ? 'Traguardo segreto: scoprilo giocando.' : a.desc;
     text.append(name, desc);
@@ -120,20 +114,31 @@ function trophies(list: readonly RushAchievementCard[]): HTMLElement {
   return ul;
 }
 
-export function openPanel(kind: PanelKind, host: PanelHost): void {
+/** What a sliding panel needs from its card (level 6 here, level 7 in kitchen/panels.ts). */
+export interface SlideHost {
+  /** card the panel slides over (its body may scroll on tiny screens) */
+  readonly body: HTMLElement;
+  readonly menu: Menu;
+  readonly achievements: readonly RushAchievementCard[];
+  /** gives the menu back to the card */
+  back(): void;
+}
+
+/**
+ * Slides a panel over the card: its title (TRAGUARDI adds the won / total count), `content` filled by `fill`
+ * (which returns its own buttons, in reading order) and INDIETRO; the menu starts on `initial` (default INDIETRO).
+ */
+export function slidePanel(kind: string, titleText: string, host: SlideHost, fill: (content: HTMLElement) => HTMLElement[], initial?: number): void {
   const panel = el('section', `cc-rpanel cc-rpanel--${kind}`);
-  panel.setAttribute('aria-label', TITLES[kind]);
+  panel.setAttribute('aria-label', titleText);
   const title = el('h3', 'cc-rpanel__title');
-  title.textContent = TITLES[kind];
+  title.textContent = titleText;
   if (kind === 'trophies') {
     const won = host.achievements.filter((a) => a.unlocked).length;
     title.append(el('span', 'cc-rpanel__count', `${won}/${host.achievements.length}`));
   }
   const content = el('div', 'cc-rpanel__content');
-  const buttons: HTMLElement[] = [];
-  if (kind === 'help') content.append(help());
-  else if (kind === 'settings') buttons.push(...settings(content, host));
-  else content.append(trophies(host.achievements));
+  const buttons = fill(content);
 
   const close = (): void => {
     panel.classList.add('is-out');
@@ -145,7 +150,21 @@ export function openPanel(kind: PanelKind, host: PanelHost): void {
   panel.append(title, content, back);
   scrollPane(content, content);
   host.body.append(panel);
+  host.menu.open(buttons, { onBack: close, initial: initial ?? buttons.length - 1 });
+}
+
+export function openPanel(kind: PanelKind, host: PanelHost): void {
   // settings: the cursor starts on the stored sensitivity (the one drawn as chosen)
   const chosen = SWIPE_OPTIONS.findIndex((o) => o.value === host.settings().swipe);
-  host.menu.open(buttons, { onBack: close, initial: kind === 'settings' ? Math.max(0, chosen) : buttons.length - 1 });
+  slidePanel(
+    kind,
+    TITLES[kind],
+    host,
+    (content) => {
+      if (kind === 'settings') return settings(content, host);
+      content.append(kind === 'help' ? help() : trophyList(host.achievements));
+      return [];
+    },
+    kind === 'settings' ? Math.max(0, chosen) : undefined,
+  );
 }

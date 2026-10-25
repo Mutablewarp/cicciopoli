@@ -233,3 +233,26 @@ describe('driver mode', () => {
     expect(s.downHeld).toBe(true);
   });
 });
+
+describe('kitchen mode', () => {
+  it('Enter and Space press the action button once (fire), never jump; a held key does not repeat it', () => {
+    const s = new InputState();
+    for (const code of ['Enter', 'Space', 'NumpadEnter']) {
+      expect(keyDown(s, code, false, 'kitchen')).toBe(true);
+      expect([s.consume('fire'), s.jumpHeld]).toEqual([true, false]);
+      keyDown(s, code, true, 'kitchen');
+      expect(s.consume('fire')).toBe(false);
+      s.release(`k:${code}`);
+    }
+  });
+
+  it('while the button is disabled its keys are swallowed, not latched', () => {
+    const s = new InputState();
+    expect(keyDown(s, 'Enter', false, 'kitchen', false)).toBe(true);
+    expect(s.consume('fire')).toBe(false);
+  });
+
+  it('Enter means nothing outside the kitchen', () => {
+    expect(keyDown(new InputState(), 'Enter', false, 'platform')).toBe(false);
+  });
+});

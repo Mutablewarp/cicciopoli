@@ -2,7 +2,7 @@
  * Tracker-style song format, compiler and lookahead scheduler.
  *
  * Song data (src/audio/tracks/*.ts) is written as text grids, one token per step:
- *   note "C#5" | "-" hold previous note | "." rest; bars separated by "|".
+ *   note "C#5" | chord "F3+A3+C4" | "-" hold previous note(s) | "." rest; bars separated by "|".
  *   Drums: letters k(ick) s(nare) h(at) o(pen/tambourine), combinable ("ko"), UPPERCASE = accent.
  * A channel string shorter than its pattern is repeated (e.g. a 1-bar drum loop).
  */
@@ -81,13 +81,13 @@ export function compileSong(src: SongSrc): Song {
   const total = tokensByCh[0].length;
   const steps: SongEvent[][] = Array.from({ length: total }, () => []);
   CHANNELS.forEach((ch, ci) => {
-    let open: { len: number } | null = null;
+    let open: { len: number }[] = [];
     tokensByCh[ci].forEach((tok, i) => {
       if (tok === '-') {
-        if (open) open.len++;
+        for (const ev of open) ev.len++;
         return;
       }
-      open = null;
+      open = [];
       if (tok === '.') return;
       if (ch === 'drums') {
         for (const c of tok) {
@@ -97,11 +97,13 @@ export function compileSong(src: SongSrc): Song {
         }
         return;
       }
-      const midi = noteToMidi(tok);
-      if (midi === null) throw new Error(`audio: bad note "${tok}" in ${ch}`);
-      const ev = { ch, midi, len: 1 };
-      steps[i].push(ev);
-      open = ev;
+      for (const note of tok.split('+')) {
+        const midi = noteToMidi(note);
+        if (midi === null) throw new Error(`audio: bad note "${tok}" in ${ch}`);
+        const ev = { ch, midi, len: 1 };
+        steps[i].push(ev);
+        open.push(ev);
+      }
     });
   });
   return { src, stepDur: stepDuration(src.bpm, src.stepsPerBeat), total, steps };

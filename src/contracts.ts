@@ -12,20 +12,22 @@
 
 /**
  * 1 Le Colline · 2 Alette Crunchy (platform) · 3 Ciccio's Invaders (shooter) · 4 Ciccio-Man (maze) ·
- * 5 Spacca Tutto (platform brawler) · 6 Ciccio's Rush (burger-truck delivery driving)
+ * 5 Spacca Tutto (platform brawler) · 6 Ciccio's Rush (burger-truck delivery driving) ·
+ * 7 Ciccio's Kitchen (cook and serve the real menu)
  */
-export type LevelId = 1 | 2 | 3 | 4 | 5 | 6;
+export type LevelId = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
-export const LEVEL_IDS: readonly LevelId[] = [1, 2, 3, 4, 5, 6];
+export const LEVEL_IDS: readonly LevelId[] = [1, 2, 3, 4, 5, 6, 7];
 
 /** Phaser scene key that runs each level (main.ts starts it with data { level }). */
-export const LEVEL_SCENE: Readonly<Record<LevelId, 'game' | 'invaders' | 'maze' | 'rush'>> = {
+export const LEVEL_SCENE: Readonly<Record<LevelId, 'game' | 'invaders' | 'maze' | 'rush' | 'kitchen'>> = {
   1: 'game',
   2: 'game',
   3: 'invaders',
   4: 'maze',
   5: 'game',
   6: 'rush',
+  7: 'kitchen',
 };
 
 export type Dir4 = 'up' | 'down' | 'left' | 'right';
@@ -163,6 +165,8 @@ export interface HudState {
   powerLeft?: number;
   /** level 6: clean-driving combo multiplier; 1 or less hides it */
   combo?: number;
+  /** level 7: order ticket, customer bubble, patience, served pins, hint line */
+  kitchen?: KitchenHud;
 }
 
 export type ButtonState = 'hidden' | 'disabled' | 'enabled';
@@ -173,8 +177,10 @@ export type ButtonState = 'hidden' | 'disabled' | 'enabled';
  * maze     (L4):   4-way cross pad + swipes on the game area; no action buttons.
  * driver   (L6):   ◀ ▶ lane buttons (each tap = one consumeDir press) + big FRENA held = downHeld;
  *                  swipes on the game area also change lane when `swipe` is not false.
+ * kitchen  (L7):   no pads (everything is tapped on the canvas); one big action button labelled
+ *                  `actionLabel` (PRENDI L'ORDINE / SERVI …) whose state is `fire`; a press = 'fire'.
  */
-export type ControlsMode = 'platform' | 'shooter' | 'maze' | 'driver';
+export type ControlsMode = 'platform' | 'shooter' | 'maze' | 'driver' | 'kitchen';
 
 /** Swipe sensitivity on the game area (maze / driver); false = swipes off, buttons only. */
 export type SwipeSetting = false | 'low' | 'mid' | 'high';
@@ -193,6 +199,8 @@ export interface ControlsLayout {
   clubCount?: number;
   /** maze / driver: swipe sensitivity, omitted = 'mid' */
   swipe?: SwipeSetting;
+  /** kitchen: text of the action button ("PRENDI L'ORDINE", "SERVI") */
+  actionLabel?: string;
 }
 
 export interface TitleInfo {
@@ -218,6 +226,8 @@ export type BannerTone = 'info' | 'power' | 'danger' | 'goal';
 
 export * from './contracts-rush';
 import type { RushDriverId, RushResultInfo, RushSettings, RushSetupInfo } from './contracts-rush';
+export * from './contracts-kitchen';
+import type { KitchenHud, KitchenResultInfo, KitchenSettings, KitchenSetupInfo } from './contracts-kitchen';
 
 export interface GameUI {
   /** Full-screen loading indicator. progress 0..1, null hides it. */
@@ -245,6 +255,13 @@ export interface GameUI {
   ): void;
   /** Level 6 results: breakdown, stars, tip, RIPROVA, CONDIVIDI RISULTATO, SCOPRI IL MENÙ CICCIO'S, MENU. */
   showRushResults(info: RushResultInfo, h: { onRetry(): void; onMenu(): void }): void;
+  /** Level 7 pre-shift panel: record, GIOCA ORA, COME SI GIOCA, IMPOSTAZIONI (onSettings on every change). */
+  showKitchenSetup(
+    info: KitchenSetupInfo,
+    h: { onPlay(): void; onSettings(s: KitchenSettings): void; onMenu(): void },
+  ): void;
+  /** Level 7 results: breakdown, stars, takings, tip, RIPROVA, CONDIVIDI RISULTATO, SCOPRI IL MENÙ CICCIO'S, MENU. */
+  showKitchenResults(info: KitchenResultInfo, h: { onRetry(): void; onMenu(): void }): void;
   /** HUD pause button pressed (touch or click). */
   onPauseButton(cb: () => void): void;
   /** Element the Phaser canvas must exactly fill. */
@@ -269,9 +286,14 @@ export type SfxName =
   | 'punch' | 'smash' | 'slam' | 'rubble' | 'roar' | 'rip'
   // level 6 truck: lane change whoosh, brake squeal, cartoon crash, delivery cha-ching, combo up,
   // power expiring, traffic horn, rocket booster, new personal record
-  | 'lane' | 'brake' | 'crash' | 'deliver' | 'combo' | 'expire' | 'horn' | 'jet' | 'record';
+  | 'lane' | 'brake' | 'crash' | 'deliver' | 'combo' | 'expire' | 'horn' | 'jet' | 'record'
+  // level 7 kitchen: meat on the griddle, flip with the spatula, basket into hot oil, PERFETTO ding,
+  // burning warning, topping on the stack, sauce squeeze, paper wrap, tray served, till cha-ching,
+  // happy customer, unhappy customer, shop doorbell, item into the bin, YOU ARE SO GOLDEN fanfare
+  | 'sizzle' | 'flip' | 'fry' | 'ding' | 'burn' | 'plop' | 'squeeze' | 'wrap' | 'serve' | 'cash'
+  | 'yum' | 'grumble' | 'doorbell' | 'trash' | 'golden';
 
-export type MusicName = 'title' | 'hills' | 'inferno' | 'invaders' | 'maze' | 'rampage' | 'rush';
+export type MusicName = 'title' | 'hills' | 'inferno' | 'invaders' | 'maze' | 'rampage' | 'rush' | 'kitchen';
 
 export interface GameAudio {
   /** Call from inside a user gesture handler; safe to call many times. */
@@ -317,8 +339,11 @@ export interface ViewportInfo {
    * phones). The camera keeps the walking line above it. Read from `--play-inset-b`.
    */
   insetBottom: number;
-  /** CSS px at the top covered by the overlaid HUD bar (landscape / desktop). `--play-inset-t`. */
+  /** CSS px at the top covered by the overlaid HUD bar (landscape / desktop). `--play-inset-t`.
+   * Level 7 portrait: HUD + order ticket. */
   insetTop: number;
+  /** CSS px at the left covered by a docked panel (level 7 landscape: the order ticket column). `--play-inset-l`. */
+  insetLeft?: number;
 }
 
 export interface AppControl {

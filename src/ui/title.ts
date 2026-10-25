@@ -1,10 +1,14 @@
-/** Title screen: official Ciccio's logo, six level cards (2x3 portrait, 3x2 landscape), sound toggle, runner strip. */
+/**
+ * Title screen: official Ciccio's logo, seven level cards (2 columns in portrait, 4 in landscape; the newest, level 7,
+ * is a wide card), sound toggle, runner strip.
+ */
 import type { LevelId, TitleInfo } from '../contracts';
 import { LEVEL_IDS } from '../contracts';
 import { PAL } from '../art/pixel';
 import { cutoutReady } from './cutout';
 import { brandImage, el, onActivate, pixelSvg } from './dom';
 import { SPEAKER_OFF, SPEAKER_ON } from './icons';
+import { kitchenArt } from './kitchen/art';
 import { LOGO_URL } from './loading';
 import { Menu } from './menu';
 import { rushArt } from './rush/art';
@@ -16,8 +20,8 @@ const GRASS_TILE = pixelSvg(
   { g: PAL.grass, G: PAL.grassMid, k: PAL.hillOutline },
 ).replace('<svg class=""', '<svg xmlns="http://www.w3.org/2000/svg"');
 
-/** The truck art is built after the title has painted and the runner started. */
-const TRUCK_DELAY_MS = 600;
+/** The truck and kitchen art are built after the title has painted and the runner started. */
+const ART_DELAY_MS = 600;
 
 export interface TitleHandlers {
   onStart(level: LevelId): void;
@@ -58,7 +62,7 @@ export function createTitle(onChange: () => void): Title {
   brand.append(logo, el('p', 'cc-title__sub', 'THE BURGER ADVENTURE'));
 
   const bests = new Map<LevelId, HTMLElement>();
-  let truckThumb: HTMLElement | null = null;
+  const thumbs = new Map<LevelId, HTMLElement>();
   const levelBtns = LEVEL_IDS.map((lv) => {
     const b = el('button', `cc-btn cc-level cc-level--${lv}`);
     b.type = 'button';
@@ -69,7 +73,7 @@ export function createTitle(onChange: () => void): Title {
     thumb.append(el('span', 'cc-level__num', `0${lv}`), el('span', 'cc-level__go', '▶'));
     // level 5: the owner's cut-out replaces the pixel stand-in once it has loaded
     if (lv === 5) void cutoutReady().then((ok) => thumb.classList.toggle('has-cutout', ok));
-    if (lv === 6) truckThumb = thumb;
+    thumbs.set(lv, thumb);
     const text = el('span', 'cc-level__text');
     text.append(el('span', 'cc-level__name', LEVEL_NAMES[lv]));
     if (LEVEL_HEROES[lv]) text.append(el('span', 'cc-level__hero', LEVEL_HEROES[lv]));
@@ -79,15 +83,24 @@ export function createTitle(onChange: () => void): Title {
     onActivate(b, menu.guard(() => handlers?.onStart(lv)));
     return b;
   });
-  /** Level 6: the art pack's side-view truck replaces the pixel van (built lazily, after the title is up). */
-  function loadTruck(): void {
-    const thumb = truckThumb;
-    if (!thumb || thumb.classList.contains('has-truck')) return;
-    void rushArt().then((art) => {
-      if (!art) return;
-      thumb.querySelector('.cc-thumb__truck')?.setAttribute('href', art.truck);
-      thumb.classList.add('has-truck');
-    });
+  /** The art packs' side-view truck (6) and counter scene (7) replace the pixel stand-ins (built lazily, after the title is up). */
+  function loadArt(): void {
+    const truck = thumbs.get(6);
+    if (truck && !truck.classList.contains('has-truck')) {
+      void rushArt().then((art) => {
+        if (!art) return;
+        truck.querySelector('.cc-thumb__truck')?.setAttribute('href', art.truck);
+        truck.classList.add('has-truck');
+      });
+    }
+    const kitchen = thumbs.get(7);
+    if (kitchen && !kitchen.classList.contains('has-art')) {
+      void kitchenArt().then((art) => {
+        if (!art) return;
+        kitchen.querySelector('.cc-thumb__kitchen')?.setAttribute('href', art.thumb);
+        kitchen.classList.add('has-art');
+      });
+    }
   }
 
   const grid = el('nav', 'cc-title__menu');
@@ -124,7 +137,7 @@ export function createTitle(onChange: () => void): Title {
       root.hidden = false;
       isOpen = true;
       menu.open(levelBtns, { armMs: 250 });
-      window.setTimeout(loadTruck, TRUCK_DELAY_MS);
+      window.setTimeout(loadArt, ART_DELAY_MS);
       onChange();
     },
     hide() {

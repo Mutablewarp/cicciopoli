@@ -1,0 +1,336 @@
+/* Level 7 play area, part 2: the hint strip and the action button (kitchen/action.ts) in the bottom zone, the
+   customer's speech bubble (kitchen/bubble.ts), the served pins on the HUD rail, the HUD's INCASSO €, the landscape
+   column, and the touch band, which has nothing to hold in level 7 (no pads: everything is tapped on the canvas, the
+   button lives in the zone). */
+.is-touch .cc-controls[data-mode='kitchen'] {
+  display: none;
+}
+.cc-kzone {
+  --dock: bottom;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  /* inside the covered strip: the scene's lowest labels stay clear of the hint's ink outline */
+  padding-top: 6px;
+}
+/* two lines of room are always kept: most hints wrap once on a phone (a longer one grows over the game, the
+   covered strip stays put) */
+.cc-khint {
+  position: relative;
+  width: 100%;
+  height: calc(3em + 12px);
+  margin: 0;
+}
+.cc-khint > span {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  max-width: 100%;
+  padding: 6px 10px 5px;
+  line-height: 1.5;
+  text-align: center;
+  white-space: normal;
+  color: var(--yellow);
+  background: rgba(24, 24, 26, 0.9);
+  box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 2px #3c3016;
+  transform: translateX(-50%);
+  width: max-content;
+}
+.cc-khint:not(.is-on) > span {
+  visibility: hidden;
+}
+
+/* ------------------------------------------------------------ action button */
+.cc-kact {
+  width: min(100%, 380px);
+  min-height: 60px;
+  pointer-events: auto;
+  touch-action: none;
+}
+.cc-kact.is-selected::after {
+  display: none;
+}
+.cc-kact__label {
+  font-size: clamp(14px, 4.4vw, 18px);
+}
+.cc-kact[data-state='enabled'] .cc-kact__label {
+  animation: cc-go 1.1s steps(2) infinite;
+}
+/* hidden keeps its room: the covered strips do not change between customers */
+.cc-kact[data-state='hidden'] {
+  visibility: hidden;
+}
+.cc-kact[data-state='disabled'] {
+  --face: #3a3a42;
+  --face-hi: #4a4a52;
+  --face-lo: #26262c;
+  --text: #8a8278;
+  cursor: default;
+}
+.cc-kact[data-state='disabled'] .cc-btn__label {
+  text-shadow: none;
+}
+.cc-kact__key {
+  padding: 3px 4px 2px;
+  font-family: var(--f-pixel);
+  font-size: 9px;
+  color: var(--cream-hi);
+  background: rgba(20, 20, 20, 0.55);
+}
+.is-touch .cc-kact__key,
+.cc-kact[data-state='disabled'] .cc-kact__key {
+  display: none;
+}
+
+/* ------------------------------------------------------------ speech bubble */
+.cc-kbubble {
+  --tail: 24px;
+  --bg: #fff;
+  --rim: transparent;
+  position: absolute;
+  left: 0;
+  top: 0;
+  /* --room: the width the placement gives a long line or a bubble beside the head (kitchen/bubble.ts) */
+  max-width: min(var(--room, 300px), calc(100% - 32px));
+  padding: 10px 12px 9px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--bg);
+  box-shadow: 0 0 0 3px var(--ink), inset 0 0 0 3px var(--rim), 0 6px 0 3px rgba(0, 0, 0, 0.3);
+}
+.cc-kbubble__rest {
+  visibility: hidden;
+}
+.cc-kbubble[data-mood='happy'] {
+  --bg: #f4ffe4;
+  --rim: #8ee05a;
+}
+.cc-kbubble[data-mood='angry'] {
+  --bg: #ffe6e0;
+  --rim: #ff7a6a;
+  color: #8a0a10;
+}
+/* tail: an ink triangle with the bubble colour inside, pointing at the top of the head */
+.cc-kbubble::before,
+.cc-kbubble::after {
+  content: '';
+  position: absolute;
+}
+.cc-kbubble[data-side='above']::before,
+.cc-kbubble[data-side='above']::after {
+  top: 100%;
+  left: var(--tail);
+  width: 22px;
+  height: 17px;
+  margin-left: -11px;
+  background: var(--ink);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.cc-kbubble[data-side='above']::after {
+  width: 12px;
+  height: 9px;
+  margin-left: -6px;
+  background: var(--bg);
+}
+.cc-kbubble[data-side='right']::before,
+.cc-kbubble[data-side='right']::after,
+.cc-kbubble[data-side='left']::before,
+.cc-kbubble[data-side='left']::after {
+  top: var(--tail);
+  width: 17px;
+  height: 22px;
+  margin-top: -11px;
+  background: var(--ink);
+}
+.cc-kbubble[data-side='right']::before,
+.cc-kbubble[data-side='right']::after {
+  right: 100%;
+  clip-path: polygon(100% 0, 100% 100%, 0 50%);
+}
+.cc-kbubble[data-side='left']::before,
+.cc-kbubble[data-side='left']::after {
+  left: 100%;
+  clip-path: polygon(0 0, 0 100%, 100% 50%);
+}
+.cc-kbubble[data-side='right']::after,
+.cc-kbubble[data-side='left']::after {
+  width: 9px;
+  height: 12px;
+  margin-top: -6px;
+  background: var(--bg);
+}
+
+/* ------------------------------- the owner's face logo (kitchen/icons.ts faceLogoHtml) */
+/* the original image on a white disc, smooth at any size: the HUD marker, the results tip, the pre-shift counter */
+.cc-klogo {
+  display: block;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 1px #c8c8c8;
+}
+/* margins in % follow the disc's own width (padding would follow the disc's container) */
+.cc-klogo img {
+  display: block;
+  width: 100%;
+  height: 84%;
+  margin-top: 9%;
+  object-fit: contain;
+  image-rendering: auto;
+}
+.cc-progress__marker .cc-klogo {
+  width: 100%;
+  height: 100%;
+}
+.cc-rres__tip .cc-klogo {
+  flex: none;
+  width: 34px;
+  height: 34px;
+}
+.cc-kres-card.is-golden .cc-rres__tip .cc-klogo {
+  background: #ffd84a;
+}
+/* on the pre-shift counter's steel, left of the burger (the counter is the stage's bottom 30%) */
+.cc-kstage__logo {
+  position: absolute;
+  left: 6%;
+  bottom: 4%;
+  height: 24%;
+  aspect-ratio: 1;
+}
+.cc-kstage__logo .cc-klogo {
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------------------------------------------------- customers served pins */
+.cc-kpins {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.cc-hud:not(.is-kitchen) .cc-kpins {
+  display: none;
+}
+.cc-kpin {
+  position: absolute;
+  top: calc(50% - var(--u) * 8);
+  width: calc(var(--u) * 6);
+  height: calc(var(--u) * 5);
+  margin-left: calc(var(--u) * -3);
+  opacity: 0.45;
+  filter: grayscale(1) drop-shadow(0 2px 0 rgba(0, 0, 0, 0.55));
+}
+.cc-kpin svg {
+  width: 100%;
+  height: 100%;
+}
+.cc-kpin.is-done {
+  opacity: 1;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.55));
+}
+.cc-kpin.is-next {
+  opacity: 1;
+  filter: grayscale(0.4) drop-shadow(0 2px 0 rgba(0, 0, 0, 0.55));
+  animation: cc-pin-bob 0.8s steps(2) infinite;
+}
+
+/* ---------------------------------- INCASSO € in place of TIME, under the rail */
+/* one line beside / under the served rail (portrait: level with the score), not TIME's corner: "145,20 €" is twice
+   TIME's digits and would squeeze the eight pins */
+.cc-ktill {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.cc-hud.is-kitchen .cc-ktill {
+  display: flex;
+}
+.cc-hud.is-kitchen .cc-time {
+  display: none;
+}
+.cc-ktill .cc-time__label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.cc-ktill__coin {
+  width: calc(var(--u) * 6);
+  height: calc(var(--u) * 6);
+}
+.cc-ktill .cc-time__num {
+  font-size: calc(var(--u) * 6);
+}
+
+/* ------------------------------------------------------- landscape column */
+@media (orientation: landscape) {
+  /* the column: under the HUD bar, the ticket on top, the hint + button at its foot */
+  .cc-kcol {
+    top: var(--play-inset-t, 0px);
+    right: auto;
+    width: min(calc(35% - 1px), 330px);
+    padding: 6px 0 calc(var(--safe-b) + 8px) calc(var(--safe-l) + 8px);
+    gap: 8px;
+  }
+  .cc-kslot,
+  .cc-kzone {
+    --dock: left;
+  }
+  .cc-kzone {
+    padding-top: 0;
+  }
+  .cc-kslot {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    align-items: stretch;
+  }
+  .cc-kticket {
+    width: 100%;
+  }
+  .cc-kact {
+    width: 100%;
+    min-height: 54px;
+  }
+  .cc-kact__label {
+    padding: 0 6px 3px;
+    font-size: clamp(11px, 1.5vw, 16px);
+  }
+  .cc-khint {
+    height: auto;
+    min-height: 30px;
+  }
+  .cc-khint > span {
+    position: static;
+    display: block;
+    width: auto;
+    transform: none;
+    padding: 5px 8px 4px;
+  }
+}
+/* big screens: the same ticket and bubble, one size up */
+@media (orientation: landscape) and (min-width: 1100px) and (min-height: 650px) {
+  .cc-kitchen {
+    font-size: 15px;
+  }
+  .cc-kticket__title {
+    font-size: 18px;
+  }
+  .cc-kline__box {
+    width: 19px;
+    height: 19px;
+  }
+  .cc-kcol {
+    width: min(calc(35% - 1px), 420px);
+  }
+  .cc-kbubble {
+    max-width: min(var(--room, 380px), calc(100% - 32px));
+  }
+  .cc-kact {
+    min-height: 64px;
+  }
+}

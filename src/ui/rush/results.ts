@@ -7,14 +7,15 @@
 import type { RushResultInfo } from '../../contracts';
 import { button, el, scrollPane } from '../dom';
 import { ARROW_DOWN, headSvg } from '../icons';
+import type { Menu } from '../menu';
 import { type Modal, confetti } from '../screens';
 import { trophySvg } from './icons';
 import { starsHtml } from './stage';
 import { ORDERS_PER_RUN, decimal, points } from './text';
 
 export const MENU_URL = 'https://cicciosburger.it/';
-/** Score count-up; stars, record and toasts follow it (CSS delays from --reveal). */
-const COUNT_MS = 1100;
+/** Score count-up; stars, record and toasts follow it (CSS delays from --reveal). Shared with level 7 (kitchen/results.ts). */
+export const COUNT_MS = 1100;
 const TOAST_MS = 1800;
 
 const label = (text: string): string => `<span class="cc-btn__label">${text}</span>`;
@@ -25,7 +26,7 @@ const text = (tag: 'p' | 'span' | 'dt' | 'dd' | 'strong' | 'b', cls: string, val
 };
 
 /** Eases the number from 0 to `to` (ease-out cubic); stops if the card is closed. */
-function countUp(node: HTMLElement, to: number): void {
+export function countUp(node: HTMLElement, to: number): void {
   const t0 = performance.now();
   const step = (now: number): void => {
     const k = Math.min(1, (now - t0) / COUNT_MS);
@@ -87,9 +88,10 @@ function stats(info: RushResultInfo): HTMLElement {
   return dl;
 }
 
-function breakdown(info: RushResultInfo): HTMLElement {
+/** Score breakdown rows (shared with level 7). */
+export function breakdown(rows: ReadonlyArray<{ label: string; points: number }>): HTMLElement {
   const dl = el('dl', 'cc-rres__rows');
-  for (const r of info.breakdown) {
+  for (const r of rows) {
     const d = el('div');
     d.append(text('dt', '', r.label), text('dd', '', `${r.points >= 0 ? '+' : ''}${points(r.points)}`));
     dl.append(d);
@@ -144,12 +146,24 @@ export function showRushResults(modal: Modal, info: RushResultInfo, h: { onRetry
   const tip = el('p', 'cc-rres__tip', headSvg());
   tip.append(text('span', '', info.tip));
   const side = el('div', 'cc-rres__side');
-  side.append(breakdown(info), tip, toasts(info));
+  side.append(breakdown(info.breakdown), tip, toasts(info));
 
   const scroll = el('div', 'cc-rres__scroll');
   scroll.append(top, side);
   scrollPane(scroll, body); // fade + ▼ while more details hide under the buttons
 
+  const bar = resultButtons(menu, info.shareText, h, "SCOPRI IL MENU CICCIO'S");
+  body.append(scroll, bar.root);
+
+  modal.present('rush-results', card, bar.items, 650, h.onMenu);
+  if (!calm) countUp(num, info.score);
+}
+
+/**
+ * RIPROVA, CONDIVIDI RISULTATO (with its Copiato! note), the menu link (new tab) and MENU, with the ▼ cue of the
+ * scrolling details; `items` in menu order. Shared with level 7.
+ */
+export function resultButtons(menu: Menu, shareText: string, h: { onRetry(): void; onMenu(): void }, linkLabel: string): { root: HTMLElement; items: HTMLElement[] } {
   const note = el('p', 'cc-rres__note');
   note.setAttribute('role', 'status');
   let noteTimer = 0;
@@ -163,16 +177,13 @@ export function showRushResults(modal: Modal, info: RushResultInfo, h: { onRetry
   };
 
   const retry = button('cc-btn--primary cc-btn--go', label('RIPROVA'), menu.guard(h.onRetry));
-  const shareBtn = button('cc-btn--share', label('CONDIVIDI RISULTATO'), menu.guard(() => void share(info.shareText, toast), false));
+  const shareBtn = button('cc-btn--share', label('CONDIVIDI RISULTATO'), menu.guard(() => void share(shareText, toast), false));
   const back = button('cc-btn--menu', label('MENU'), menu.guard(h.onMenu));
-  const link = el('a', 'cc-btn cc-btn--link', label("SCOPRI IL MENU CICCIO'S"));
+  const link = el('a', 'cc-btn cc-btn--link', label(linkLabel));
   link.href = MENU_URL;
   link.target = '_blank';
   link.rel = 'noopener';
-  const btns = el('div', 'cc-rres__btns');
-  btns.append(retry, shareBtn, link, back, note, el('span', 'cc-rres__more', ARROW_DOWN));
-  body.append(scroll, btns);
-
-  modal.present('rush-results', card, [retry, shareBtn, link, back], 650, h.onMenu);
-  if (!calm) countUp(num, info.score);
+  const root = el('div', 'cc-rres__btns');
+  root.append(retry, shareBtn, link, back, note, el('span', 'cc-rres__more', ARROW_DOWN));
+  return { root, items: [retry, shareBtn, link, back] };
 }

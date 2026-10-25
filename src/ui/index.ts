@@ -20,6 +20,10 @@ import './rush/stage.css';
 import './rush/setup.css';
 import './rush/results.css';
 import './rush/panels.css';
+import './kitchen/hud.css';
+import './kitchen/play.css';
+import './kitchen/screens.css';
+import './kitchen/results.css';
 import './title.css';
 import './title-short.css';
 import type { GameInput, GameUI } from '../contracts';
@@ -33,6 +37,8 @@ import { trackPointerMode } from './layout';
 import { createLoading } from './loading';
 import { showRushResults } from './rush/results';
 import { showRushSetup } from './rush/setup';
+import { showKitchenResults } from './kitchen/results';
+import { showKitchenSetup } from './kitchen/setup';
 import { createModal } from './screens';
 import { createTitle } from './title';
 
@@ -46,8 +52,10 @@ export function createUI(root: HTMLElement): { ui: GameUI; input: GameInput } {
   const play = el('div', 'cc-play');
   const gameHost = el('div', 'game-host');
   const bannerLayer = el('div', 'cc-banner-layer');
-  play.append(gameHost, bannerLayer);
-  const controls = createControls(input, (m, swipe) => hub.setMode(m, swipe));
+  // level 7: ticket, bubble and hint over the game, its action button docked with them (insets measure them all)
+  play.append(gameHost, hud.kitchen.root, bannerLayer);
+  const controls = createControls(input, (m, swipe, fire) => hub.setMode(m, swipe, fire));
+  hud.kitchen.zone.append(controls.kitchen);
   stage.append(hud.root, play, controls.root);
   hub.bindSwipe(gameHost);
 
@@ -87,9 +95,14 @@ export function createUI(root: HTMLElement): { ui: GameUI; input: GameInput } {
   document.getElementById('cc-splash')?.remove(); // static splash from index.html
   const insets = trackInsets(play, gameHost, hud.root, controls.root);
   const banner = createBanner(bannerLayer);
-  // level 6 "movimento ridotto": remembered from the setup panel for the results card
+  // levels 6-7 "movimento ridotto": remembered from the setup panel for the results card (and the level 7 HUD)
   let calm = false;
   const reducedMotion = (): boolean => calm || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const setCalm = (on: boolean): void => {
+    calm = on;
+    hud.kitchen.setCalm(reducedMotion());
+  };
+  hud.kitchen.setCalm(reducedMotion());
   trackPointerMode(shell, () => insets.update());
 
   const ui: GameUI = {
@@ -132,16 +145,27 @@ export function createUI(root: HTMLElement): { ui: GameUI; input: GameInput } {
       }
     },
     showRushSetup: (info, h) => {
-      calm = info.settings.reducedMotion;
+      setCalm(info.settings.reducedMotion);
       showRushSetup(modal, info, {
         ...h,
         onSettings: (s) => {
-          calm = s.reducedMotion;
+          setCalm(s.reducedMotion);
           h.onSettings(s);
         },
       });
     },
     showRushResults: (info, h) => showRushResults(modal, info, h, reducedMotion()),
+    showKitchenSetup: (info, h) => {
+      setCalm(info.settings.reducedMotion);
+      showKitchenSetup(modal, info, {
+        ...h,
+        onSettings: (s) => {
+          setCalm(s.reducedMotion);
+          h.onSettings(s);
+        },
+      });
+    },
+    showKitchenResults: (info, h) => showKitchenResults(modal, info, h, reducedMotion()),
     onPauseButton: (cb) => hud.onPause(cb),
     gameHost,
     titleRunnerCanvas: title.canvas,

@@ -1,13 +1,15 @@
 /**
  * Touch controls per mode: platform (◀▶ + SALTA/VOLA, GOAT, THAI, SCENDI), shooter
- * (◀▶ + FUOCO, FULMINE with charges), maze (4-way cross pad; swipes live in input) and driver
- * (◀ ▶ lane taps + a held FRENA; swipes live in input). Every pointer is captured by the control
+ * (◀▶ + FUOCO, FULMINE with charges), maze (4-way cross pad; swipes live in input), driver
+ * (◀ ▶ lane taps + a held FRENA; swipes live in input) and kitchen (no pads: one big action button,
+ * mounted in the kitchen HUD and shown with a mouse too). Every pointer is captured by the control
  * it started on and tracked by pointerId.
  */
 import type { ButtonState, ControlsLayout, ControlsMode, LevelId, SwipeSetting } from '../contracts';
 import type { HoldAction, InputState } from '../input';
 import { el } from './dom';
 import { type Pad, capture, createCrossPad, createSlidePad, primary, touchSrc } from './dpad';
+import { createKitchenAction } from './kitchen/action';
 import { ARROW_DOWN, ARROW_UP, LOCK_SVG, boltSvg, fuocoSvg } from './icons';
 import { type DiscColors, pixelDisc } from './pixeldisc';
 import { createLanePad } from './rush/lanes';
@@ -49,10 +51,13 @@ interface ActButton {
 
 export interface Controls {
   readonly root: HTMLElement;
+  /** level 7 action button (index.ts mounts it in the kitchen HUD) */
+  readonly kitchen: HTMLElement;
   set(layout: ControlsLayout | null): void;
 }
 
-export function createControls(input: InputState, onMode: (m: ControlsMode, swipe?: SwipeSetting) => void): Controls {
+/** `fire` = the mode's fire action is enabled (kitchen: Enter / Space press the action button only then). */
+export function createControls(input: InputState, onMode: (m: ControlsMode, swipe: SwipeSetting | undefined, fire: boolean) => void): Controls {
   const root = el('div', 'cc-controls is-off');
   root.addEventListener('contextmenu', (e) => e.preventDefault());
   const isOff = (): boolean => root.classList.contains('is-off');
@@ -60,6 +65,7 @@ export function createControls(input: InputState, onMode: (m: ControlsMode, swip
   const cross = createCrossPad(input, isOff);
   const lanes = createLanePad(input, isOff);
   const pads: Pad[] = [slide, cross, lanes];
+  const kitchen = createKitchenAction(input);
 
   const actZone = el('div', 'cc-act-zone');
   const jumpLabel = el('b', 'cc-act__name', 'SALTA');
@@ -185,7 +191,7 @@ export function createControls(input: InputState, onMode: (m: ControlsMode, swip
   function statesFor(l: ControlsLayout, mode: ControlsMode): Record<ActKey, ButtonState> {
     const none: Record<ActKey, ButtonState> = { jump: 'hidden', fire: 'hidden', club: 'hidden', down: 'hidden', shoot: 'hidden', bolt: 'hidden', brake: 'hidden' };
     if (mode === 'shooter') return { ...none, shoot: l.fire, bolt: l.club };
-    if (mode === 'maze') return none;
+    if (mode === 'maze' || mode === 'kitchen') return none;
     if (mode === 'driver') return { ...none, brake: 'enabled' };
     return { ...none, jump: 'enabled', fire: l.fire, club: l.club, down: l.down };
   }
@@ -199,7 +205,9 @@ export function createControls(input: InputState, onMode: (m: ControlsMode, swip
 
   return {
     root,
+    kitchen: kitchen.root,
     set(layout) {
+      kitchen.set(layout);
       if (!layout) {
         for (const p of pads) p.release();
         for (const b of Object.values(buttons)) releaseAct(b);
@@ -213,7 +221,7 @@ export function createControls(input: InputState, onMode: (m: ControlsMode, swip
         for (const p of pads) p.release();
         root.dataset.mode = mode;
       }
-      onMode(mode, layout.swipe);
+      onMode(mode, layout.swipe, layout.fire === 'enabled');
       root.classList.remove('is-off');
       root.dataset.level = String(layout.level);
       setWeaponSkins(mode === 'platform' ? layout.level : 1);
