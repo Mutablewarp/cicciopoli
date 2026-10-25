@@ -10,6 +10,9 @@ export default defineConfig({
     chunkSizeWarningLimit: 1600,
     rollupOptions: {
       input: 'index.html',
+      // Rollup 4.64 tree-shaking folded a mutated object property to its first value and emptied the level 8
+      // touch button handlers in production only (state set through Object.values()); the size cost is ~1.5 kB.
+      treeshake: false,
       output: {
         manualChunks: { phaser: ['phaser'] },
       },

@@ -6,15 +6,21 @@
  * no uncaught page errors. Desktop and phone (portrait + landscape).
  *
  *   node scripts/e2e.mjs            exit code 0 = pass
+ *   node scripts/e2e.mjs --dist     the same on the production build in dist/ (npm run build first): the
+ *                                   minified bundle can differ from the dev server (a bundler bug once
+ *                                   emptied the level 8 touch buttons only in production)
  */
-import { createServer } from 'vite';
+import { createServer, preview } from 'vite';
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const server = await createServer({ root, logLevel: 'error', server: { port: 0, host: '127.0.0.1', hmr: false, watch: null } });
-await server.listen();
+const dist = process.argv.includes('--dist');
+const server = dist
+  ? await preview({ root, logLevel: 'error', preview: { port: 0, host: '127.0.0.1' } })
+  : await createServer({ root, logLevel: 'error', server: { port: 0, host: '127.0.0.1', hmr: false, watch: null } });
+if (!dist) await server.listen();
 const base = `http://127.0.0.1:${server.httpServer.address().port}/`;
 const browser = await chromium.launch();
 const failures = [];
@@ -27,7 +33,7 @@ const VIEWS = [
 
 async function waitFor(page, expr, ms, arg = null) {
   try {
-    await page.waitForFunction(expr, arg, { timeout: ms });
+    await page.waitForFunction(expr, arg, { timeout: dist ? ms * 2 : ms }); // the headless production run is slower
     return true;
   } catch {
     return false;
@@ -108,6 +114,20 @@ for (const view of VIEWS) {
     check(await cstate(() => window.__game?.state?.().session === 'map' && !!document.querySelector('.cc-cmap__go')), 'level 8 boss map');
     await page.evaluate(() => window.__game.boss('brie'));
     check(await cstate(() => window.__game.state().session === 'round' && window.__game.state().round === 'fight', 30000), 'level 8 first boss fight starts');
+    if (view.hasTouch) {
+      // real touch taps on the enamel buttons: SALTA lifts Ciccio, ARMA changes the weapon
+      await page.evaluate(() => window.__game.god(true));
+      const tapBtn = async (sel) => {
+        const box = await page.locator(sel).boundingBox();
+        if (box) await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+        return !!box;
+      };
+      await tapBtn('.cc-tbtn--jump');
+      check(await cstate(() => window.__game.state().hero.y < 300, 1500), 'level 8 SALTA (touch) jumps');
+      const before = await page.evaluate(() => window.__game.state().weapon);
+      await tapBtn('.cc-tbtn--swap');
+      check(await waitFor(page, (w) => window.__game.state().weapon !== w, 1500, before), 'level 8 ARMA (touch) swaps the weapon');
+    }
     await page.keyboard.down('KeyJ');
     await page.waitForTimeout(800);
     await page.keyboard.up('KeyJ');
