@@ -5,9 +5,9 @@
  */
 import type Phaser from 'phaser';
 import { ARENA, type Vec } from '../../api';
-import { BODY, DT_FACE, SHOULDER } from './art';
 import { CWAVE } from './bits';
-import { HANDS, LEG, POSE } from './limbs';
+import { LEG, POSE } from './look';
+import { bigRig, handL as rigHand, miniRig, rigTop } from './rig';
 import { arc, ballistic, ease } from '../oldschool/kit/geometry';
 import { SHOCK } from '../oldschool/kit/fxart';
 import { part } from '../oldschool/kit/rig';
@@ -21,22 +21,13 @@ export function shake(c: DtCtx, i: number, ms: number): void {
   if (!c.world.reducedMotion) c.world.shake(i, ms);
 }
 
-/** world position of the big burger's front (left) hand in a pose */
+/** world position of the big burger's glove (the left hand, toward the player) in a pose */
 function handL(p: DtPose, pose: number): Vec {
-  const [hx, hy] = HANDS[pose];
-  const bottom = p.by - DT.legH + DT.hipOverlap;
-  return { x: p.bx + (SHOULDER.lx - BODY.w / 2) * p.sx + hx, y: bottom + (SHOULDER.y - BODY.footY) * p.sy + hy };
-}
-
-/** a mini's shoulder (both minis carry their small arm on the left) */
-export function miniShoulder(m: MiniPose): Vec {
-  return { x: m.x - 38 * m.sx, y: m.y - DT.legH * DT.mini.legScale - 24 * m.sy };
+  return rigHand(bigRig(p), 1, pose);
 }
 
 function miniHand(m: MiniPose, pose: number): Vec {
-  const s = miniShoulder(m);
-  const [hx, hy] = HANDS[pose];
-  return { x: s.x + hx * DT.mini.armScale, y: s.y + hy * DT.mini.armScale };
+  return rigHand(miniRig(m), DT.mini.scale, pose);
 }
 
 function wave(c: DtCtx, x: number, dir: -1 | 1, pink: boolean, speed: number): void {
@@ -89,10 +80,8 @@ function frisbee(c: DtCtx): Move {
       const pose = fired >= 0 && m.t - at < 200 ? POSE.throw : fired >= 1 ? POSE.hangL : windUp;
       if (mini) {
         c.pose.m[1].arm = pose;
-        c.pose.m[1].face = DT_FACE.shout;
       } else {
         c.pose.armL = pose;
-        c.pose.face = DT_FACE.shout;
       }
     },
   };
@@ -126,14 +115,12 @@ function cheddar(c: DtCtx): Move {
       if (mini) {
         c.pose.m.forEach((mp, i) => {
           const hit = slam && (fired % 2 === 0 ? 1 : 0) === i;
-          mp.face = DT_FACE.shout;
           mp.sx = hit ? 1.18 : 1 + 0.06 * u;
           mp.sy = hit ? 0.8 : 1 - 0.08 * u;
         });
         return;
       }
       const p = c.pose;
-      p.face = DT_FACE.shout;
       p.armL = slam ? POSE.downL : POSE.upL;
       p.armR = slam ? POSE.downR : POSE.upR;
       p.legs = LEG.crouch;
@@ -199,7 +186,6 @@ function whip(c: DtCtx): Move {
       const arm = cracking ? POSE.throw : !cocked ? POSE.across : order[next] === 'high' ? POSE.cockHigh : POSE.downR;
       if (mini) {
         const p = c.pose.m[0];
-        p.face = DT_FACE.shout;
         p.arm = arm;
         p.x += w.leanDx * 0.6 * u;
         p.sx = cracking ? 1.1 : 1 - 0.07 * u + shiver;
@@ -207,7 +193,6 @@ function whip(c: DtCtx): Move {
         return;
       }
       const p = c.pose;
-      p.face = DT_FACE.shout;
       p.armL = arm;
       p.bx += cracking ? -w.leanDx / 2 : w.leanDx * u;
       p.sx = cracking ? 1.08 : 1 - 0.06 * u + shiver;
@@ -237,7 +222,6 @@ function stomp(c: DtCtx): Move {
     },
     update() {
       const p = c.pose;
-      p.face = DT_FACE.shout;
       if (leg < 0) {
         const u = ease(m.t / s.teleMs);
         p.legs = LEG.crouch;
@@ -276,7 +260,6 @@ function stomp(c: DtCtx): Move {
       p.sx = squash ? 1.16 : 1;
       p.sy = squash ? 0.82 : 1;
       p.legs = squash ? LEG.crouch : LEG.stand;
-      p.face = squash ? DT_FACE.shout : DT_FACE.cool;
       p.armR = POSE.peace;
     },
   };
@@ -309,7 +292,6 @@ function hop(c: DtCtx): Move {
     },
     update() {
       const p = mp();
-      p.face = DT_FACE.shout;
       if (at < 0) {
         const u = ease(m.t / h.teleMs);
         p.sx = 1 + 0.14 * u;
@@ -338,7 +320,7 @@ function hop(c: DtCtx): Move {
 function salsa(c: DtCtx): Move {
   const s = DT.salsa;
   const plan = salsaVolley(() => c.world.rng());
-  const nozzle = (): Vec => ({ x: c.pose.m[1].x, y: c.pose.m[1].y - 92 });
+  const nozzle = (): Vec => ({ x: c.pose.m[1].x, y: rigTop(miniRig(c.pose.m[1]), DT.mini.scale) + 8 });
   plan.xs.forEach((x, i) => c.fx.shadow(x, s.teleMs + i * s.gapMs + s.flightMs, 0.8));
   c.world.sfx('dash');
   c.flash.tele(s.teleMs, [c.parts.minis[1]]);
@@ -358,7 +340,6 @@ function salsa(c: DtCtx): Move {
     },
     update() {
       const p = c.pose.m[1];
-      p.face = DT_FACE.shout;
       const squeeze = at >= 0 && m.t - at < 120;
       const u = at < 0 ? ease(m.t / s.teleMs) : 0;
       p.sx = squeeze ? 1.16 : 1 + 0.1 * u;

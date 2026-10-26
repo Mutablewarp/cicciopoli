@@ -33,7 +33,7 @@ Nei livelli platform arriva alla bandierina e… **VAI IN BUCA!**
 | Alette Thai / fulmine / pugno | K, C | THAI / FULMINE / PUGNO |
 | Cambiare corsia / frenare (livello 6) | ← → / A D, ↓ S | ◀ ▶ o swipe, FRENA |
 | Cucinare (livello 7) | mouse | tocca piastra, friggitrice, ingredienti; PRENDI L'ORDINE / SERVI (Invio) |
-| Sparare, scatto, cambio arma, super (livello 8) | J X, K C Shift, Q L, E V; mira in alto ↑ W | SPARA (o sparo automatico), SCATTO, ARMA, SUPER; ▲ |
+| Sparare, scatto, cambio arma, super (livello 8) | J X, K C Shift, Q L, E V; mira in alto ↑ W | SPARA (interruttore AUTO per lo sparo automatico), SCATTO, ARMA, EX / SUPER; ▲ |
 | Parata (livello 8) | in salto, premi di nuovo Spazio su un oggetto rosa | in salto, premi di nuovo SALTA su un oggetto rosa |
 | Pausa | Esc, P | ‖ |
 
@@ -48,7 +48,7 @@ npm run test:e2e   # smoke test nel browser (Playwright)
 ```
 
 Stack: Phaser 3.90 · TypeScript · Vite · Vitest · Playwright. Tutta la grafica è
-generata nel codice: pixel art nei livelli 1-7 (`src/art/`), disegno vettoriale da cartone animato nel livello 8 (`src/game/cartoon/`); l'audio è sintetizzato con WebAudio
+generata nel codice: pixel art nei livelli 1-7 (`src/art/`), cartone animato nel livello 8 (`src/game/cartoon/`: Ciccio e le mascotte ritagliati dai disegni e dalle magliette, `public/level8/`); l'audio è sintetizzato con WebAudio
 (`src/audio/`). Pubblicazione automatica su GitHub Pages a ogni push su `main`.
 
 Documento di progetto: [`docs/BRIEF.md`](docs/BRIEF.md).

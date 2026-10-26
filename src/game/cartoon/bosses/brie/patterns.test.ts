@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { ARENA, type Box } from '../../api';
+import { CT_PLAYER } from '../../../../config/cartoon';
 import { BRIE_ATTACKS, BRIE_BRAIN, restPose, type BrieAttack } from './patterns';
 import { hazardEndMs, survivable } from './kit/fairness';
 import { rng } from './kit/paths';
@@ -44,6 +46,32 @@ describe('MONSIEUR BRIE patterns', () => {
     for (const phase of [0, 1]) {
       const pink = BRIE_ATTACKS.filter((a) => a.phases.includes(phase)).some((a) => BRIE_BRAIN.plan(a.id, ctx(a.id, 200, 1)).hazards.some((h) => h.pink));
       expect(pink).toBe(true);
+    }
+  });
+
+  it('each phase opens gently: a hero who just stands there is never touched by the opener', () => {
+    const F = ARENA.floorY;
+    const hit = (a: Box, b: Box): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+    for (const [phase, id] of Object.entries(BRIE_BRAIN.openers)) {
+      const spec = BRIE_ATTACKS.find((a) => a.id === id);
+      if (!spec) throw new Error(`opener ${id}`);
+      for (const x of PLAYER_XS)
+        for (const seed of SEEDS) {
+          const c = { ...ctx(spec.id, x, seed), opening: true };
+          const plan = BRIE_BRAIN.plan(spec.id, c);
+          const hero = { x: x - CT_PLAYER.hitW / 2, y: F - CT_PLAYER.hitH, w: CT_PLAYER.hitW, h: CT_PLAYER.hitH };
+          for (let t = 0; t <= spec.activeMs; t += 20) {
+            const live = plan.hazards.filter((h) => t >= h.atMs && t <= h.atMs + h.lifeMs);
+            const boxes = live.map((h): Box => {
+              const p = h.path(t - h.atMs);
+              const w = h.w ?? (h.r ?? 6) * 2;
+              const hh = h.h ?? (h.r ?? 6) * 2;
+              return { x: p.x - w / 2, y: p.y - hh / 2, w, h: hh };
+            });
+            boxes.push(...BRIE_BRAIN.boxes(plan.move ? plan.move(t) : c.from, Number(phase)).body);
+            expect(boxes.some((b) => hit(b, hero)), `${spec.id} opener, hero at x=${x}, t=${t}`).toBe(false);
+          }
+        }
     }
   });
 

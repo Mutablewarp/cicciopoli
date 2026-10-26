@@ -1,15 +1,17 @@
 /**
  * Arena of the final boss: the Ciccio's rooftop at night over Palermo. Far: watercolour night sky, moon,
- * Monte Pellegrino, sea and the city domes. Mid: neighbouring roofs, water tank, chimneys, the big neon
- * BURGER GANG / CICCIO'S sign (flickers), string lights (twinkle). Floor: tiled roof deck + brick parapet
- * (clear walk line at ARENA.floorY). Near: a Palermo cat and a basil pot in the bottom corners.
+ * Monte Pellegrino, sea and the city domes. Mid: neighbouring roofs, water tank, chimneys, the rooftop billboard
+ * with the shirt's own BURGER GANG lettering (cut from the shirt, neon glow, flickers, marquee bulbs), string
+ * lights (twinkle). Floor: tiled roof deck + brick parapet (clear walk line at ARENA.floorY). Near: a Palermo cat
+ * on the parapet. Every wide layer runs BLEED past the arena edges; no prop is cut by the frame.
  */
 import type Phaser from 'phaser';
 import { ARENA } from '../../../api';
 import { INK, LINE, anim, image, inked, sheet, worldSprite } from '../../../draw/canvas';
 import { COL, PRE } from '../config';
-import { ellipse, heartPath, smooth } from './parts';
-import { MOON, seeded, sky } from './sky';
+import { GANG_SIGN } from './atlas';
+import { ellipse, smooth } from './parts';
+import { BLEED, MOON, seeded, sky } from './sky';
 
 const K = {
   sky: `${PRE}sky`,
@@ -18,7 +20,6 @@ const K = {
   lights: `${PRE}lights`,
   floor: `${PRE}floor`,
   cat: `${PRE}cat`,
-  pot: `${PRE}pot`,
   cloud: `${PRE}cloud`,
 } as const;
 const NEON_ANIM = `${PRE}neon-a`;
@@ -26,8 +27,11 @@ const LIGHTS_ANIM = `${PRE}lights-a`;
 const W = ARENA.w;
 const H = ARENA.h;
 const ROOFS_Y = 150;
-const NEON = { x: 196, y: 112, w: 280, h: 120 } as const;
+/** the billboard (legs to the roof) and the shirt lettering inside it */
+const NEON = { x: 196, y: 104, w: 280, h: 156, board: 116, letters: { y: 30, w: 186, h: 93 }, glow: 16, dim: 0.55 } as const;
 const DECK_Y = 294;
+/** the cat sits on the parapet, whole, inside the left edge */
+const CAT = { x: 26, y: 336 } as const;
 /** neon frame sequence: mostly lit, a couple of electric hiccups */
 const FLICKER = [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0];
 
@@ -44,17 +48,17 @@ function roofs(ctx: CanvasRenderingContext2D): void {
   const y = (v: number): number => v - ROOFS_Y;
   // left: tiled roof slope + building
   ctx.beginPath();
-  ctx.moveTo(-4, y(248));
+  ctx.moveTo(-BLEED, y(248));
   ctx.lineTo(70, y(220));
   ctx.lineTo(150, y(250));
   ctx.lineTo(150, y(300));
-  ctx.lineTo(-4, y(300));
+  ctx.lineTo(-BLEED, y(300));
   ctx.closePath();
   soft('#6b3f43');
   ctx.strokeStyle = 'rgba(28,21,17,0.3)';
   for (let i = 1; i < 6; i++) {
     ctx.beginPath();
-    ctx.moveTo(-4, y(248 + i * 9));
+    ctx.moveTo(-BLEED, y(248 + i * 9));
     ctx.lineTo(150, y(250 + i * 9));
     ctx.stroke();
   }
@@ -108,76 +112,56 @@ function roofs(ctx: CanvasRenderingContext2D): void {
   ctx.stroke();
   // the far edge of our own roof (soft, darker than the walk line)
   ctx.fillStyle = '#5a4552';
-  ctx.fillRect(0, y(286), W, 30);
+  ctx.fillRect(-BLEED, y(286), W + BLEED * 2, 30);
 }
 
-/** Neon tubes: a wide coloured glow, then the bright tube, then a white core. */
-function tube(ctx: CanvasRenderingContext2D, draw: () => void, color: string, lit: boolean): void {
-  ctx.save();
-  ctx.shadowColor = color;
-  ctx.shadowBlur = lit ? 14 : 4;
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 3.4;
-  draw();
-  ctx.stroke();
-  ctx.restore();
-  ctx.strokeStyle = lit ? '#fffaf4' : 'rgba(255,250,244,0.35)';
-  ctx.lineWidth = 1.1;
-  draw();
-  ctx.stroke();
-}
-
-function neon(ctx: CanvasRenderingContext2D, f: number): void {
+/**
+ * Rooftop billboard: dark board on two legs, marquee bulbs round the edge (frame 1 swaps the lit ones), a neon
+ * CICCIO'S and the shirt's own BURGER GANG lettering (gang.webp) glowing pink; frame 1 is the electric hiccup.
+ */
+function sign(ctx: CanvasRenderingContext2D, f: number, letters: CanvasImageSource): void {
   const lit = f === 0;
-  const { w, h } = NEON;
+  const { w, board } = NEON;
   ctx.strokeStyle = INK;
   ctx.lineWidth = 2.4;
   for (const lx of [44, w - 44]) {
     ctx.beginPath();
-    ctx.moveTo(lx, h - 34);
-    ctx.lineTo(lx, h);
+    ctx.moveTo(lx, board);
+    ctx.lineTo(lx, NEON.h);
     ctx.stroke();
   }
   ctx.beginPath();
-  ctx.roundRect(10, 8, w - 20, h - 40, 12);
-  inked(ctx, '#2a1d2c', LINE * 1.2);
+  ctx.roundRect(10, 6, w - 20, board - 6, 12);
+  inked(ctx, '#211722', LINE * 1.2);
+  const per = Math.round((w - 40) / 14);
+  for (let i = 0; i <= per; i++) {
+    for (const by of [12, board - 6]) {
+      ellipse(ctx, 20 + i * ((w - 40) / per), by, 2, 2);
+      inked(ctx, (i + f) % 2 === 0 ? '#ffe9a8' : '#6a5a4a', 0.8);
+    }
+  }
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  const word = (text: string, x: number, y: number, color: string, size: number): void => {
-    ctx.font = `900 ${size}px "Arial Black", "Helvetica Neue", Arial, sans-serif`;
-    ctx.save();
-    ctx.shadowColor = color;
-    ctx.shadowBlur = lit ? 12 : 3;
-    ctx.fillStyle = lit ? color : `${color}66`;
-    ctx.fillText(text, x, y);
-    ctx.restore();
-    ctx.fillStyle = lit ? 'rgba(255,252,246,0.55)' : 'rgba(255,252,246,0.12)';
-    ctx.font = `900 ${size * 0.92}px "Arial Black", "Helvetica Neue", Arial, sans-serif`;
-    ctx.fillText(text, x, y);
-  };
-  word("CICCIO'S", w / 2, 24, '#ffe2a0', 13);
-  tube(ctx, () => {
-    ctx.beginPath();
-    ctx.moveTo(w / 2 - 44, 34);
-    ctx.lineTo(w / 2 + 44, 34);
-  }, '#ffe2a0', lit);
-  word('BURGER', w / 2, 46, '#fff4e0', 12);
-  word('GANG', w / 2, 68, COL.pink, 30);
-  for (const [dx, len] of [[-42, 6], [-15, 9], [13, 5], [40, 8]] as const) {
-    tube(ctx, () => {
-      ctx.beginPath();
-      ctx.moveTo(w / 2 + dx, 82);
-      ctx.lineTo(w / 2 + dx, 82 + len);
-    }, COL.pink, lit);
-  }
-  tube(ctx, () => heartPath(ctx, w - 38, 42, 10), COL.pink, lit);
-  tube(ctx, () => heartPath(ctx, 38, 42, 10), COL.pink, lit);
+  ctx.font = '900 13px "Arial Black", "Helvetica Neue", Arial, sans-serif';
+  ctx.save();
+  ctx.shadowColor = '#ffe2a0';
+  ctx.shadowBlur = lit ? 10 : 2;
+  ctx.fillStyle = lit ? '#ffe9b8' : '#8a7a5a';
+  ctx.fillText("CICCIO'S", w / 2, 22);
+  ctx.restore();
+  const L = NEON.letters;
+  ctx.save();
+  ctx.globalAlpha = lit ? 1 : NEON.dim;
+  ctx.shadowColor = COL.pink;
+  ctx.shadowBlur = lit ? NEON.glow : 0;
+  ctx.drawImage(letters, (w - L.w) / 2, L.y, L.w, L.h);
+  ctx.restore();
 }
 
 /** Two sagging strings of bulbs across the top; frame 1 swaps the bright bulbs. */
 function lights(ctx: CanvasRenderingContext2D, f: number): void {
   const colors = ['#ffd85a', '#ff6f6f', '#7fe08a', '#7fc8ff', '#ff9fd0'];
-  const strings: [number, number, number, number, number][] = [[-4, 2, 330, 10, 14], [330, 10, 644, 0, 16]];
+  const strings: [number, number, number, number, number][] = [[-BLEED, 2, 330, 10, 14], [330, 10, W + BLEED, 0, 16]];
   let n = 0;
   for (const [x0, y0, x1, y1, sag] of strings) {
     ctx.strokeStyle = INK;
@@ -213,10 +197,10 @@ function floor(ctx: CanvasRenderingContext2D): void {
   g.addColorStop(0, '#6c5257');
   g.addColorStop(1, '#a98370');
   ctx.fillStyle = g;
-  ctx.fillRect(0, top, W, walk + 8);
+  ctx.fillRect(-BLEED, top, W + BLEED * 2, walk + 8);
   ctx.strokeStyle = 'rgba(40,24,22,0.35)';
   ctx.lineWidth = 1;
-  for (let x = -40; x < W + 40; x += 22) {
+  for (let x = -BLEED - 22; x < W + BLEED + 22; x += 22) {
     ctx.beginPath();
     ctx.moveTo(x + 10, top);
     ctx.lineTo(x - 4, walk + 8);
@@ -224,23 +208,23 @@ function floor(ctx: CanvasRenderingContext2D): void {
   }
   // stone cap: the clear walk line
   ctx.beginPath();
-  ctx.rect(-2, walk + 4, W + 4, 8);
+  ctx.rect(-BLEED, walk + 4, W + BLEED * 2, 8);
   inked(ctx, '#e9d2a8', LINE);
   ctx.beginPath();
-  ctx.rect(-2, walk + 12, W + 4, H - DECK_Y - walk - 10);
-  const b = ctx.createLinearGradient(0, walk + 12, 0, H - DECK_Y);
+  ctx.rect(-BLEED, walk + 12, W + BLEED * 2, H + BLEED - DECK_Y - walk - 10);
+  const b = ctx.createLinearGradient(0, walk + 12, 0, H + BLEED - DECK_Y);
   b.addColorStop(0, '#b45a3c');
   b.addColorStop(1, '#5e2a22');
   inked(ctx, b, LINE);
   ctx.strokeStyle = 'rgba(28,21,17,0.55)';
   ctx.lineWidth = 1;
-  for (let row = 0; row < 4; row++) {
+  for (let row = 0; row < 6; row++) {
     const yy = walk + 12 + row * 9;
     ctx.beginPath();
-    ctx.moveTo(0, yy);
-    ctx.lineTo(W, yy);
+    ctx.moveTo(-BLEED, yy);
+    ctx.lineTo(W + BLEED, yy);
     ctx.stroke();
-    for (let x = (row % 2) * 12; x < W; x += 24) {
+    for (let x = (row % 2) * 12 - BLEED; x < W + BLEED; x += 24) {
       ctx.beginPath();
       ctx.moveTo(x, yy);
       ctx.lineTo(x, yy + 9);
@@ -265,32 +249,25 @@ function cat(ctx: CanvasRenderingContext2D): void {
   }
 }
 
-function pot(ctx: CanvasRenderingContext2D): void {
-  const rnd = seeded(5);
-  for (let i = 0; i < 9; i++) {
-    const a = -Math.PI / 2 + (rnd() - 0.5) * 2.2;
-    ellipse(ctx, 22 + Math.cos(a) * 11, 22 + Math.sin(a) * 9, 6, 3.6, a);
-    inked(ctx, i % 2 ? COL.lettuce : COL.lettuceDark, LINE * 0.7);
-  }
-  ctx.beginPath();
-  ctx.moveTo(8, 26);
-  ctx.lineTo(36, 26);
-  ctx.lineTo(32, 46);
-  ctx.lineTo(12, 46);
-  ctx.closePath();
-  inked(ctx, '#c8623e', LINE);
+/** A layer drawn BLEED wider on both sides (and taller by `down` below), shifted so x = 0 stays the arena edge. */
+function wide(draw: (ctx: CanvasRenderingContext2D) => void, top = 0): (ctx: CanvasRenderingContext2D) => void {
+  return (ctx) => {
+    ctx.translate(BLEED, top);
+    draw(ctx);
+  };
 }
 
 export function loadArena(scene: Phaser.Scene, k: number): void {
-  image(scene, K.sky, W, H, k, sky);
-  image(scene, K.roofs, W, ARENA.floorY - ROOFS_Y, k, roofs);
-  sheet(scene, K.neon, NEON.w, NEON.h, 2, k, neon);
+  if (!scene.textures.exists(GANG_SIGN.key)) throw new Error('burger gang sign not loaded');
+  const letters = scene.textures.get(GANG_SIGN.key).getSourceImage() as CanvasImageSource;
+  image(scene, K.sky, W + BLEED * 2, H + BLEED * 2, k, wide(sky, BLEED));
+  image(scene, K.roofs, W + BLEED * 2, ARENA.floorY - ROOFS_Y, k, wide(roofs));
+  sheet(scene, K.neon, NEON.w, NEON.h, 2, k, (ctx, f) => sign(ctx, f, letters));
   anim(scene, NEON_ANIM, K.neon, FLICKER, 12);
-  sheet(scene, K.lights, W, 70, 2, k, lights);
+  sheet(scene, K.lights, W + BLEED * 2, 70, 2, k, (ctx, f) => wide((c) => lights(c, f))(ctx));
   anim(scene, LIGHTS_ANIM, K.lights, 2, 1.6);
-  image(scene, K.floor, W, H - DECK_Y, k, floor);
+  image(scene, K.floor, W + BLEED * 2, H + BLEED - DECK_Y, k, wide(floor));
   image(scene, K.cat, 42, 46, k, cat);
-  image(scene, K.pot, 44, 48, k, pot);
   image(scene, K.cloud, 150, 40, k, (ctx) => {
     smooth(ctx, [[10, 30], [24, 16], [48, 12], [70, 4], [96, 10], [120, 8], [140, 24], [126, 34], [40, 36]]);
     ctx.fillStyle = 'rgba(160,140,200,0.55)';
@@ -310,8 +287,7 @@ export function buildArena(scene: Phaser.Scene, k: number): Phaser.GameObjects.G
     s(W / 2, roofsTop, K.roofs, -45),
     s(NEON.x, NEON.y, K.neon, -42).play(NEON_ANIM),
     s(W / 2, 35, K.lights, -40).play(LIGHTS_ANIM),
-    s(W / 2, DECK_Y + (H - DECK_Y) / 2, K.floor, -30),
-    s(14, H - 26, K.cat, 30),
-    s(W - 16, H - 22, K.pot, 30),
+    s(W / 2, DECK_Y + (H + BLEED - DECK_Y) / 2, K.floor, -30),
+    s(CAT.x, CAT.y, K.cat, 30),
   ];
 }

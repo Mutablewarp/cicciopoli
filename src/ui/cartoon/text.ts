@@ -60,10 +60,10 @@ export const HELP_ROWS: ReadonlyArray<{ icon: HelpIcon; title: string; text: str
   { icon: 'up', title: 'MIRA IN ALTO', text: 'Fai scivolare il pollice sul ▲: spari verso l’alto, anche in diagonale mentre corri.' },
   { icon: 'jump', title: 'SALTA', text: 'Tocco breve, saltello. Tieni premuto, salto alto.' },
   { icon: 'parry', title: 'PARATA', text: 'Gli oggetti ROSA si parano: salta e premi di nuovo SALTA mentre lo tocchi. Rimbalzi e guadagni una carta.' },
-  { icon: 'shoot', title: 'SPARA', text: 'Tieni premuto SPARA. Con lo sparo automatico Ciccio spara da solo.' },
+  { icon: 'shoot', title: 'SPARA', text: 'Con lo SPARO AUTO acceso Ciccio spara da solo. Tocca AUTO per spegnerlo e tieni premuto SPARA.' },
   { icon: 'dash', title: 'SCATTO', text: 'Uno scatto rapidissimo: per un attimo niente ti può colpire.' },
   { icon: 'swap', title: 'ARMA', text: 'Cambia arma: PROVOLA GOAT, MEATBALL, NUGGETS.' },
-  { icon: 'super', title: 'SUPER', text: '1 carta: colpo EX potenziato. 5 carte: PIOGGIA DI PATATINE!' },
+  { icon: 'super', title: 'EX', text: 'Le carte si riempiono colpendo il boss e parando. 1 carta: colpo EX. 5 carte: PIOGGIA DI PATATINE!' },
 ];
 
 export const WEAPON_HELP: ReadonlyArray<{ id: 'provola' | 'meatball' | 'nuggets'; text: string }> = [

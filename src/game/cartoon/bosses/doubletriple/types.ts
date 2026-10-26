@@ -7,23 +7,23 @@ import type { Temps, Timers } from '../oldschool/kit/rig';
 
 type Sprite = Phaser.GameObjects.Sprite;
 
+/** a mini (phase 2): feet, squash, its arm POSE and leg frame */
 export interface MiniPose {
   x: number;
   y: number;
   sx: number;
   sy: number;
-  face: number;
   arm: number;
   legs: number;
 }
 
+/** the big burger: shown, feet, squash, arm POSEs, leg frame; then the minis */
 export interface DtPose {
   body: boolean;
   bx: number;
   by: number;
   sx: number;
   sy: number;
-  face: number;
   armL: number;
   armR: number;
   legs: number;

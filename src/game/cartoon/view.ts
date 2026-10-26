@@ -1,16 +1,19 @@
 /**
  * Camera + frame of level 8: one camera on the arena (framing.ts), the cinema around it (dark
  * surround with film sprocket holes, an ink + gold frame on the arena edge, covers for any art that
- * bleeds outside the arena) and the film layer on top. Portrait fights push in and follow the action
- * (eased); title cards, knockouts and the finale see the whole arena. The canvas backing store is
- * capped at CT_VIEW.dprCap device px per CSS px while the level runs (restored on destroy).
+ * bleeds outside the arena) and the film layer on top. Fights on a phone push in and follow the action
+ * (eased; held upright a lot, sideways a little), with edge arrows for the hazards (and the boss) outside the
+ * view; title cards and knockouts see the whole arena, the finale its golden ticket as big as it fits. The
+ * canvas backing store is capped at CT_VIEW.dprCap device px per CSS px while the level runs (restored on destroy).
  */
 import type Phaser from 'phaser';
 import type { ViewportInfo } from '../../contracts';
 import { ARENA, type Box, type Vec } from './api';
+import { EdgeArrows } from './arrows';
 import { DEPTH } from './depths';
 import { Film } from './film';
-import { cameraPose, computeFraming, pushFor, type ArenaFraming } from './logic/framing';
+import { edgeArrows, type RadarThing } from './logic/arrows';
+import { cameraPose, computeFraming, follow, frameBox, keepInView, viewRect, type ArenaFraming, type Focus } from './logic/framing';
 import { CT_VIEW } from '../../config/cartoon';
 
 const SURROUND = 3000;
@@ -40,6 +43,7 @@ export class CartoonView {
   framing: ArenaFraming;
   readonly film: Film;
   private readonly frame: Phaser.GameObjects.Graphics;
+  private readonly arrows: EdgeArrows;
   /** eased camera push (1 = whole arena) and wanted centre (world units) */
   private push = 1;
   private want: Vec = { x: ARENA.w / 2, y: ARENA.h / 2 };
@@ -54,6 +58,7 @@ export class CartoonView {
     this.framing = this.measure();
     this.film = new Film(scene, this.framing.k, calm);
     this.frame = scene.add.graphics().setDepth(DEPTH.frame);
+    this.arrows = new EdgeArrows(scene);
     this.drawFrame();
     this.layout();
   }
@@ -107,18 +112,24 @@ export class CartoonView {
   }
 
   /**
-   * Film + shake + camera: `focus` = the arena part a portrait fight keeps in view (null = the whole
-   * arena: title cards, knockout, finale).
+   * Film + shake + camera: `focus` = what a pushed fight keeps in view, else `show` = a box shown as big as it fits
+   * (the finale), else the whole arena (title cards, knockout); `radar` = the things the edge arrows may point at.
    */
-  update(dtMs: number, shake: Vec, focus: Box | null): void {
+  update(dtMs: number, shake: Vec, focus: Focus | null, radar: readonly RadarThing[], show: Box | null = null): void {
     const j = this.film.update(dtMs);
-    const target = focus ? pushFor(this.framing, focus) : { push: 1, want: { x: ARENA.w / 2, y: ARENA.h / 2 } };
+    const target = focus ? follow(this.framing, focus) : show ? frameBox(this.framing, show) : { push: 1, want: { x: ARENA.w / 2, y: ARENA.h / 2 } };
     const slow = this.calm() ? P.calmSlow : 1;
     const ez = 1 - Math.exp(-dtMs / (P.zoomTauMs * slow));
     const ep = 1 - Math.exp(-dtMs / (P.panTauMs * slow));
     this.push += (target.push - this.push) * ez;
     this.want = { x: this.want.x + (target.want.x - this.want.x) * ep, y: this.want.y + (target.want.y - this.want.y) * ep };
+    // the eased pan never leaves the hero behind (a dash is faster than the pan)
+    if (focus) this.want = keepInView(this.framing, this.push, this.want, focus.hero);
     this.place({ x: shake.x + j.x, y: shake.y + j.y });
+    const zc = this.framing.zoomCss * this.push;
+    const view = viewRect(this.framing, cameraPose(this.framing, this.push, this.want));
+    const A = CT_VIEW.arrows;
+    this.arrows.draw(radar.length > 0 ? edgeArrows(view, radar, A.insetCss / zc, A.range, A.max) : [], zc);
   }
 
   /** Device px per world unit at full push (crisp text). */
@@ -129,6 +140,7 @@ export class CartoonView {
   destroy(): void {
     this.film.destroy();
     this.frame.destroy();
+    this.arrows.destroy();
     setBackingStore(this.scene, this.viewport, Math.max(1, this.viewport.dpr));
   }
 }

@@ -1,0 +1,116 @@
+/* Level 8 touch discs, the two with a state of their own (cartoon/controls.ts): SPARA with its AUTO plate (the
+   auto-fire switch: lamp lit and the disc gold while Ciccio fires by himself) and EX with a ring of five card segments
+   inside the rim (gold = a card, all five red = SUPER). Imported by cartoon/controls.css, which places and sizes them. */
+/* SPARA: icon and name sit high, the AUTO plate (the auto-fire switch) straddles the bottom rim */
+.cc-tbtn--fire .cc-tbtn__face {
+  justify-content: flex-start;
+  padding-top: calc(var(--size) * 0.12);
+}
+.cc-tbtn--fire .cc-tbtn__icon svg {
+  width: calc(var(--size) * 0.38);
+  height: calc(var(--size) * 0.38);
+}
+.cc-tbtn__auto {
+  position: absolute;
+  left: 50%;
+  bottom: calc(-7px * var(--k));
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: calc(4px * var(--k));
+  height: calc(23px * var(--k));
+  padding: 0 calc(8px * var(--k)) 0 calc(6px * var(--k));
+  border: 2.5px solid var(--t-ink);
+  border-radius: 999px;
+  background: #4a3524;
+  box-shadow: 0 3px 0 var(--t-ink);
+  transform: translateX(-50%);
+  font-family: var(--f-toon);
+  font-weight: 900;
+  font-size: calc(11px * var(--k));
+  letter-spacing: 0.06em;
+  color: #cdb48a;
+  touch-action: none;
+}
+.cc-tbtn__auto::before {
+  content: '';
+  position: absolute;
+  inset: -6px -4px -8px;
+}
+.cc-tbtn__lamp {
+  width: calc(9px * var(--k));
+  height: calc(9px * var(--k));
+  border: 1.5px solid var(--t-ink);
+  border-radius: 50%;
+  background: #6a2a1a;
+}
+.cc-tbtn--fire.is-auto .cc-tbtn__auto {
+  background: var(--t-ink);
+  color: var(--t-gold-hi);
+}
+.cc-tbtn--fire.is-auto .cc-tbtn__lamp {
+  background: #ffe066;
+  box-shadow: 0 0 6px 2px rgba(255, 214, 90, 0.85);
+  animation: cc-tlamp 1.1s ease-in-out infinite;
+}
+@keyframes cc-tlamp {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* EX: a ring of five card segments inside the rim (gold = a card, all five red = SUPER) */
+.cc-tbtn__ringbox {
+  position: absolute;
+  inset: 1px;
+}
+.cc-tbtn__ring {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.cc-tbtn__ring circle {
+  fill: none;
+}
+.cc-ring__ink {
+  stroke: var(--t-ink);
+  stroke-width: 14;
+}
+.cc-ring__seg {
+  stroke: #5e4630;
+  stroke-width: 9;
+}
+.cc-ring__seg.is-full {
+  stroke: var(--t-gold);
+}
+.cc-tbtn--super.is-ready .cc-ring__seg.is-full {
+  stroke: var(--t-red);
+}
+.cc-tbtn--super .cc-tbtn__name {
+  position: relative;
+  font-size: calc(17px * var(--k));
+}
+.cc-tbtn--super.is-charged .cc-tbtn__name {
+  color: var(--t-red);
+}
+.cc-tbtn--super.is-ready .cc-tbtn__name {
+  font-size: calc(12px * var(--k));
+  color: var(--t-white);
+  -webkit-text-stroke: calc(3px * var(--k)) var(--t-ink);
+}
+.cc-tbtn--super.is-empty .cc-tbtn__name {
+  color: #6a5238;
+}
+.cc-tbtn--super.is-charged:not(.is-ready) .cc-tbtn__face {
+  box-shadow: 0 5px 0 var(--t-ink), 0 0 0 3px var(--t-gold-hi), 0 0 14px 3px rgba(251, 224, 140, 0.6);
+}
+.cc-tbtn--super.is-ready .cc-tbtn__face {
+  animation: cc-tsuper 0.9s ease-in-out infinite;
+}
+@keyframes cc-tsuper {
+  50% {
+    box-shadow: 0 5px 0 var(--t-ink), 0 0 0 4px var(--t-gold-hi), 0 0 22px 6px rgba(251, 224, 140, 0.8);
+    transform: rotate(-4deg) scale(1.04);
+  }
+}
+

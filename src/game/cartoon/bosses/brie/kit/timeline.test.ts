@@ -36,6 +36,20 @@ describe('BOSS-A attack timeline', () => {
     }
   });
 
+  it('flags the phase opener (and only it) as the opening attack', () => {
+    let tl = newTimeline<Id>();
+    const r = rng(7);
+    const seen: boolean[] = [];
+    for (let t = 0; t < 20_000; t += 16) {
+      const s = stepTimeline(tl, clock, 16, r);
+      if (s.events.some((e) => e.stage === 'telegraph')) seen.push(s.tl.opening);
+      tl = s.tl;
+    }
+    expect(seen.length).toBeGreaterThan(3);
+    expect(seen[0]).toBe(true);
+    expect(seen.slice(1).every((o) => !o)).toBe(true);
+  });
+
   it('never repeats an attack twice in a row and uses only the phase pool', () => {
     const tele = run(60_000).filter((e) => e.stage === 'telegraph');
     expect(tele.length).toBeGreaterThan(10);

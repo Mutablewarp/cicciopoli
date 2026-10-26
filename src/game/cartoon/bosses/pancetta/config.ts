@@ -16,25 +16,28 @@ export const PANCETTA = {
   rest: { x: 520, amp: 18, periodMs: 3000 },
   /** the half-pipe in the arena's mid layer: lips at x l / r, flat bottom at y bottom, wall radius R */
   pipe: { l: 372, r: 604, bottom: 290, R: 86, s: 0.62, periodMs: 2600, uMin: 0.1, uMax: 0.9 },
-  /** rig offsets from the feet (facing left), at scale 1 */
+  /** where his throws leave from: offsets from the feet (facing left) at scale 1, on the floor / on the ramp */
   rig: {
-    /** the drawings are made a bit big: the puppet is shown at this scale (times the pose scale) */
-    scale: 0.86,
-    /** deck top above the floor, the hips above the deck, the neck and the shoulder above the hips (drawing units) */
-    deck: 17,
-    hip: 44,
-    neck: { x: -4, y: -51 },
-    shoulder: { x: -22, y: -46 },
     hand: { x: -58, y: -100 },
-    bgHand: { x: 0, y: -120 },
+    bgHand: { x: -40, y: -120 },
   },
+  /** the puppet's moves (radians, ms, world units): arm turns from the printed V-sign pose (+ = up) */
+  move: {
+    arm: { wave: 0.14, waveMs: 150, peaceMs: 900, point: -0.6, throw: -1.05, fist: 0.42, whirl: 0.55, whirlMs: 70, ko: -0.45 },
+    headTilt: 0.05,
+    bob: 1.6,
+    baconSway: 0.12,
+  },
+  /** the kickflip hazard: his own board at this scale, turning over in `frames` frames */
+  flip: { scale: 0.75, frames: 6, fps: 14, edge: 0.12 },
   /** hit boxes from the feet at scale 1 (facing left; mirrored facing right) */
   box: {
-    body: { x: -40, y: -158, w: 80, h: 158 },
+    body: { x: -46, y: -150, w: 98, h: 150 },
     /** up in the background: a square around the body centre, plus a pad (generous for phone thumbs) */
     bg: { up: 78, size: 120, pad: 14, solidAt: 0.9 },
   },
-  board: { teleMs: 750, w: 60, h: 12, lift: 8, speed: 330, wallX: 40, startDx: -46, recoverMs: 600 },
+  /** the kickflip: while the board is away he bunny-hops on the spot (hop: apex units, ~everyMs a hop, landing squash) */
+  board: { teleMs: 750, w: 72, h: 14, lift: 8, speed: 330, wallX: 40, startDx: -46, recoverMs: 600, hop: { apex: 22, everyMs: 430, squash: 0.1 } },
   stomp: { teleMs: 800, minX: 70, maxX: 410, outMs: 750, apex: 160, holdMs: 300, backMs: 700, backApex: 120, wave: { w: 24, h: 18, speed: 240, gap: 22 }, shake: 7, recoverMs: 650 },
   bacon: { teleMs: 800, count: 3, everyMs: 1100, entryMs: 300, entryX: 430, speed: 220, yc: F - 62, amp: 30, wavelength: 170, r: 11, pinkIndex: 1, recoverMs: 600 },
   skyBacon: { teleMs: 750, count: 4, everyMs: 950, entryMs: 380, entryX: 420, speed: 250, yc: F - 62, amp: 30, wavelength: 170, r: 11, pinkIndex: 2, recoverMs: 650 },

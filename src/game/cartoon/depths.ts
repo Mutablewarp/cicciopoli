@@ -6,6 +6,8 @@ export const DEPTH = {
   hazard: 14,
   fx: 16,
   rain: 18,
+  /** edge arrows for what is outside a pushed-in view */
+  arrow: 20,
   balloon: 30,
   title: 40,
   /** the golden ticket plays under the film grain */

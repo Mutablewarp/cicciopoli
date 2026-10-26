@@ -2,11 +2,13 @@
  * Level 8 left thumb: the ◀ ▶ pill with the ▲ cap above it, one control for one finger. Where the finger is, relative
  * to the centre of the pill, gives both the run direction and aim-up, so a thumb can run and slide up to aim
  * diagonally without lifting. Each finger holds two InputState sources: `t:<id>` (left / right) and `t:<id>:up`.
- * Caller: ui/controls.ts (as one of its pads: release / rearm on layout changes and resets).
+ * Caller: ui/controls.ts (as one of its pads: release / rearm on layout changes and resets). The first-fight coach
+ * makes the pill (CORRI) and the cap (MIRA IN ALTO) glow in turn and skips each once it is used.
  */
 import type { InputState } from '../../input';
 import { type Pad, capture, primary, touchSrc } from '../dpad';
 import { el } from '../dom';
+import type { Coach } from './coach';
 import { arrowSvg } from './icons';
 
 /** CSS px from the pill centre: dead zone around the middle, aim-up line above the pill (with hysteresis), the ▲ cap half-width. */
@@ -34,7 +36,7 @@ interface Finger {
   cy: number;
 }
 
-export function createAimPad(input: InputState, isOff: () => boolean): Pad {
+export function createAimPad(input: InputState, isOff: () => boolean, coach: Coach): Pad {
   const zone = el('div', 'cc-tpad-zone');
   const face = el('div', 'cc-tpad');
   face.setAttribute('aria-label', 'Muovi a sinistra o a destra, scorri in su per mirare in alto');
@@ -45,6 +47,8 @@ export function createAimPad(input: InputState, isOff: () => boolean): Pad {
   pill.append(halfL, halfR);
   face.append(cap, pill);
   zone.append(face);
+  coach.tag('move', pill);
+  coach.tag('up', cap);
 
   const fingers = new Map<number, Finger>();
   const draw = (): void => {
@@ -62,6 +66,8 @@ export function createAimPad(input: InputState, isOff: () => boolean): Pad {
   };
   const apply = (id: number, next: PadRead, prev: PadRead | null): void => {
     const src = touchSrc(id);
+    if (next.x !== 0) coach.used('move');
+    if (next.up) coach.used('up');
     if (next.x !== prev?.x) {
       if (next.x === 0) input.release(src);
       else input.press(src, next.x < 0 ? 'left' : 'right');

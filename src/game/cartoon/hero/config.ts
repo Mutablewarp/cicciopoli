@@ -1,6 +1,6 @@
 /**
- * Level 8 hero lane tuning: Ciccio's palette (the slightly sepia colours of the owner's drawing
- * ref/level8_ciccio_hero.png), the frame count / fps of every HERO_ANIMS entry and of every FX texture.
+ * Level 8 hero lane tuning: the frame count / fps of every HERO_ANIMS entry and of every FX texture, the ink
+ * colours of the effects.
  */
 import { HERO_ANIMS, type FX } from '../api';
 
@@ -75,29 +75,13 @@ export const FX_SPEC: Readonly<Record<FxName, FxSpec>> = {
   card: { w: 16, h: 22, frames: 2, fps: 0, repeat: 0 },
 };
 
-/** Ciccio after the owner's drawing: navy three-piece suit, white gloves, glossy black shoes. */
+/** Ink colours of the hero's effects (the hero himself is the owner's drawing, public/level8/hero/ciccio.webp). */
 export const HERO_COL = {
-  skin: '#f5dcb4',
-  skinShade: '#dfb88c',
   blush: 'rgba(226, 122, 98, 0.32)',
-  hair: '#1b1513',
-  hairHi: '#433a37',
-  suit: '#283049',
-  suitShade: '#1a2033',
-  suitHi: '#414e72',
-  vest: '#1f263b',
-  shirt: '#f7f0de',
-  tie: '#1d2540',
-  dot: '#f4ead0',
-  glove: '#fcf7ea',
-  shoe: '#161113',
-  sole: '#77665a',
-  lens: '#100c0b',
-  glint: '#ffffff',
   mouth: '#5a1c16',
   tongue: '#d65a4a',
-  teeth: '#fffaf0',
   eye: '#fffaf0',
+  glint: '#ffffff',
   star: '#ffd447',
   pink: '#ff6fae',
   pinkHi: '#ffd3e8',

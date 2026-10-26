@@ -1,20 +1,21 @@
 /**
  * Pancetta's arena, painted: a skatepark on the Palermo seafront in the golden afternoon. Far: Monte
  * Pellegrino over the sea, sailing boats. Mid: the stone balustrade of the promenade, palm trees, an
- * iron street lamp, a quarter-pipe and the big half-pipe (phase 2 is ridden on it). Near: the concrete
+ * iron street lamp and the big half-pipe (phase 2 is ridden on it). Near: the concrete
  * floor. Low foreground corners: an agave in a terracotta pot, palm fronds.
  */
 import { ARENA } from '../../api';
 import { rng } from '../brie/kit/paths';
 import { ellipse, ink, paperGrain, shade, smooth, wash, type Pt } from '../brie/kit/toon';
-import { fillPts } from '../brie/arena';
+import { fillPts } from '../brie/kit/scenery';
 import { PANCETTA as C } from './config';
 import { PIPE_TOP, pipeAt } from './pipe';
 
 const W = ARENA.w;
 const H = ARENA.h;
 const SOFT = '#5f4a36';
-export const MID = { y: 60, h: 240 } as const;
+/** from above the palm crowns down to the floor line (no cut fronds) */
+export const MID = { y: 16, h: 284 } as const;
 export const FLOOR = { y: 290, h: 70 } as const;
 export const FG_L = { w: 90, h: 70 } as const;
 export const FG_R = { w: 120, h: 60 } as const;
@@ -213,14 +214,10 @@ export function drawMid(ctx: CanvasRenderingContext2D): void {
   for (const [x, top, lean, seed] of [[40, 92, -10, 1], [176, 70, 12, 2], [350, 96, -8, 3], [646, 80, -14, 4]] as const) palm(ctx, x, 272, top, lean, seed);
   balustrade(ctx);
   lamp(ctx, 290, 272);
-  // quarter-pipe on the left
-  smooth(ctx, [[-10, 226], [24, 230], [52, 252], [70, 290], [70, 296], [-10, 296]]);
-  ctx.fillStyle = '#c9d0d8';
-  ctx.fill();
-  ink(ctx, 1.6);
   halfPipe(ctx);
+  ctx.globalCompositeOperation = 'source-atop';
+  paperGrain(ctx, W, MID.h + MID.y, 25, 0.8);
   ctx.restore();
-  paperGrain(ctx, W, MID.h, 25, 0.8);
 }
 
 /** The concrete floor of the skatepark (frame y = world y - FLOOR.y). */

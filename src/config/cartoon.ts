@@ -4,6 +4,8 @@
  * Tuned for phones: a forgiving hit box, generous parry window, short coyote time and jump buffer.
  */
 
+import type { CartoonBossId } from '../contracts';
+
 /** Progress + settings key (src/game/cartoon/logic/store.ts). */
 export const CARTOON_STORE = { key: 'cicciopoli.cartoon.v1' } as const;
 
@@ -41,6 +43,15 @@ export const CT_PLAYER = {
   /** walls of the arena (hero centre) */
   minX: 20,
   maxX: 620,
+  /** where the round starts (feet x): close enough that a phone held upright shows the hero at full size (push.farZoomCss)
+   * with the side of every boss facing him (push.bossShow) at its start (the last boss stands at x 508) */
+  startX: 300,
+  /**
+   * Touching the boss: while its body moves slower than bossSpeed units / s (boss time: standing, swaying, walking)
+   * it is a wall that pushes the hero out at pushSpeed units / s (no heart lost); a faster body (a charge, a hop,
+   * a stomp) hurts. Its speed is smoothed over tauMs (a pose change is not a charge).
+   */
+  bump: { bossSpeed: 140, pushSpeed: 420, tauMs: 60 },
   blinkMs: 70,
   /** landing squash amount after a fall at full speed (0..1) */
   landSquash: 0.32,
@@ -145,6 +156,9 @@ export const CT_FLOW = {
   vibrateKo: [60, 50, 120] as readonly number[],
 } as const;
 
+/** EX / SUPER pressed with no card: a short banner says how to fill them (at most once every gapMs). */
+export const CT_HINT_EMPTY = { text: 'SERVE UNA CARTA', sub: 'Colpisci il boss e para gli oggetti rosa', ms: 1800, gapMs: 6000 } as const;
+
 /** Framing + texture scale (src/game/cartoon/logic/framing.ts, view.ts). */
 export const CT_VIEW = {
   /** portrait: gap around the arena inside the free band (CSS px) */
@@ -156,16 +170,75 @@ export const CT_VIEW = {
   /** canvas backing store at most this many device px per CSS px (fill rate of full-screen layers on 3x phones) */
   dprCap: 2,
   /**
-   * Where the arena is shown under minZoomCss CSS px per unit (a phone held upright), fights push in up to
-   * `max` (never past minZoomCss) on the hero, the boss and the hazards within `watch`
-   * units of the hero (margins around the hero: heroX each side, heroTop above the feet), the floor down
-   * to floorY always in view; it eases to its target with these time constants (calm: x calmSlow).
+   * Portrait fights (a phone held upright) push in to minZoomCss CSS px per unit (hero ~65 px, bosses 185+ px tall
+   * at 390 px wide; never more than `max` x the whole-arena zoom) while the hero, the hazards near it and the whole
+   * boss fit, easing out to fitZoomCss (hero ~62 px) for them. When they do not fit, the camera keeps the hero, then
+   * the `bossShow` share of the boss facing the hero (its hands, its face: where the attacks start), then the hazards
+   * near the hero (edge arrows point at the rest), easing out for the first two down to farZoomCss and no further
+   * (hero >= 60 px, bosses >= 170 px: the v8 point 3 sizes). The UI's portrait host (ui/cartoon/stage.css) is as tall
+   * as the arena at minZoomCss (minZoomCss x 360 + 2 marginCss = 462 CSS px at 390 x 844). Landscape phones push in
+   * up to landZoomCss only while the hero, the hazards near it and the whole boss fit, else they see the whole arena.
+   * The camera keeps the hero (heroX each side, heroTop above the feet) and the hazards within `watch` units of it
+   * in view when they fit; the view bottom stays on floorY when the host is shorter. Eased with these time
+   * constants (calm: x calmSlow).
    */
-  push: { max: 1.35, minZoomCss: 0.84, watch: 190, heroX: 46, heroTop: 72, bossPad: 10, hazardPad: 10, floorY: 334, zoomTauMs: 650, panTauMs: 320, calmSlow: 2 },
+  push: {
+    max: 2.2,
+    minZoomCss: 1.25,
+    fitZoomCss: 1.2,
+    farZoomCss: 1.17,
+    bossShow: 0.6,
+    landZoomCss: 1.1,
+    watch: 150,
+    heroX: 34,
+    heroTop: 72,
+    bossPad: 10,
+    hazardPad: 10,
+    floorY: 334,
+    zoomTauMs: 650,
+    panTauMs: 320,
+    calmSlow: 2,
+  },
+  /**
+   * Edge arrows (src/game/cartoon/arrows.ts): a hazard outside the view, coming closer and within `range` units of
+   * it, gets an arrow on the view edge pointing at it (pink = parryable, gold = the boss when it is out of view);
+   * sizes in CSS px (the boss arrow is bossSizeCss, always opaque), a cream halo of haloCss under the ink outline so
+   * it reads on any scenery, at most `max` arrows, the nearest first.
+   */
+  arrows: { range: 260, max: 5, sizeCss: 28, bossSizeCss: 36, haloCss: 5, inkCss: 3, insetCss: 18, minAlpha: 0.55, ink: 0x1c1511, halo: 0xfff3d6, hazard: 0xe2462c, pink: 0xff6fb4, boss: 0xf2b531 },
   background: '#140d08',
   frameInk: 0x1c1511,
   frameGold: 0xc9a05a,
 } as const;
+
+/**
+ * Pacing (v8: a casual adult survives >= 40 s on the first boss and beats it within 3 tries): the boss side (the
+ * boss and everything it throws, world time) runs at `tempo` x real time, starting at `openFrom` x and easing up to
+ * tempo over the first `openMs` of the fight (a gentle opening: slower wind-ups, longer telegraphs, same paths);
+ * the hero keeps full speed. The boss has BossDef.hp x `hp`. Mercy: for `mercyMs` of boss time after the hero is hit,
+ * every hazard poofs and the boss body only pushes (the rest of that attack: one attack costs one heart at most;
+ * minions stay). Per boss, `default` for the others.
+ */
+export interface CartoonPace {
+  readonly tempo: number;
+  readonly openFrom: number;
+  readonly openMs: number;
+  readonly hp: number;
+  readonly mercyMs: number;
+}
+export const CT_PACE: { readonly default: CartoonPace } & Readonly<Partial<Record<CartoonBossId, CartoonPace>>> = {
+  default: { tempo: 1, openFrom: 0.6, openMs: 3000, hp: 1, mercyMs: 1500 },
+  // the casual adult of v8 point 5 (auto-fire, random moves and jumps) lost 9 / 9 at tempo 0.5 (alive ~22 s); at 0.4,
+  // with the body bump, the mercy on the body and SPARA AUTO facing the boss, he wins in ~40 s (playtest, 6 seeds)
+  brie: { tempo: 0.4, openFrom: 0.3, openMs: 8000, hp: 0.75, mercyMs: 4000 },
+  // the QA bot lost about half its fights on these at full tempo (integration playtest, production build)
+  oldschool: { tempo: 0.85, openFrom: 0.6, openMs: 4000, hp: 0.9, mercyMs: 2000 },
+  doubletriple: { tempo: 0.85, openFrom: 0.6, openMs: 4000, hp: 0.9, mercyMs: 2000 },
+  burgergang: { tempo: 0.9, openFrom: 0.6, openMs: 4000, hp: 1, mercyMs: 2000 },
+};
+
+/** Bitmap art (api.ts ImageAsset): a file that has not loaded after timeoutMs is given up (the art falls back). */
+export const CT_ASSETS = { timeoutMs: 20_000 } as const;
 
 /** Film look (src/game/cartoon/film.ts); calm = reduced motion. */
 export const CT_FILM = {

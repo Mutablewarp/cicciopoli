@@ -3,7 +3,7 @@ import { CT_PLAYER } from '../../../../config/cartoon';
 import { ARENA } from '../../api';
 import { landingSpans, widestGap } from '../tuma/kit/geom';
 import { MIN_TELEGRAPH_MS } from '../tuma/kit/sched';
-import { BODY, HAPPY_CFG as C, PINK } from './config';
+import { HAPPY_CFG as C, HAPPY_RIG, PINK } from './config';
 import { miniDrops, paintDrips, rocketLanes, sprayPuffs } from './plan';
 
 const lcg = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -58,10 +58,17 @@ describe('HAPPY BOX patterns', () => {
   it('straight shots from a hero on the ground hit him in both phases (the hurt box reaches the floor)', () => {
     const F = ARENA.floorY;
     const [, by, , bh] = C.hurt;
+    const ay = HAPPY_RIG.anchor[1];
     // every height a standing hero can fire from (its whole hit box, feet excluded) is covered
     for (const scale of [C.scale, C.scale * C.grow]) {
-      expect(F + (by - BODY.footY) * scale).toBeLessThanOrEqual(F - CT_PLAYER.hitH);
-      expect(F + (by + bh - BODY.footY) * scale).toBeGreaterThanOrEqual(F - 6);
+      expect(F + (by - ay) * scale).toBeLessThanOrEqual(F - CT_PLAYER.hitH);
+      expect(F + (by + bh - ay) * scale).toBeGreaterThanOrEqual(F - 6);
+    }
+  });
+
+  it('the field ends where touching him starts, in both phases', () => {
+    for (const [p, scale] of [[0, C.scale], [1, C.scale * C.grow]] as const) {
+      expect(C.x + (C.bodyBox[0] - HAPPY_RIG.anchor[0]) * scale).toBeGreaterThanOrEqual(C.field[p][1]);
     }
   });
 });

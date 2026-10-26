@@ -289,7 +289,8 @@ export function cloud(ctx: CanvasRenderingContext2D, x: number, y: number, w: nu
   for (let i = 0; i < n; i++) {
     const t = i / (n - 1);
     const rr = h * (0.32 + 0.3 * Math.sin(Math.PI * t) + r() * 0.08);
-    puffs.push([x + t * w, y + h * 0.62 - rr * 0.55, rr]);
+    // the end puffs sit inside the box, so a cloud texture never shows a cut edge
+    puffs.push([x + h * 0.42 + t * (w - h * 0.84), y + h * 0.62 - rr * 0.55, rr]);
   }
   const outline = (): void => {
     ctx.beginPath();

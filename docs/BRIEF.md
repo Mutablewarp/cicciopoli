@@ -622,3 +622,61 @@ AUDIO lane    src/audio/** (3 tracks, 15 sfx)
 integrator    src/contracts*.ts, src/game/cartoon/api.ts, draw/canvas.ts, bosses/index.ts, bosses/placeholder.ts,
               docs/**, scripts/e2e.mjs, README.md
 ```
+
+### v8 — owner feedback on the live level 8 (2026-10-25) — overrides §10 where they differ
+Owner: "i personaggi e paesaggio sono stati ritagliati mali risultando poco piacevoli alla vista e poco realistiche
+sopratutto i personaggi non sono quelli delle foto che ti ho mandato io. devono essere identici alle magliette del
+merchandise di ciccios palermo in ogni dettaglio ovviamente tu aggiungi i colori ed i dettagli" / "in verticale per
+smartphone i personaggi devono essere piu comprensibili quindi aumenta la parte di display giocabile e rendi ciccios
+comprensibile ed identico alla foto" / "i comandi sia in orizzontale che in verticale siano piu intuitivi" / "rendi
+tutto piu piacevole e giocabile e la musica piu orecchiabile" / "Queste sono le altre magliette a cui devi riferirti
+per costruire al meglio ogni boss del livello 8". (The touch buttons that did nothing on his iPhone were a Rollup
+tree-shaking bug, fixed in 74669d3: vite.config treeshake false; `node scripts/e2e.mjs --dist` tests the real build.)
+1. **Identical characters, derived from the references, not redrawn from memory.** Hero = ref/level8_ciccio_hero.png
+   (his face, hair, round black glasses, navy three-piece suit, polka-dot tie, pocket square, white gloves, glossy
+   shoes, proportions). Bosses = the shirts: ref/level8_shirt_*_v2.png (newest screenshots) and ref/level8_shirt_*.png.
+   Brie, Double Triple, Make it Happy and Burger Gang are already in colour: keep their colours. Pancetta (red line
+   art), Tuma Siciliana (coral line art) and The Old School (black line art) keep their line art exactly and get
+   natural, appetising colours added inside the lines. Method: build the art FROM the reference pixels (crop the
+   mascot, remove the shirt, upscale x4, quantise to its flat palette, despeckle; colour line art by filling its
+   closed regions; split into cut-out parts with pivots for animation — head, body, limbs, props — and paint what
+   a moving part uncovers), OR trace vectors over the reference; either way PROVE it with an overlay of the game
+   sprite on the reference crop at the same scale (silhouette IoU >= 0.9, every feature present). Bitmaps go under
+   public/level8/<module>/ (WebP or PNG, <= 2048 px a side, <= 1.2 MB per boss, <= 8 MB for the level), loaded
+   through api.ts ImageAsset (BossDef.assets, hero/index.ts HERO_ASSETS); keep the processing script in
+   scripts/level8/<module>.mjs so the art can be rebuilt. Shirt lettering (PANCETTA, 100% TUMA …) is not part of
+   the character; it may appear on title cards / props.
+2. **Arenas without bad cuts**: full-bleed painted scenes that extend past the arena edges (the camera never shows a
+   cut prop or an empty edge), depth layers, the shirts' own settings as inspiration (Brie: the green hill, the
+   winding road, red-roof houses; Tuma: potted lemon trees and the deck chair; Old School: the hand holding the
+   burger), Palermo where it fits.
+3. **Portrait: more play area**: at 390x844 the hero >= 60 CSS px tall and the boss >= 150 CSS px in a fight (now
+   ~38 / ~110); a taller arena host, a stronger push-in that follows hero + boss + live hazards, and edge arrows for
+   any hazard outside the view; the controls band stays compact and usable.
+4. **Intuitive controls (both orientations)**: SPARA always visible (with auto-fire on it shows AUTO and toggles it),
+   EX shows its card progress and, tapped while empty, says how to fill it; a first-fight coach that labels ◀▶,
+   ▲, SALTA, SPARA, SCATTO, ARMA, EX; main buttons >= 64 CSS px (SALTA >= 88), nothing over the fight.
+5. **Pleasant and playable**: a casual adult (moves now and then, jumps at random, auto-fire) survives >= 40 s on
+   Monsieur Brie and beats him within 3 tries; telegraphs readable on a phone; the QA bot still beats every boss.
+6. **Catchier music**: one memorable, singable melody hook per track, reused as a motif across map / fights /
+   finale, cleaner arrangement (less clutter), map ~120 bpm, fights ~160-180 bpm swing, the final boss bigger.
+7. Every touch check runs on the PRODUCTION build (e2e --dist, vite preview) in WebKit iPhone 13 portrait and
+   landscape with touchscreen taps.
+
+### v8 ownership
+- CORE: src/game/cartoon/** except api.ts, draw/**, bosses/**, hero/**; src/config/cartoon.ts (framing, preloading
+  ImageAsset lists, edge arrows, difficulty pacing, coach trigger hooks).
+- HERO: src/game/cartoon/hero/**, public/level8/hero/**, scripts/level8/hero*.mjs.
+- BOSS-A: bosses/{brie,pancetta}/** + public/level8/{brie,pancetta}/** + scripts/level8/{brie,pancetta}*.mjs;
+  BOSS-B: tuma, happy; BOSS-C: oldschool, doubletriple; BOSS-D: burgergang (same pattern).
+- UI: src/ui/cartoon/**, the level 8 parts of src/ui/controls.ts and src/input/**.
+- AUDIO: src/audio/tracks/cartoon*.ts, src/audio/tracks/swing.ts, src/audio/sfx-cartoon.ts (+ tests).
+- Integrator: api.ts, draw/canvas.ts, bosses/index.ts, contracts, docs, scripts/e2e.mjs, vite.config.ts.
+
+**As built (v8, 2026-10-26).** Hero cut from ref/level8_ciccio_hero.png (public/level8/hero/ciccio.webp, 7 rigged
+parts, idle IoU 0.9965 against the drawing); the 7 bosses cut / coloured from the shirts (public/level8/<boss>/, scripts in
+scripts/level8/). Portrait camera order: hero >= 60 CSS px first, then the 60% of the boss facing him (push.bossShow),
+then the near hazards (edge arrows for the rest); rounds start at x 300. SPARA keeps an AUTO switch (EdgeAction
+'autoFire'); EX empty shows "SERVE UNA CARTA"; a one-time first-fight coach names each control. One shared melody hook
+in the three level 8 tracks. Known minors: Burger Gang art is the least faithful (posterised); Ciccio a little soft on
+DPR 3 phones (CT_VIEW.dprCap 2); on 360 px wide phones the last boss starts about half in view.

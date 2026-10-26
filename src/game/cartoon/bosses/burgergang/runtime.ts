@@ -9,7 +9,8 @@ import { worldSprite } from '../../draw/canvas';
 import { ANIM, TEX } from './art/props';
 import { ATK, BG, LINES, MOTION, SFX } from './config';
 import { FIRST, type Mark, type Round, type RoundKind, type Shot, pickRound, planRound } from './plan';
-import { BossRig, type RigPose } from './rig';
+import type { RigPose } from './poses';
+import { BossRig } from './rig';
 
 const F = ARENA.floorY;
 
@@ -188,8 +189,8 @@ export function createRuntime(world: BossWorld, kb: number): BossRuntime {
   };
 
   return {
-    hurtBoxes: () => rig.boxes(),
-    bodyBoxes: () => rig.boxes(),
+    hurtBoxes: () => rig.hurtBoxes(),
+    bodyBoxes: () => rig.bodyBoxes(),
     update(dt: number): void {
       if (!greeted) {
         greeted = true;

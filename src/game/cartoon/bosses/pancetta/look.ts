@@ -1,31 +1,46 @@
-/** Pancetta's textures (all prefixed 'ct-pancetta-' so unloadPrefix drops them), loading and the arena layers. */
+/**
+ * Pancetta's textures (all prefixed 'ct-pancetta-' so unloadPrefix drops them): the puppet cut from the
+ * PANCETTA shirt (PANCETTA_ASSETS, preloaded by the CORE; load() numbers their frames), the hazards made
+ * from it (his kickflipping board, the flying bacon strip), the vector props and the arena layers.
+ */
 import type Phaser from 'phaser';
-import { ARENA } from '../../api';
+import { ARENA, type ImageAsset } from '../../api';
 import { anim, image, sheet, worldSprite } from '../../draw/canvas';
-import { alertBurst, cloud } from '../brie/kit/toon';
+import { alertBurst, cloud, TAU } from '../brie/kit/toon';
 import { rng } from '../brie/kit/paths';
+import { cutStrip, rescaledCopy, stripAssets, type Strip } from '../brie/kit/bits';
 import { ALERT, MARK, PUFF, SHADOW, STAR, drawMark, drawPuff, drawShadow, drawStar } from '../brie/art-props';
-import { ARM, ARM_POSES, FACES, FLAT, HEAD, LEGS, TORSO, drawArm, drawFlat, drawHead, drawLegs, drawTorso } from './art-pig';
-import { BACON, BOARD, FLIP, SHOCK, WHEEL, drawBacon, drawBoard, drawFlip, drawShock, drawWheel } from './art-board';
+import { SHOCK, WHEEL, drawShock, drawWheel } from './art-board';
 import { FG_L, FG_R, FLOOR, MID, drawFgLeft, drawFgRight, drawFloor, drawMid, drawSky } from './arena-draw';
+import { PANCETTA as C } from './config';
+import { PANCETTA_ART as A } from './sheet';
 
 export const PREFIX = 'ct-pancetta-';
 const k$ = (s: string): string => `${PREFIX}${s}`;
 
+/** The shirt cut-outs, by texture name. */
+const STRIPS: Readonly<Record<'head' | 'arm' | 'body' | 'bacon' | 'board', Strip>> = {
+  head: A.head,
+  arm: A.arm,
+  body: A.body,
+  bacon: A.bacon,
+  board: A.board,
+};
+
+export const PANCETTA_ASSETS: readonly ImageAsset[] = stripAssets(PREFIX, STRIPS);
+
 export const KEY = {
   head: k$('head'),
-  torso: k$('torso'),
-  legs: k$('legs'),
   arm: k$('arm'),
-  flat: k$('flat'),
+  body: k$('body'),
+  bacon: k$('bacon'),
   board: k$('board'),
-  boardAnim: k$('board-anim'),
+  /** hazards made from the cut-outs (k-scaled copies): the bacon strip, plain and pink, and the kickflip */
+  baconHz: k$('bacon-hz'),
+  baconPinkHz: k$('bacon-pink-hz'),
   flip: k$('flip'),
   flipAnim: k$('flip-anim'),
   wheel: k$('wheel'),
-  bacon: k$('bacon'),
-  baconAnim: k$('bacon-anim'),
-  baconPinkAnim: k$('bacon-pink-anim'),
   shock: k$('shock'),
   shockAnim: k$('shock-anim'),
   mark: k$('mark'),
@@ -46,20 +61,28 @@ const CLOUD = { w: 140, h: 80 } as const;
 /** The soft sky is drawn at half the texture scale (memory on phones). */
 const skyK = (k: number): number => Math.max(1, k / 2);
 
+/** His board turning over its long axis (a kickflip): frame i shows it at i / frames of a turn. */
+function loadFlip(scene: Phaser.Scene, k: number): void {
+  const F = C.flip;
+  const src = scene.textures.get(KEY.board).getSourceImage() as CanvasImageSource;
+  const s = A.board;
+  const w = (s.fw / A.pxPerUnit) * F.scale;
+  const h = (s.fh / A.pxPerUnit) * F.scale;
+  sheet(scene, KEY.flip, w, h, F.frames, k, (ctx, i) => {
+    const c = Math.cos((i / F.frames) * TAU);
+    ctx.translate(w / 2, h / 2);
+    ctx.scale(1, (c < 0 ? -1 : 1) * Math.max(F.edge, Math.abs(c)));
+    ctx.drawImage(src, 0, 0, s.fw, s.fh, -w / 2, -h / 2, w, h);
+  });
+  anim(scene, KEY.flipAnim, KEY.flip, F.frames, F.fps);
+}
+
 export function loadPancetta(scene: Phaser.Scene, k: number): void {
-  sheet(scene, KEY.head, HEAD.w, HEAD.h, FACES.length, k, drawHead);
-  image(scene, KEY.torso, TORSO.w, TORSO.h, k, drawTorso);
-  sheet(scene, KEY.legs, LEGS.w, LEGS.h, 6, k, drawLegs);
-  sheet(scene, KEY.arm, ARM.w, ARM.h, ARM_POSES.length, k, drawArm);
-  sheet(scene, KEY.flat, FLAT.w, FLAT.h, 2, k, drawFlat);
-  sheet(scene, KEY.board, BOARD.w, BOARD.h, BOARD.frames, k, drawBoard);
-  anim(scene, KEY.boardAnim, KEY.board, BOARD.frames, 14);
-  sheet(scene, KEY.flip, FLIP.w, FLIP.h, FLIP.frames, k, drawFlip);
-  anim(scene, KEY.flipAnim, KEY.flip, FLIP.frames, 14);
+  for (const [name, s] of Object.entries(STRIPS)) cutStrip(scene, `${PREFIX}${name}`, s);
+  rescaledCopy(scene, KEY.bacon, A.bacon, KEY.baconHz, k / A.pxPerUnit, 0);
+  rescaledCopy(scene, KEY.bacon, A.bacon, KEY.baconPinkHz, k / A.pxPerUnit, 1);
+  loadFlip(scene, k);
   sheet(scene, KEY.wheel, WHEEL.w, WHEEL.h, 2, k, drawWheel);
-  sheet(scene, KEY.bacon, BACON.w, BACON.h, 4, k, drawBacon);
-  anim(scene, KEY.baconAnim, KEY.bacon, [0, 1], 8);
-  anim(scene, KEY.baconPinkAnim, KEY.bacon, [2, 3], 8);
   sheet(scene, KEY.shock, SHOCK.w, SHOCK.h, 2, k, drawShock);
   anim(scene, KEY.shockAnim, KEY.shock, 2, 10);
   image(scene, KEY.mark, MARK.w, MARK.h, k, drawMark);

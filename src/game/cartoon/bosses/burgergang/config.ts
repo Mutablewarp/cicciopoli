@@ -12,19 +12,16 @@ export const BG = {
   hp: 2300,
   /** phase 2 (the gang) under 66 % hp, phase 3 (giant) under 33 % */
   phases: [0.66, 0.33] as readonly number[],
-  /** the boss sheets are drawn sharper than k so the giant stays crisp */
-  texBoost: 1.2,
-  /** stands against the right wall: no pocket behind him for a hero who dashes through (CT_PLAYER.maxX) */
-  bx: 580,
-  giantBx: 556,
-  giant: 1.55,
+  /** world units per px of the shirt screenshot the boss is cut from (art/atlas.ts): he stands ~152 units tall */
+  wu: 0.56,
+  /** feet x: the cup arm ends inside the arena (x <= 636); BOXES.back closes the floor behind him (CT_PLAYER.maxX) */
+  bx: 554,
+  giantBx: 530,
+  giant: 1.3,
   growMs: 1100,
-  /** idle strut: horizontal sway, breathing squash */
+  /** idle strut: horizontal sway */
   sway: 6,
   swayMs: 2600,
-  squash: 0.035,
-  strutFps: 9,
-  idleFps: 7,
   startDelayMs: 900,
   /** rest between two attack rounds, per phase */
   restMs: [850, 650, 520] as readonly number[],
@@ -56,31 +53,51 @@ export const MOTION = {
   calmShake: 1,
   /** knockout gag: dizzy wobble, face-first fall, one bounce, the stars fade */
   ko: { wobbleMs: 130, wobbleDeg: 7, fallDeg: 82, bounceDeg: 8, bounceMs: 260, settleMs: 520, starFadeMs: 600, starLift: 14 },
-  koShades: { vx: 120, vy: -360, g: 900, spin: 720, drop: 20 },
+  koShades: { vx: 120, vy: -360, g: 900, spin: 720 },
   stars: { rx: 34, ry: 9, ms: 900 },
   /** telegraph: three brightness blinks of this length */
   blinkMs: 70,
 } as const;
 
 /**
- * Body sheet frame (bun stack + face + arms): the stack bottom centre sits at (w / 2, base) and at boss
- * y = -stack (just above the hips). Legs sheet frame: feet on its bottom centre, hips `hip` above it.
+ * The cut-out rig (rig.ts, poses.ts): joint springs (k / damp: the rubber-hose overshoot), the idle strut (legs
+ * swing legDeg, the body bobs), breathing squash, the peace-glove wave, the cup-arm sway, the telegraph jitter of
+ * the cup and the sunglasses twirl. Degrees, ms, world units.
  */
-export const BODY = { w: 166, h: 144, base: 138, stack: 37, bunH: 102, bunW: 47 } as const;
-export const LEGS = { w: 84, h: 44, hip: 36 } as const;
-/** Touch / shot box in boss space (scale 1): the bun stack down to the floor (no hiding under the belly). */
-export const BOXES = {
-  body: { x: -46, y: -139, w: 92, h: 139 },
+export const RIG = {
+  spring: { k: 240, damp: 15 },
+  strut: { ms: 640, legDeg: 8, bob: 2.2 },
+  breathe: { ms: 1500, squash: 0.025 },
+  wave: { ms: 820, deg: 6 },
+  sway: { ms: 1350, deg: 5 },
+  jitter: { ms: 46, deg: 8 },
+  spin: { ms: 240, deg: 28 },
 } as const;
 
-/** Where things leave the boss (boss space, scale 1). */
+/**
+ * Touch / shot boxes in boss space (scale 1): the bun stack down to the floor (no hiding under the belly; the
+ * hero's straight shots hit it at any height), and the floor behind him up to the wall (touch only).
+ */
+export const BOXES = {
+  body: { x: -47, y: -150, w: 84, h: 150 },
+  back: { x: 37, y: -56, w: 46, h: 56 },
+} as const;
+
+/** Where things leave the boss (boss space, scale 1), in the poses of rig poses.ts. */
 export const EMIT = {
-  cup: { x: -76, y: -96 },
-  throwHand: { x: -60, y: -100 },
-  shadesHand: { x: -62, y: -102 },
-  foot: { x: -34, y: -10 },
+  /** the top of the red cup, raised (spray) */
+  cup: { x: 38, y: -138 },
+  /** the cup hand over his head (throw) */
+  throwHand: { x: 14, y: -112 },
+  /** the sunglasses on his face */
+  shadesHand: { x: -4, y: -115 },
+  /** the stomping left sneaker */
+  foot: { x: -26, y: -4 },
   /** gang members jump out from behind the boss legs */
   gang: { x: 30, y: 0 },
+  /** top of the bun (knockout stars) and the eyes (dizzy overlay) */
+  head: { x: -5, y: -156 },
+  eyes: { x: -8, y: -134 },
 } as const;
 
 export const MIN_TELEGRAPH_MS = 500;

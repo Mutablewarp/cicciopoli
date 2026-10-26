@@ -1,18 +1,17 @@
 /**
- * DOUBLE TRIPLE live boss (BossRuntime): the big burger (legs, back arm, body, front arm) struts and
- * flashes its peace sign; phase 2 it splits into two minis (body, legs, small arm each). Runs the pure
+ * DOUBLE TRIPLE live boss (BossRuntime): the shirt's walking double burger (legs, peace arm, glove arm, body)
+ * struts and flashes its peace sign; phase 2 it splits into two minis (the same rig, smaller). Runs the pure
  * scheduler, poses everything each frame (idle life, then the current move) and reports the boxes.
  */
 import { ARENA, type BossRuntime, type BossWorld, type Box } from '../../api';
-import { BODY, DT_FACE, SHOULDER } from './art';
-import { MINI } from './bits';
-import { LEG, LEGS, POSE } from './limbs';
 import { FxPlayer } from '../oldschool/kit/fxplay';
 import { Flash } from '../oldschool/kit/flash';
-import { part, put, Temps, Timers } from '../oldschool/kit/rig';
+import { Temps, Timers } from '../oldschool/kit/rig';
 import { Scheduler, type Move } from '../oldschool/kit/scheduler';
-import { makeMove, miniShoulder } from './moves';
+import { LEG, POSE } from './look';
+import { makeMove } from './moves';
 import { DECK1, DECK2, type DtAttack } from './pattern';
+import { bigRig, makeRig, miniRig, placeRig, rigBoxes } from './rig';
 import { koMove, splitMove } from './story';
 import { TEX } from './textures';
 import { DT } from './tuning';
@@ -22,28 +21,20 @@ const F = ARENA.floorY;
 
 export function createDoubleTriple(world: BossWorld): BossRuntime {
   const { scene, k } = world;
-  const d = DT.depth;
   const temps = new Temps();
   const timers = new Timers();
-  const legs = part(scene, TEX.legs, k, d.legs, LEG.stand, 0.5, LEGS.hipY / LEGS.h);
-  const armR = part(scene, TEX.arm, k, d.armR, POSE.peace);
-  const body = part(scene, TEX.body, k, d.body, DT_FACE.cool, 0.5, BODY.footY / BODY.h);
-  const armL = part(scene, TEX.arm, k, d.armL, POSE.hangL);
-  const miniLegs = DT.minis.map(() => part(scene, TEX.legs, k, d.legs, LEG.stand, 0.5, LEGS.hipY / LEGS.h));
-  const minis = DT.minis.map((_, i) => part(scene, TEX.mini, k, d.body, i * MINI.b, 0.5, MINI.footY / MINI.h));
-  const miniArms = DT.minis.map(() => part(scene, TEX.arm, k, d.armL, POSE.hangL));
-  const big = [legs, armR, body, armL];
-  const small = [...miniLegs, ...minis, ...miniArms];
-  const all = [...big, ...small];
+  const big = makeRig(scene, k, true);
+  const minis = DT.minis.map(() => makeRig(scene, k, false));
+  const small = minis.flatMap((m) => m.all);
+  const all = [...big.all, ...small];
   const flash = new Flash(() => all);
-  const mini = (x: number): MiniPose => ({ x, y: F, sx: 1, sy: 1, face: DT_FACE.cool, arm: POSE.hangL, legs: LEG.stand });
+  const mini = (x: number): MiniPose => ({ x, y: F, sx: 1, sy: 1, arm: POSE.hangL, legs: LEG.stand });
   const pose: DtPose = {
     body: true,
     bx: DT.home.x,
     by: F,
     sx: 1,
     sy: 1,
-    face: DT_FACE.cool,
     armL: POSE.hangL,
     armR: POSE.peace,
     legs: LEG.stand,
@@ -53,12 +44,12 @@ export function createDoubleTriple(world: BossWorld): BossRuntime {
   const c: DtCtx = {
     world,
     pose,
-    fx: new FxPlayer(scene, k, TEX.fx, d.fx, temps, world.reducedMotion),
+    fx: new FxPlayer(scene, k, TEX.fx, DT.depth.fx, temps, world.reducedMotion),
     flash,
     timers,
     temps,
     keys: { ...TEX, shock: TEX.fx.shock, shockAnim: TEX.fx.shockAnim },
-    parts: { big, armL, minis, miniArms },
+    parts: { big: big.all, armL: big.armL, minis: minis.map((m) => m.body), miniArms: minis.map((m) => m.armL) },
     phase: 0,
   };
   const sched = new Scheduler<DtAttack>(DECK1, () => world.rng(), DT.firstRestMs);
@@ -77,8 +68,7 @@ export function createDoubleTriple(world: BossWorld): BossRuntime {
       p.bx = DT.home.x + Math.sin((T / DT.strut.ms) * Math.PI * 2) * DT.strut.amp;
       p.by = F - Math.abs(Math.sin((T * DT.strut.stepFps * Math.PI) / 3000)) * 2;
       p.legs = step % LEG.walkN;
-      p.face = DT_FACE.cool;
-      p.armL = step % 6 < 3 ? POSE.hangL : POSE.hangR;
+      p.armL = step % 6 < 3 ? POSE.hangL : POSE.swingL;
       p.armR = POSE.peace;
       const b = Math.sin(T / 240) * 0.025;
       p.sx = 1 + b;
@@ -94,9 +84,8 @@ export function createDoubleTriple(world: BossWorld): BossRuntime {
         mp.y = F - 8 * lift;
         mp.sx = contact ? 1.1 : 1 - 0.04 * lift;
         mp.sy = contact ? 0.9 : 1 + 0.06 * lift;
-        mp.face = DT_FACE.cool;
         mp.legs = lift > 0.3 ? LEG.tuck : LEG.stand;
-        mp.arm = i === 0 ? POSE.peace : POSE.hangL;
+        mp.arm = i === 0 ? POSE.upL : POSE.hangL;
       });
     }
   }
@@ -104,46 +93,16 @@ export function createDoubleTriple(world: BossWorld): BossRuntime {
   function draw(): void {
     const p = pose;
     const wob = Math.sin(T * 0.06) * 0.05 * wobble;
-    for (const s of big) s.setVisible(p.body);
+    for (const s of big.all) s.setVisible(p.body);
     for (const s of small) s.setVisible(p.minis);
-    const hip = p.by - DT.legH;
-    put(legs, k, p.bx, hip);
-    legs.setFrame(p.legs);
-    const bottom = hip + DT.hipOverlap;
-    put(body, k, p.bx, bottom, p.sx + wob, p.sy - wob);
-    body.setFrame(p.face);
-    const sy = bottom + (SHOULDER.y - BODY.footY) * p.sy;
-    put(armL, k, p.bx + (SHOULDER.lx - BODY.w / 2) * p.sx, sy);
-    armL.setFrame(p.armL);
-    put(armR, k, p.bx + (SHOULDER.rx - BODY.w / 2) * p.sx, sy);
-    armR.setFrame(p.armR);
-    p.m.forEach((mp, i) => {
-      const ls = DT.mini.legScale;
-      const mhip = mp.y - DT.legH * ls;
-      put(miniLegs[i], k, mp.x, mhip, ls);
-      miniLegs[i].setFrame(mp.legs);
-      put(minis[i], k, mp.x, mhip + DT.hipOverlap * ls, mp.sx + wob, mp.sy - wob);
-      minis[i].setFrame(i * MINI.b + mp.face);
-      const sh = miniShoulder(mp);
-      put(miniArms[i], k, sh.x, sh.y, DT.mini.armScale);
-      miniArms[i].setFrame(mp.arm);
-    });
+    placeRig(big, bigRig(p), 1, k, wob);
+    p.m.forEach((mp, i) => placeRig(minis[i], miniRig(mp), DT.mini.scale, k, wob));
   }
 
   function boxes(): Box[] {
     const p = pose;
-    if (p.body) {
-      const hip = p.by - DT.legH;
-      const top = hip + DT.hipOverlap - 124 * p.sy;
-      return [
-        { x: p.bx - 54 * p.sx, y: top, w: 108 * p.sx, h: hip - top + 6 },
-        { x: p.bx - 24, y: hip, w: 48, h: p.by - hip },
-      ];
-    }
-    return p.m.map((mp) => {
-      const top = mp.y - DT.legH * DT.mini.legScale - 74 * mp.sy;
-      return { x: mp.x - 38 * mp.sx, y: top, w: 76 * mp.sx, h: mp.y - top };
-    });
+    if (p.body) return rigBoxes(bigRig(p), 1);
+    return p.m.flatMap((mp) => rigBoxes(miniRig(mp), DT.mini.scale));
   }
 
   idle();

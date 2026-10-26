@@ -8,6 +8,7 @@ import { LAST_BOSS, type CartoonSession, type SessionState } from './session';
 import type { RoundState } from './round';
 import { heroScale } from './assets';
 import type { CartoonView } from './view';
+import type { Box } from './api';
 
 export interface CartoonDebugState {
   session: SessionState;
@@ -27,7 +28,15 @@ export interface CartoonDebugState {
   k: number;
   zoom: number;
   arenaCss: { x: number; y: number; w: number; h: number };
+  /** the camera now: the world rect in view and CSS px per world unit */
+  cam: { x: number; y: number; w: number; h: number; cssPerUnit: number };
+  /** the boss hurt + body boxes in one (world units), null outside a round */
+  bossBox: Box | null;
+  /** the boss body's smoothed speed (units / s, boss time: CT_PLAYER.bump), null outside a round */
+  bossSpeed: number | null;
   autopilot: boolean;
+  /** the SPARA AUTO setting */
+  autoFire: boolean;
 }
 
 export interface CartoonDebugApi {
@@ -41,7 +50,7 @@ export interface CartoonDebugApi {
   kill(): void;
   cards(n: number): void;
   weapon(w: CartoonWeapon): void;
-  /** the last boss, knocked out at once: the GOLDEN TICKET finale and the golden results */
+  /** the last boss, knocked out as soon as its fight starts: the GOLDEN TICKET finale and the golden results */
   golden(): Promise<void>;
   /** the QA bot plays */
   bot(on?: boolean): void;
@@ -50,6 +59,19 @@ export interface CartoonDebugApi {
 }
 
 type Win = { __game?: CartoonDebugApi };
+
+function camOf(scene: Phaser.Scene): CartoonDebugState['cam'] {
+  const c = scene.cameras.main;
+  const v = c.worldView;
+  return { x: Math.round(v.x), y: Math.round(v.y), w: Math.round(v.width), h: Math.round(v.height), cssPerUnit: c.zoom * scene.scale.zoom };
+}
+
+function unionOf(boxes: readonly Box[]): Box | null {
+  if (boxes.length === 0) return null;
+  const x = Math.min(...boxes.map((b) => b.x));
+  const y = Math.min(...boxes.map((b) => b.y));
+  return { x, y, w: Math.max(...boxes.map((b) => b.x + b.w)) - x, h: Math.max(...boxes.map((b) => b.y + b.h)) - y };
+}
 
 export function installCartoonDebug(scene: Phaser.Scene, session: CartoonSession, view: CartoonView): void {
   if (!new URLSearchParams(window.location.search).has('debug')) return;
@@ -73,7 +95,11 @@ export function installCartoonDebug(scene: Phaser.Scene, session: CartoonSession
         k: view.framing.k,
         zoom: view.framing.zoom,
         arenaCss: view.framing.css,
+        cam: camOf(scene),
+        bossBox: r ? unionOf([...r.boss.hurtBoxes(), ...r.boss.bodyBoxes()]) : null,
+        bossSpeed: r ? Math.round(r.bossSpeed) : null,
         autopilot: session.autopilot,
+        autoFire: session.progress.data.settings.autoFire,
       };
     },
     boss: (id) => session.play(id),
@@ -89,6 +115,15 @@ export function installCartoonDebug(scene: Phaser.Scene, session: CartoonSession
     },
     golden: async () => {
       await session.play(LAST_BOSS);
+      // knocked out once the fight runs, as in play: the controls came up, so the finale gets the whole screen
+      await new Promise<void>((resolve) => {
+        const check = (): void => {
+          if (session.round?.state === 'intro') return;
+          scene.events.off('postupdate', check);
+          resolve();
+        };
+        scene.events.on('postupdate', check);
+      });
       session.round?.knockout();
     },
     bot: (on = true) => {

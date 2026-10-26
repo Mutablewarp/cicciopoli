@@ -206,6 +206,14 @@ export class Player {
     return true;
   }
 
+  /** Pushed toward `toX` (out of a slow boss body it walked into) at CT_PLAYER.bump.pushSpeed; walking into it stops. */
+  shove(toX: number, dtMs: number): void {
+    const dx = toX - this.x;
+    const step = P.bump.pushSpeed * (dtMs / 1000);
+    this.x += Math.max(-step, Math.min(step, dx));
+    if (this.vx * dx < 0) this.vx = 0;
+  }
+
   /** A parry popped something: bounce up, short safety. */
   parryBounce(): void {
     this.parryMs = 0;

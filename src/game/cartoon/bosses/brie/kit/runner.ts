@@ -140,7 +140,7 @@ export function runBoss<A extends string>(world: BossWorld, brain: Brain<A>, rig
 
   const begin = (e: StageEvent<A>): void => {
     if (e.stage === 'telegraph' && e.attack) {
-      plan = brain.plan(e.attack, { phase: tl.phase, playerX: world.player.x, from: pose, rng: () => world.rng() });
+      plan = brain.plan(e.attack, { phase: tl.phase, playerX: world.player.x, from: pose, rng: () => world.rng(), opening: tl.opening });
       queue = [...plan.hazards].sort((a, b) => a.atMs - b.atMs);
       spawned = 0;
       cued = 0;
@@ -200,7 +200,8 @@ export function runBoss<A extends string>(world: BossWorld, brain: Brain<A>, rig
 
   return {
     hurtBoxes: () => (tl.stage === 'ko' ? [] : brain.boxes(pose, tl.phase).hurt),
-    bodyBoxes: () => (tl.stage === 'ko' ? [] : brain.boxes(pose, tl.phase).body),
+    // the phase change is a show (flung off the bike, onto the ramp): his landing never hurts a hero stood by
+    bodyBoxes: () => (tl.stage === 'ko' || tl.stage === 'transform' ? [] : brain.boxes(pose, tl.phase).body),
     update(dt: number): void {
       clock += dt;
       const stepped = stepTimeline(tl, brain, dt, () => world.rng());

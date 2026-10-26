@@ -1,12 +1,12 @@
-/** HAPPY BOX (BOSS-B lane): boss 4 of the rush — "MAKE IT HAPPY" in a graffiti alley. */
+/** HAPPY BOX (BOSS-B lane): boss 4 of the rush — "MAKE IT HAPPY", cut out of the owner's shirt. */
 import type Phaser from 'phaser';
 import type { BossDef } from '../../api';
 import { image, sheet, unloadPrefix } from '../../draw/canvas';
+import { loadFlat, loadRig } from '../tuma/kit/rig';
 import { DUST, GLINT, SPLAT, drawDust, drawGlint } from '../tuma/kit/toon';
-import { HAPPY_POSES, drawHappy } from './art';
 import { buildHappyArena, loadHappyArena } from './arena';
-import { BODY, DECAL, DROP, HAPPY_CFG as C, HK, LANE, MINI, PAINT, PINK, PUFF, ROCKET } from './config';
-import { drawDecal, drawDrop, drawLane, drawMess, drawMini, drawPuff, drawRocket, drawSplat } from './props';
+import { DECAL, DROP, HAPPY_ASSETS, HAPPY_CFG as C, HAPPY_RIG, HAPPY_RIG_LAYERS, HK, LANE, PAINT, PINK, PUFF, ROCKET, happyTex } from './config';
+import { drawDecal, drawDrop, drawLane, drawPuff, drawRocket, drawSplat } from './props';
 import { createHappy } from './runtime';
 
 export const HAPPY: BossDef = {
@@ -17,13 +17,12 @@ export const HAPPY: BossDef = {
   music: 'cartoonBoss',
   hp: C.hp,
   phases: C.phases,
+  assets: HAPPY_ASSETS,
   load(scene: Phaser.Scene, k: number): void {
-    const texK = Math.min(k, C.kMax) * C.scale * C.grow;
-    sheet(scene, HK.body, BODY.w, BODY.h, HAPPY_POSES.length, texK, drawHappy);
-    image(scene, HK.mess, BODY.w, BODY.h, texK, drawMess);
+    loadRig(scene, HAPPY_RIG_LAYERS, HAPPY_RIG.w, HAPPY_RIG.h, happyTex(k));
+    loadFlat(scene, HAPPY_RIG_LAYERS, HK.mini, HAPPY_RIG.w, HAPPY_RIG.h, Math.min(k * C.minis.scale, C.texMax));
     sheet(scene, HK.puff, PUFF.w, PUFF.h, PAINT.length, k, drawPuff);
     sheet(scene, HK.drop, DROP.w, DROP.h, PINK, k, drawDrop);
-    sheet(scene, HK.mini, MINI.w, MINI.h, 3, k, drawMini);
     sheet(scene, HK.rocket, ROCKET.w, ROCKET.h, 2, k, drawRocket);
     image(scene, HK.lane, LANE.w, LANE.h, k, drawLane);
     sheet(scene, HK.splat, SPLAT.w, SPLAT.h, PAINT.length * 3, k, drawSplat);

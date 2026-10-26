@@ -1,23 +1,25 @@
 /**
- * Burger Gang projectiles, minions and floor marks: soda bubbles (pink = parryable), the flying heart
- * shades, soda cans, fizz geysers, drops, the stomp shockwave, chimney bricks, the gang (mini burgers,
- * fries boxes), puddles / shadows and the knockout stars. Drawn at k, shown at 1 / k.
+ * Burger Gang projectiles, minions and floor marks drawn in code: soda bubbles (pink = parryable), soda cans,
+ * fizz geysers, drops, the stomp shockwave, chimney bricks, the gang's fries box, puddles / shadows and the
+ * knockout stars. Drawn at k, shown at 1 / k. The flying sunglasses and the gang's mini burgers are cut from the
+ * shirt (boss.ts); TEX / ANIM list them too, for the runtime.
  */
 import type Phaser from 'phaser';
 import { INK, LINE, anim, image, inked, sheet } from '../../../draw/canvas';
 import { COL, PRE } from '../config';
-import { TAU, can, ellipse, glove, pieEye, shades, smooth, sneaker } from './parts';
+import { GANG_ANIM, GANG_KEY, SHADES_KEY } from './boss';
+import { TAU, can, ellipse, glove, halo, pieEye, smooth, sneaker } from './parts';
 
 export const TEX = {
   bubble: `${PRE}bubble`,
-  shades: `${PRE}shades`,
+  shades: SHADES_KEY,
   can: `${PRE}can`,
   geyser: `${PRE}geyser`,
   burst: `${PRE}burst`,
   drop: `${PRE}drop`,
   wave: `${PRE}wave`,
   brick: `${PRE}brick`,
-  burger: `${PRE}burger`,
+  burger: GANG_KEY,
   fries: `${PRE}fries`,
   mark: `${PRE}mark`,
   shadow: `${PRE}shadow`,
@@ -29,19 +31,10 @@ export const ANIM = {
   geyser: `${PRE}geyser-a`,
   burst: `${PRE}burst-a`,
   wave: `${PRE}wave-a`,
-  burger: `${PRE}burger-a`,
+  burger: GANG_ANIM,
   fries: `${PRE}fries-a`,
   puddle: `${PRE}puddle-a`,
 } as const;
-
-/** Pink things get a soft pink halo so they read as parryable at a glance. */
-function halo(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): void {
-  const g = ctx.createRadialGradient(x, y, r * 0.6, x, y, r * 1.35);
-  g.addColorStop(0, 'rgba(255,105,173,0.55)');
-  g.addColorStop(1, 'rgba(255,105,173,0)');
-  ctx.fillStyle = g;
-  ctx.fillRect(x - r * 1.4, y - r * 1.4, r * 2.8, r * 2.8);
-}
 
 /** Soda bubble: see-through body, bright rim, white crescent glint, a tiny inner bubble. */
 function bubble(ctx: CanvasRenderingContext2D, f: number): void {
@@ -149,57 +142,6 @@ function brick(ctx: CanvasRenderingContext2D): void {
   }
 }
 
-/** Mini burger of the gang: hops on tiny sneakers, angry pie eyes, facing left. */
-function burger(ctx: CanvasRenderingContext2D, f: number): void {
-  const sy = [0.86, 1.08, 1.02, 0.94][f] ?? 1;
-  const air = f === 1 || f === 2;
-  ctx.save();
-  ctx.translate(17, 30);
-  for (const x of [-6, 6]) {
-    ctx.strokeStyle = INK;
-    ctx.lineWidth = 3.6;
-    ctx.beginPath();
-    ctx.moveTo(x, -6);
-    ctx.lineTo(x + (air ? 2 : 0), -1);
-    ctx.stroke();
-    ctx.strokeStyle = COL.skin;
-    ctx.lineWidth = 1.8;
-    ctx.stroke();
-    sneaker(ctx, x - 1, air ? 0 : 2, 0.42, -1, air ? -0.3 : 0);
-  }
-  ctx.scale(2 - sy, sy);
-  ctx.beginPath();
-  ctx.roundRect(-12, -10, 24, 6, [1, 1, 4, 4]);
-  inked(ctx, COL.bun, LINE * 0.8);
-  ctx.beginPath();
-  ctx.roundRect(-13, -15, 26, 6, 3);
-  inked(ctx, COL.patty, LINE * 0.8);
-  ctx.beginPath();
-  ctx.moveTo(-13, -16);
-  ctx.lineTo(13, -16);
-  ctx.lineTo(4, -11);
-  ctx.lineTo(0, -14);
-  ctx.lineTo(-6, -11);
-  ctx.closePath();
-  inked(ctx, COL.cheese, LINE * 0.6);
-  ctx.beginPath();
-  ctx.moveTo(-14, -16);
-  ctx.bezierCurveTo(-14, -30, 14, -30, 14, -16);
-  ctx.closePath();
-  inked(ctx, COL.bun, LINE * 0.9);
-  pieEye(ctx, -6, -21, 3.2, 4, { x: -0.9, y: 0.2 });
-  pieEye(ctx, 2, -21, 3.2, 4, { x: -0.9, y: 0.2 });
-  ctx.strokeStyle = INK;
-  ctx.lineWidth = LINE * 0.8;
-  ctx.beginPath();
-  ctx.moveTo(-10, -27);
-  ctx.lineTo(-3, -25);
-  ctx.moveTo(6, -27);
-  ctx.lineTo(0, -25);
-  ctx.stroke();
-  ctx.restore();
-}
-
 /** Fries box of the gang: red box, fries for hair, running legs, facing left. */
 function fries(ctx: CanvasRenderingContext2D, f: number): void {
   const ph = (f / 4) * TAU;
@@ -281,10 +223,6 @@ export function loadProps(scene: Phaser.Scene, k: number): void {
   sheet(scene, TEX.bubble, 28, 28, 4, k, bubble);
   anim(scene, ANIM.bubble, TEX.bubble, [0, 1], 6);
   anim(scene, ANIM.bubblePink, TEX.bubble, [2, 3], 6);
-  image(scene, TEX.shades, 52, 30, k, (ctx) => {
-    halo(ctx, 26, 15, 16);
-    shades(ctx, 26, 15, 46, 0);
-  });
   sheet(scene, TEX.can, 18, 26, 2, k, (ctx, f) => {
     if (f) halo(ctx, 9, 13, 10);
     can(ctx, 9, 13, 20, 0, f === 1);
@@ -303,8 +241,6 @@ export function loadProps(scene: Phaser.Scene, k: number): void {
   sheet(scene, TEX.wave, 48, 36, 2, k, wave);
   anim(scene, ANIM.wave, TEX.wave, 2, 10);
   image(scene, TEX.brick, 22, 15, k, brick);
-  sheet(scene, TEX.burger, 34, 34, 4, k, burger);
-  anim(scene, ANIM.burger, TEX.burger, 4, 7);
   sheet(scene, TEX.fries, 28, 38, 4, k, fries);
   anim(scene, ANIM.fries, TEX.fries, 4, 14);
   sheet(scene, TEX.mark, 44, 14, 3, k, mark);

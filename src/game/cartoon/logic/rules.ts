@@ -4,7 +4,7 @@
  */
 import type { Box, Vec } from '../api';
 import type { CartoonWeapon } from '../../../contracts';
-import { CT_CARDS, CT_GRADE, CT_PLAYER, CT_SCORE, CT_WEAPONS } from '../../../config/cartoon';
+import { CT_CARDS, CT_GRADE, CT_PLAYER, CT_SCORE, CT_WEAPONS, type CartoonPace } from '../../../config/cartoon';
 
 /* ------------------------------------------------------------------ geometry */
 
@@ -35,9 +35,27 @@ export interface HitShape {
   h?: number;
 }
 
+/** The box of a round or boxy shape (a hazard, a minion). */
+export function shapeBox(s: HitShape): Box {
+  if (s.w !== undefined && s.h !== undefined) return { x: s.x - s.w / 2, y: s.y - s.h / 2, w: s.w, h: s.h };
+  const r = s.r ?? 6;
+  return { x: s.x - r, y: s.y - r, w: r * 2, h: r * 2 };
+}
+
 export function shapeHitsBox(s: HitShape, b: Box): boolean {
   if (s.w !== undefined && s.h !== undefined) return boxesOverlap({ x: s.x - s.w / 2, y: s.y - s.h / 2, w: s.w, h: s.h }, b);
   return circleHitsBox(s, s.r ?? 6, b);
+}
+
+/**
+ * Touching a slow boss body (CT_PLAYER.bump): where the hero centre goes to stand clear of `body`, on the side of
+ * its centre, or on the other side when that is past a wall [minX, maxX]; null = no room (the touch hurts).
+ */
+export function bumpX(hero: Box, body: Box, minX: number, maxX: number): number | null {
+  const left = body.x - hero.w / 2;
+  const right = body.x + body.w + hero.w / 2;
+  const sides = hero.x + hero.w / 2 < body.x + body.w / 2 ? [left, right] : [right, left];
+  return sides.find((x) => x >= minX && x <= maxX) ?? null;
 }
 
 /** The PARATA: a pink thing inside the hero box grown by the pad while the window is open. */
@@ -66,6 +84,12 @@ export function superAction(cards: number): 'super' | 'ex' | null {
 export function nextWeapon(w: CartoonWeapon): CartoonWeapon {
   const order = CT_WEAPONS.order;
   return order[(order.indexOf(w) + 1) % order.length];
+}
+
+/** CT_PACE: the boss clock factor `fightMs` into the fight, eased from openFrom up to tempo over openMs. */
+export function bossTempo(p: CartoonPace, fightMs: number): number {
+  const t = p.openMs > 0 ? Math.min(1, Math.max(0, fightMs / p.openMs)) : 1;
+  return p.openFrom + (p.tempo - p.openFrom) * t * t * (3 - 2 * t);
 }
 
 /* ------------------------------------------------------------------ grade + score */

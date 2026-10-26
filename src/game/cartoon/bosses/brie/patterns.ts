@@ -4,6 +4,8 @@
  * basket), CARICA (bell, wheelie, a leap across the arena and back), BERRETTO (beret boomerang: low out,
  * high back). Phase 1 on foot, melting: SALTO (hop on the hero's spot, cheese waves), GIAVELLOTTI
  * (baguettes stuck in the marked spots), RAFFICA (low / high baguettes), RIMBALZI (bouncing wheels).
+ * Each phase opens gently (PlanCtx.opening): the first baguettes fly high over a hero who stays down, the
+ * first hop lands beside the hero (marked) without shockwaves.
  */
 import { ARENA, type Box, type Vec } from '../../api';
 import { BRIE as C } from './config';
@@ -65,7 +67,8 @@ function baguette(from: Vec, lane: 'low' | 'high', atMs: number, speed: number, 
 function planBaguette(ctx: PlanCtx): AttackPlan {
   const h = hand(ctx.from, 0, C.rig.throwHand);
   const b = C.baguette;
-  return plain(Array.from({ length: b.count }, (_, i) => baguette(h, 'low', i * b.everyMs, b.speed, i === b.count - 1)));
+  const lane = ctx.opening ? 'high' : 'low';
+  return plain(Array.from({ length: b.count }, (_, i) => baguette(h, lane, i * b.everyMs, b.speed, i === b.count - 1)));
 }
 
 function planVolley(ctx: PlanCtx): AttackPlan {
@@ -145,7 +148,9 @@ function planBeret(ctx: PlanCtx): AttackPlan {
 
 function planHop(ctx: PlanCtx): AttackPlan {
   const h = C.hop;
-  const tx = Math.max(h.minX, Math.min(h.maxX, ctx.playerX));
+  // the opener lands beside the hero (toward home, or past him when he stands by the boss)
+  const aim = !ctx.opening ? ctx.playerX : ctx.playerX + (ctx.playerX + h.openDx <= h.maxX ? h.openDx : -h.openDx);
+  const tx = Math.max(h.minX, Math.min(h.maxX, aim));
   const home = { x: ctx.from.x, y: F };
   const spot = { x: tx, y: F };
   const path = chain([
@@ -167,7 +172,7 @@ function planHop(ctx: PlanCtx): AttackPlan {
   };
   const back = h.outMs + h.holdMs;
   return {
-    hazards: [wave(-1), wave(1)],
+    hazards: ctx.opening ? [] : [wave(-1), wave(1)],
     marks: [spot],
     marksMs: h.outMs,
     move: (t) => ({ ...path(t), s: 1, f: t > back && t < back + h.backMs ? 1 : -1 }),

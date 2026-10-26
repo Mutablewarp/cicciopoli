@@ -8,14 +8,14 @@ import { SHOT, TUMA_CFG } from './config';
 
 const C = TUMA_CFG;
 
-/** Citrus lobbed in arcs from the hand: n landing spots with a hole away from the player. */
-export function lemonVolley(rng: () => number, phase: number, from: Vec, playerX: number, pink: boolean): Shot[] {
+/** Citrus lobbed in arcs from the glove: n landing spots with a hole away from the player (`first`: the gentle opener). */
+export function lemonVolley(rng: () => number, phase: number, from: Vec, playerX: number, pink: boolean, first = false): Shot[] {
   const L = C.lemon;
-  const n = L.n[Math.min(phase, 1)];
+  const n = first ? C.firstLemons.n : L.n[Math.min(phase, 1)];
   const fp = L.r + L.splash;
   const xs = spread(rng, n, C.field[0] + fp, C.field[1] - fp, C.safeW + fp * 2 + 4, fp * 2 + 10, playerX);
   return xs.map((x, i) => {
-    const ms = L.flightMs[Math.min(phase, 1)] + (rng() - 0.5) * 120;
+    const ms = (first ? C.firstLemons.flightMs : L.flightMs[Math.min(phase, 1)]) + (rng() - 0.5) * 120;
     const v = lob(from.x, from.y, x, ARENA.floorY - L.r, ms, L.g);
     const frame = pink && i === n - 1 ? SHOT.blood : i % 2 ? SHOT.orange : SHOT.lemon;
     return { delayMs: i * L.gapMs, x: from.x, y: from.y, vx: v.vx, vy: v.vy, ay: L.g, r: L.r, frame, pink: frame === SHOT.blood };

@@ -1,6 +1,6 @@
 /**
  * DON TUMA props and projectiles (vector): lemons, oranges, the PINK blood orange (parryable), honey
- * drops and bottle, splats, the sun beam and its warning, the deck chair that turns into jaws.
+ * drops, splats, the sun beam and its warning, the folding deck chair that bites, the wheel of tuma.
  */
 import { INK, LINE, inked } from '../../draw/canvas';
 import { type Ctx, WHITE, ell, pieEye, sparkle, splatDrawer } from './kit/toon';
@@ -37,35 +37,6 @@ export function citrus(ctx: Ctx, x: number, y: number, r: number, kind: Citrus):
   ell(ctx, x - r * 0.38, y - r * 0.38, r * 0.22, r * 0.14, -0.6);
   ctx.fill();
   if (kind === 'blood') sparkle(ctx, x + r * 0.7, y - r * 0.8, r * 0.55, WHITE);
-}
-
-export function honeyBottle(ctx: Ctx, x: number, y: number): void {
-  ctx.beginPath();
-  ctx.moveTo(x - 9, y + 20);
-  ctx.bezierCurveTo(x - 12, y + 4, x - 8, y - 6, x - 4, y - 8);
-  ctx.lineTo(x + 4, y - 8);
-  ctx.bezierCurveTo(x + 8, y - 6, x + 12, y + 4, x + 9, y + 20);
-  ctx.closePath();
-  inked(ctx, '#e8a12c', LINE * 0.9);
-  ctx.fillStyle = '#fff1c8';
-  ctx.fillRect(x - 7, y + 4, 14, 7);
-  ctx.beginPath();
-  ctx.moveTo(x - 3, y - 8);
-  ctx.lineTo(x, y - 18);
-  ctx.lineTo(x + 3, y - 8);
-  ctx.closePath();
-  inked(ctx, '#d23c2c', LINE * 0.8);
-  ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  ell(ctx, x - 5, y + 12, 1.6, 5);
-  ctx.fill();
-}
-
-/** Angry steam puffs (local coords around x, y). */
-export function steam(ctx: Ctx, x: number, y: number, s: number): void {
-  for (const [dx, dy, r] of [[0, 0, 7], [9, -8, 6], [2, -16, 5]] as const) {
-    ell(ctx, x + dx * s, y + dy * s, r * s, r * s * 0.85);
-    inked(ctx, WHITE, LINE * 0.7);
-  }
 }
 
 /** Projectile sheet (SHOT): lemon, orange, blood orange (PINK), honey drop. 24 x 24 each, centred. */
@@ -186,16 +157,6 @@ export function drawBeam(ctx: Ctx, f: number): void {
   ctx.fill();
 }
 
-/** Deck chair (frame 0, sits behind the seated body: same frame as the body sheet). */
-export function drawChair(ctx: Ctx): void {
-  ctx.lineCap = 'round';
-  bar(ctx, 184, 196, 112, 120, 6);
-  bar(ctx, 58, 196, 186, 28, 6);
-  checkerBand(ctx, [[182, 32], [172, 120], [150, 192], [74, 156]], 26);
-  bar(ctx, 62, 156, 84, 152, 7);
-  bar(ctx, 172, 24, 192, 28, 7);
-}
-
 function bar(ctx: Ctx, x1: number, y1: number, x2: number, y2: number, w: number): void {
   ctx.beginPath();
   ctx.moveTo(x1, y1);
@@ -293,3 +254,30 @@ export function drawJaws(ctx: Ctx, f: number): void {
   pieEye(ctx, ex + 6, ey - 2, 5.5, 7, -0.9, 0.3, 0.35, '#a32820');
 }
 
+
+/** The wheel of tuma he kicks (WHEEL.w x WHEEL.h, centred): pale cheese with the basket marks of the mould. */
+export const WHEEL = { w: 46, h: 46 } as const;
+export function drawWheel(ctx: Ctx): void {
+  const r = TUMA_CFG.spin.r;
+  const c = WHEEL.w / 2;
+  ell(ctx, c, c, r, r);
+  const g = ctx.createRadialGradient(c - r * 0.35, c - r * 0.35, 2, c, c, r);
+  g.addColorStop(0, '#fffbe8');
+  g.addColorStop(0.6, '#f7e9bf');
+  g.addColorStop(1, '#e2c27a');
+  inked(ctx, g, LINE);
+  ctx.strokeStyle = 'rgba(150,110,50,0.55)';
+  ctx.lineWidth = 1.1;
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(c + Math.cos(a) * r * 0.25, c + Math.sin(a) * r * 0.25);
+    ctx.lineTo(c + Math.cos(a) * r * 0.85, c + Math.sin(a) * r * 0.85);
+    ctx.stroke();
+  }
+  ell(ctx, c, c, r * 0.55, r * 0.55);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ell(ctx, c - r * 0.45, c - r * 0.45, r * 0.18, r * 0.1, -0.7);
+  ctx.fill();
+}

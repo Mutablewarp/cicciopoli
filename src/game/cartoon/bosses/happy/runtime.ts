@@ -7,22 +7,20 @@
  */
 import type Phaser from 'phaser';
 import { ARENA, type BossRuntime, type BossWorld, type Box, type HazardHandle } from '../../api';
-import { Fx, ToonBody } from '../tuma/kit/body';
+import { Fx } from '../tuma/kit/fx';
 import type { Shot } from '../tuma/kit/geom';
+import { Rig } from '../tuma/kit/rig';
 import { Later, Scheduler } from '../tuma/kit/sched';
-import { HF, NOZZLE } from './art';
-import { BODY, HAPPY_CFG as C, HAPPY_LINES, HK, LANE, PINK, type HappyAttack } from './config';
+import { HAPPY_CFG as C, HAPPY_LINES, HAPPY_RIG, HK, LANE, PINK, SPOT, type HappyAttack, type HappyPart, happyTex } from './config';
 import { miniDrops, paintDrips, rocketLanes, sprayPuffs } from './plan';
+import { type HappyPose, applyHappyPose } from './poses';
 
 const F = ARENA.floorY;
 
 export function createHappy(world: BossWorld): BossRuntime {
   const scene: Phaser.Scene = world.scene;
-  const texK = Math.min(world.k, C.kMax) * C.scale * C.grow;
   const rng = (): number => world.rng();
-  const body = new ToonBody(scene, HK.body, texK, BODY, C.x, F, C.scale, 3);
-  body.setLoop(HF.idle, 6);
-  const mess = scene.add.sprite(C.x, F, HK.mess).setDepth(3.5).setVisible(false);
+  const rig = new Rig<HappyPart>(scene, HAPPY_RIG, C.scale, happyTex(world.k), C.x, F, 3);
   const fx = new Fx(scene, world.k);
   const later = new Later();
   const sched = new Scheduler<HappyAttack>(C.attacks, rng, C.startMs);
@@ -32,13 +30,20 @@ export function createHappy(world: BossWorld): BossRuntime {
   let modeMs = 0;
   let burst = false;
   let flat = false;
+  let pose: HappyPose = 'idle';
+  let poseMs = 0;
   let t = 0;
   let sprays = 0;
   let count = 0;
   let drops: Shot[] = [];
   let lanes: number[] = [];
 
-  const at = (p: readonly [number, number]): { x: number; y: number } => body.at(p[0], p[1]);
+  const hold = (p: HappyPose, ms: number): void => {
+    pose = p;
+    poseMs = ms;
+  };
+  const nozzle = (): { x: number; y: number } => rig.live('armR', SPOT.nozzle[0], SPOT.nozzle[1]);
+  const boxTop = (): { x: number; y: number } => rig.live('body', SPOT.boxTop[0], SPOT.boxTop[1]);
   const glint = (x: number, y: number): void => {
     fx.add(HK.glint, x, y, 480, { frames: [0, 1], fps: 10, loop: true, depth: 8, tick: (s, p) => s.setAngle(p * 120).setAlpha(1 - p * p) });
   };
@@ -105,8 +110,10 @@ export function createHappy(world: BossWorld): BossRuntime {
 
   function mini(x: number): void {
     const M = C.minis;
-    const from = at([100, 48]);
+    const from = boxTop();
     const fl = M.flightMs / 1000;
+    // the mini texture is the whole rig at minis.scale (index.ts): shown at 1 / k, squashed on landing
+    const sc = 1 / world.k;
     let rest = 0;
     let age = 0;
     const m = world.spawnMinion({
@@ -118,7 +125,6 @@ export function createHappy(world: BossWorld): BossRuntime {
       r: M.r,
       hp: M.hp,
       texture: HK.mini,
-      frame: 1,
       lifeMs: M.lifeMs + 2000,
       onDeath: () => splat(m.x, 1),
       update(h: HazardHandle, dt: number): void {
@@ -127,25 +133,26 @@ export function createHappy(world: BossWorld): BossRuntime {
           poof(h.x, h.y);
           return h.destroy();
         }
-        if (rest <= 0 && h.vy > 0 && h.y >= F - M.r) rest = 170;
+        if (rest <= 0 && h.vy > 0 && h.y >= F - M.r) rest = M.squashMs;
         if (rest > 0) {
           rest -= dt;
           h.vx = 0;
           h.vy = 0;
           h.y = F - M.r;
-          h.sprite.setFrame(2);
+          h.sprite.setScale(sc * 1.2, sc * 0.82);
           if (rest <= 0) {
             h.vy = -M.hopVy;
             h.vx = Math.sign(world.player.x - h.x || -1) * M.speed;
           }
-        } else h.sprite.setFrame(1).setFlipX(h.vx > 0);
+        } else h.sprite.setScale(sc * (h.vx > 0 ? -0.92 : 0.92), sc * 1.1);
       },
     });
+    m.sprite.setScale(sc);
   }
 
   function rocket(y: number): void {
     const R = C.rocket;
-    const x = at(NOZZLE.aim).x;
+    const x = nozzle().x;
     poof(x, y);
     world.sfx('jet');
     world.spawnHazard({ x, y, vx: -R.speed, w: R.w, h: R.h, texture: HK.rocket, frame: 0, lifeMs: 4000, update: (h) => void (mode === 'ko' ? h.destroy() : h.sprite.setFrame(Math.floor(t / 60) % 2)) });
@@ -154,47 +161,47 @@ export function createHappy(world: BossWorld): BossRuntime {
   function telegraph(kind: HappyAttack, ms: number): void {
     if (++count % C.sayEvery === 0) world.say(HAPPY_LINES[kind], 1100);
     if (kind === 'spray') {
-      body.hold(HF.shake, ms);
-      glint(at([160, 40]).x, at([160, 40]).y);
+      hold('shake', ms);
+      later.add(120, () => glint(nozzle().x, nozzle().y));
       world.sfx('squeeze');
     } else if (kind === 'drips') {
-      body.hold(HF.drips, ms + 500);
-      glint(at(NOZZLE.drips).x, at(NOZZLE.drips).y);
+      hold('drips', ms + 500);
+      later.add(120, () => glint(boxTop().x, boxTop().y));
       world.sfx('squeeze');
       drops = paintDrips(rng, phase, world.player.x);
-      for (const d of drops) fx.add(HK.drop, d.x, d.y, ms + d.delayMs, { frames: [d.frame], depth: 6, tick: (s, p) => s.setScale((0.3 + 0.7 * Math.min(1, p * 1.5)) / world.k) });
+      for (const d of drops) fx.add(HK.drop, d.x, d.y, ms + d.delayMs, { frames: [d.frame], depth: 6, tick: (sp, p) => sp.setScale((0.3 + 0.7 * Math.min(1, p * 1.5)) / world.k) });
     } else if (kind === 'minis') {
-      body.hold(HF.minis, ms + 400);
-      body.kick(-0.12);
-      glint(at([100, 40]).x, at([100, 40]).y);
+      hold('minis', ms + 400);
+      rig.kick(-0.12);
+      later.add(150, () => glint(boxTop().x, boxTop().y));
       world.sfx('dash');
     } else {
-      body.hold(HF.aim, ms);
+      hold('aim', ms);
       lanes = rocketLanes(rng);
       laneWarn(lanes[0], ms);
-      glint(at(NOZZLE.aim).x, at(NOZZLE.aim).y);
+      later.add(150, () => glint(nozzle().x, nozzle().y));
       world.sfx('cardFull');
     }
   }
 
   function fire(kind: HappyAttack): void {
     if (kind === 'spray') {
-      body.hold(HF.spray, 700);
-      body.kick(0.08);
+      hold('spray', 700);
+      rig.kick(0.08);
       world.sfx('squeeze');
-      for (const s of sprayPuffs(rng, phase, at(NOZZLE.spray), world.player.x, sprays++ % C.spray.pinkEvery === 1)) later.add(s.delayMs, () => puff(s));
+      for (const p of sprayPuffs(rng, phase, nozzle(), world.player.x, sprays++ % C.spray.pinkEvery === 1)) later.add(p.delayMs, () => puff(p));
     } else if (kind === 'drips') {
       for (const d of drops) later.add(d.delayMs, () => drop(d));
     } else if (kind === 'minis') {
       world.sfx('lob');
       miniDrops(rng, phase).forEach((x, i) => later.add(i * C.minis.gapMs, () => mini(x)));
     } else {
-      body.hold(HF.launch, 500);
-      body.kick(-0.15);
+      hold('launch', 500);
+      rig.kick(-0.15);
       rocket(lanes[0]);
       laneWarn(lanes[1], C.rocket.warnMs);
       later.add(C.rocket.warnMs, () => {
-        body.hold(HF.launch, 500);
+        hold('launch', 500);
         rocket(lanes[1]);
       });
     }
@@ -203,22 +210,22 @@ export function createHappy(world: BossWorld): BossRuntime {
   function rage(dt: number): void {
     modeMs += dt;
     if (modeMs < 1000) {
-      body.grow = 1 + 0.1 * (modeMs / 1000) + Math.sin(modeMs / 40) * 0.015;
-      body.x = C.x + Math.sin(modeMs / 18) * 1.5;
+      rig.grow = 1 + (C.grow - 1) * 0.6 * (modeMs / 1000) + Math.sin(modeMs / 40) * 0.012;
+      rig.x = C.x + Math.sin(modeMs / 18) * 1.5;
       return;
     }
     if (!burst) {
       burst = true;
-      body.grow = C.grow;
-      body.x = C.x;
-      body.kick(0.4);
-      mess.setVisible(true);
+      rig.grow = C.grow;
+      rig.x = C.x;
+      rig.kick(0.4);
       world.shake(7, 420);
       world.sfx('blast');
+      const top = boxTop();
       for (let i = 0; i < 9; i++) {
         const d = scene.add.sprite(40 + rng() * 560, 70 + rng() * 200, HK.decal, i % 4).setDepth(-14).setAngle(rng() * 360);
         decals.push(d.setScale(0));
-        fx.add(HK.drop, body.x, body.y - 120, 600, { frames: [i % PINK], depth: 8, tick: (s, p) => s.setPosition(body.x + (d.x - body.x) * p, body.y - 120 + (d.y - body.y + 120) * p - Math.sin(p * Math.PI) * 60) });
+        fx.add(HK.drop, top.x, top.y, 600, { frames: [i % PINK], depth: 8, tick: (sp, p) => sp.setPosition(top.x + (d.x - top.x) * p, top.y + (d.y - top.y) * p - Math.sin(p * Math.PI) * 60) });
         later.add(600, () => d.setScale(0.9 / world.k));
       }
       for (let i = 0; i < 6; i++) later.add(600, () => splat(40 + rng() * 360, i % PINK));
@@ -228,25 +235,21 @@ export function createHappy(world: BossWorld): BossRuntime {
 
   function knockout(dt: number): void {
     modeMs += dt;
-    if (modeMs < 1400) body.angle = Math.sin(modeMs / 110) * 7;
-    else if (!flat) {
-      flat = true;
-      body.angle = 0;
-      body.hold(HF.flat, 1e9);
-      body.kick(0.5);
-      mess.setVisible(false);
-      world.sfx('blast');
-      poof(body.x - 40, F - 10);
-      poof(body.x + 40, F - 10);
-    }
+    if (modeMs < 1400 || flat) return;
+    flat = true;
+    hold('flat', 1e9);
+    rig.kick(0.5);
+    world.sfx('blast');
+    poof(rig.x - 40, F - 10);
+    poof(rig.x + 40, F - 10);
   }
 
   return {
     hurtBoxes(): readonly Box[] {
-      return mode === 'ko' ? [] : [body.box(...C.hurt)];
+      return mode === 'ko' ? [] : [rig.box(...C.hurt)];
     },
     bodyBoxes(): readonly Box[] {
-      return mode === 'ko' ? [] : [body.box(56, 46, 96, 170)];
+      return mode === 'ko' ? [] : [rig.box(...C.bodyBox)];
     },
     update(dt: number): void {
       t += dt;
@@ -260,9 +263,10 @@ export function createHappy(world: BossWorld): BossRuntime {
           else if (e.type === 'fire') fire(e.kind);
         }
       }
-      body.update(dt);
-      const s = body.sprite;
-      mess.setPosition(s.x, s.y).setOrigin(s.originX, s.originY).setScale(s.scaleX, s.scaleY).setAngle(s.angle);
+      if (poseMs > 0) poseMs -= dt;
+      const now: HappyPose = poseMs > 0 ? pose : mode === 'ko' ? 'dizzy' : 'idle';
+      applyHappyPose(rig, now, t, phase > 0);
+      rig.update(dt);
     },
     onPhase(p: number): void {
       if (p <= phase || mode === 'ko') return;
@@ -271,22 +275,22 @@ export function createHappy(world: BossWorld): BossRuntime {
       modeMs = 0;
       sched.setPhase(p, C.transformMs);
       later.clear();
-      body.hold(HF.puff, 1000);
+      hold('puff', 1000);
       world.sfx('phase');
       world.shake(3, 900);
       world.say(HAPPY_LINES.rage, 1400);
     },
     onHit(): void {
-      body.flash();
+      rig.flash();
     },
     onKnockout(): void {
       mode = 'ko';
       modeMs = 0;
       sched.stop();
       later.clear();
-      body.grow = phase > 0 ? C.grow : 1;
-      body.release();
-      body.setLoop(HF.dizzy, 5);
+      rig.grow = phase > 0 ? C.grow : 1;
+      rig.x = C.x;
+      hold('idle', 0);
       world.say(HAPPY_LINES.ko, 1500);
     },
     get done(): boolean {
@@ -295,8 +299,7 @@ export function createHappy(world: BossWorld): BossRuntime {
     destroy(): void {
       later.clear();
       fx.clear();
-      body.destroy();
-      mess.destroy();
+      rig.destroy();
       for (const d of decals) d.destroy();
     },
   };

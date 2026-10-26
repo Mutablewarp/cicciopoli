@@ -8,7 +8,7 @@ import { unloadPrefix } from '../../draw/canvas';
 import { runBoss } from './kit/runner';
 import { BRIE as C } from './config';
 import { buildArena } from './arena';
-import { KEY, PREFIX, loadBrie } from './look';
+import { BRIE_ASSETS, KEY, PREFIX, loadBrie } from './look';
 import { BRIE_BRAIN } from './patterns';
 import { makeBrieRig } from './rig';
 
@@ -20,13 +20,14 @@ export const BRIE: BossDef = {
   music: 'cartoonBoss',
   hp: C.hp,
   phases: C.phases,
+  assets: BRIE_ASSETS,
   load: loadBrie,
   buildArena: (scene: Phaser.Scene, k: number) => buildArena(scene, k),
   create: (world) =>
     runBoss(world, BRIE_BRAIN, makeBrieRig(world), {
       mark: KEY.mark,
       alert: KEY.alert,
-      alertY: (phase) => (phase === 0 ? 200 : 168),
+      alertY: (phase) => (phase === 0 ? 212 : 176),
       telegraphSfx: 'ex',
       phaseLine: 'Basta pedalare! Adesso mi sciolgo… di rabbia!',
       lines: {

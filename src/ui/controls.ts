@@ -3,7 +3,7 @@
  * (◀▶ + FUOCO, FULMINE with charges), maze (4-way cross pad; swipes live in input), driver
  * (◀ ▶ lane taps + a held FRENA; swipes live in input), kitchen (no pads: one big action button,
  * mounted in the kitchen HUD and shown with a mouse too) and cartoon (level 8: the ◀▶ + ▲ aim pad and the
- * SALTA / SPARA / SCATTO / ARMA / SUPER buttons, cartoon/*). Every pointer is captured by the control
+ * SALTA / SPARA (with its AUTO switch) / SCATTO / ARMA / EX buttons and the first-fight coach, cartoon/*). Every pointer is captured by the control
  * it started on and tracked by pointerId.
  */
 import type { ButtonState, ControlsLayout, ControlsMode, LevelId, SwipeSetting } from '../contracts';
@@ -67,10 +67,10 @@ export function createControls(input: InputState, onMode: (m: ControlsMode, swip
   const slide = createSlidePad(input, isOff);
   const cross = createCrossPad(input, isOff);
   const lanes = createLanePad(input, isOff);
-  const aim = createAimPad(input, isOff);
+  const cartoon = createCartoonButtons(input, isOff);
+  const aim = createAimPad(input, isOff, cartoon.coach);
   const pads: Pad[] = [slide, cross, lanes, aim];
   const kitchen = createKitchenAction(input);
-  const cartoon = createCartoonButtons(input, isOff);
 
   const actZone = el('div', 'cc-act-zone');
   const jumpLabel = el('b', 'cc-act__name', 'SALTA');

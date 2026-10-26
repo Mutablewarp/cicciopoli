@@ -2,19 +2,15 @@
 import type Phaser from 'phaser';
 import { ARENA } from '../../api';
 import { image, sheet } from '../../draw/canvas';
-import { ARM, BACON, BOTTLE, BURGER, DROP, drawArm, drawBaconShot, drawBottle, drawBurger, drawSauce } from './art';
+import { BACON, BOTTLE, DROP, drawBaconShot, drawBottle, drawSauce } from './art';
 import { drawFar, drawMid, drawNear, MID, NEAR } from './arena';
-import { drawFist, drawHandBack, drawHandFront, FIST, HAND } from './hand';
 import { fxKeys, registerFx } from './kit/fxart';
+import { loadParts, PART_TEX, PRE } from './look';
 
-export const PRE = 'ct-oldschool-';
+export { PRE };
 
 export const TEX = {
-  burger: `${PRE}burger`,
-  arm: `${PRE}arm`,
-  handBack: `${PRE}hand-back`,
-  handFront: `${PRE}hand-front`,
-  fist: `${PRE}fist`,
+  ...PART_TEX,
   bottle: `${PRE}bottle`,
   bacon: `${PRE}bacon`,
   sauce: `${PRE}sauce`,
@@ -25,11 +21,7 @@ export const TEX = {
 } as const;
 
 export function loadTextures(scene: Phaser.Scene, k: number): void {
-  sheet(scene, TEX.burger, BURGER.w, BURGER.h, 5, k, drawBurger);
-  sheet(scene, TEX.arm, ARM.w, ARM.h, 5, k, drawArm);
-  image(scene, TEX.handBack, HAND.w, HAND.h, k, drawHandBack);
-  image(scene, TEX.handFront, HAND.w, HAND.h, k, drawHandFront);
-  sheet(scene, TEX.fist, FIST.w, FIST.h, 4, k, drawFist);
+  loadParts(scene, k);
   sheet(scene, TEX.bottle, BOTTLE.w, BOTTLE.h, 4, k, drawBottle);
   sheet(scene, TEX.bacon, BACON.w, BACON.h, 2, k, drawBaconShot);
   sheet(scene, TEX.sauce, DROP.w, DROP.h, 3, k, drawSauce);

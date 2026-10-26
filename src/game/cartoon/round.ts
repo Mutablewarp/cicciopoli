@@ -8,13 +8,15 @@ import type Phaser from 'phaser';
 import type { CartoonWeapon, SfxName } from '../../contracts';
 import { ARENA, type BossDef, type BossRuntime, type Box, type Vec } from './api';
 import { RoundFx } from './fx';
-import { addCards, boxesOverlap, cardsForDamage, centerOf, nextWeapon, parryHits, shapeHitsBox, superAction, type RoundStats } from './logic/rules';
+import type { RadarThing } from './logic/arrows';
+import { union, type Focus } from './logic/framing';
+import { addCards, bossTempo, boxesOverlap, bumpX, cardsForDamage, centerOf, grow, nextWeapon, parryHits, shapeBox, shapeHitsBox, superAction, type RoundStats } from './logic/rules';
 import { NO_CONTROLS, Player, type PlayerControls } from './player';
 import { Shots, type ShotHit, type Target } from './shots';
 import { TitleCard } from './titleCard';
 import { ArenaWorld, type Hazard } from './world';
 import { mulberry32 } from '../rush/logic/rng';
-import { CT_CARDS, CT_FLOW, CT_PLAYER, CT_VIEW, CT_WEAPONS } from '../../config/cartoon';
+import { CT_CARDS, CT_FLOW, CT_PACE, CT_PLAYER, CT_VIEW, CT_WEAPONS, type CartoonPace } from '../../config/cartoon';
 
 export type RoundState = 'intro' | 'fight' | 'knockout' | 'defeat' | 'over';
 
@@ -27,6 +29,8 @@ export interface RoundHooks {
   controls(): RoundControls;
   autoFire(): boolean;
   sfx(n: SfxName): void;
+  /** EX / SUPER pressed with no card */
+  superEmpty(): void;
   vibrate(p: number | readonly number[]): void;
   calm(): boolean;
   /** device px per world unit (crisp balloon text) */
@@ -34,7 +38,6 @@ export interface RoundHooks {
   end(won: boolean, stats: RoundStats): void;
 }
 
-const START_X = 96;
 const HIT_SFX_GAP_MS = 90;
 /** a boss whose knockout animation never reports done still ends the round */
 const DONE_GRACE_MS = 6000;
@@ -47,6 +50,8 @@ export class Round {
   readonly fx: RoundFx;
   readonly boss: BossRuntime;
   bossHp: number;
+  /** the boss's full hp in this round (BossDef.hp x CT_PACE hp) */
+  readonly maxHp: number;
   phase = 0;
   cards = 0;
   parries = 0;
@@ -66,6 +71,12 @@ export class Round {
   private lastHitSfx = -1e9;
   private lastFlash = -1e9;
   private bossAt: Vec = { x: ARENA.w * 0.75, y: ARENA.h * 0.5 };
+  private readonly pace: CartoonPace;
+  /** world time until which new hazards poof (CT_PACE mercyMs after a hit) */
+  private mercyUntil = -1;
+  /** the boss body's bottom centre last step and its smoothed speed (units / s of boss time): CT_PLAYER.bump */
+  private bodyAt: Vec | null = null;
+  bossSpeed = 0;
 
   constructor(
     scene: Phaser.Scene,
@@ -76,7 +87,9 @@ export class Round {
     private readonly hooks: RoundHooks,
     seed: number,
   ) {
-    this.bossHp = def.hp;
+    this.pace = CT_PACE[def.id] ?? CT_PACE.default;
+    this.maxHp = def.hp * this.pace.hp;
+    this.bossHp = this.maxHp;
     this.fx = new RoundFx(scene, () => k, hooks.textRes, hooks.calm);
     this.card = new TitleCard(scene, k, hooks.calm);
     this.arena = def.buildArena(scene, k);
@@ -88,41 +101,48 @@ export class Round {
     });
     this.boss = def.create(this.world);
     this.shots = new Shots(scene, heroK, this.fx, hooks.sfx, mulberry32(seed ^ 0x9e3779b9));
-    this.player = new Player(scene, heroK, START_X);
+    this.player = new Player(scene, heroK, CT_PLAYER.startX);
     this.player.script('intro');
     this.card.show('start', 'PRONTI? AMUNÌ!', def.intro, CT_FLOW.introMs);
     hooks.sfx('roundBell');
   }
 
   get progress(): number {
-    return Math.max(0, Math.min(1, 1 - this.bossHp / this.def.hp));
+    return Math.max(0, Math.min(1, 1 - this.bossHp / this.maxHp));
   }
 
   stats(): RoundStats {
-    return { timeMs: this.timeMs, hp: this.player.hp, maxHp: CT_PLAYER.hp, parries: this.parries, supers: this.supers, damage: this.damage, bossHp: this.def.hp };
+    return { timeMs: this.timeMs, hp: this.player.hp, maxHp: CT_PLAYER.hp, parries: this.parries, supers: this.supers, damage: this.damage, bossHp: this.maxHp };
   }
 
-  /**
-   * The arena part a portrait camera keeps in view: the hero, the boss, the hazards near the hero, the floor.
-   * null = the whole arena (the PIOGGIA DI PATATINE cloud sits at the top).
-   */
-  focusBox(): Box | null {
-    if (this.shots.raining) return null;
+  /** What a pushed phone camera keeps in view: the hero, the hazards near it still coming (not the ones flying away
+   * behind it), the boss as much as fits (while the PIOGGIA DI PATATINE pours the hero is safe: no hazards). */
+  focus(): Focus {
     const F = CT_VIEW.push;
     const p = this.player;
-    const e: Record<'x0' | 'y0' | 'x1' | 'y1', number> = { x0: p.x - F.heroX, y0: p.y - F.heroTop, x1: p.x + F.heroX, y1: F.floorY };
-    const add = (b: Box, pad: number): void => {
-      e.x0 = Math.min(e.x0, b.x - pad);
-      e.y0 = Math.min(e.y0, b.y - pad);
-      e.x1 = Math.max(e.x1, b.x + b.w + pad);
-      e.y1 = Math.max(e.y1, b.y + b.h + pad);
-    };
-    for (const b of this.boss.hurtBoxes()) add(b, F.bossPad);
-    for (const b of this.boss.bodyBoxes()) add(b, F.bossPad);
-    for (const h of this.world.hazards) if (h.alive && Math.abs(h.x - p.x) < F.watch) add(minionBox(h), F.hazardPad);
-    const x0 = Math.max(0, e.x0);
-    const y0 = Math.max(0, e.y0);
-    return { x: x0, y: y0, w: Math.min(ARENA.w, e.x1) - x0, h: Math.min(ARENA.h, e.y1) - y0 };
+    const hero: Box = { x: p.x - F.heroX, y: p.y - F.heroTop, w: F.heroX * 2, h: F.heroTop };
+    const boss = this.bossBox();
+    if (this.shots.raining) return { hero, near: hero, boss };
+    let near = hero;
+    for (const h of this.world.hazards) {
+      const dx = p.x - h.x;
+      if (h.alive && Math.abs(dx) < F.watch && (h.vx * dx >= 0 || Math.abs(dx) < F.heroX)) near = union(near, grow(shapeBox(h), F.hazardPad));
+    }
+    return { hero, near, boss };
+  }
+
+  /** What the edge arrows may point at: every live hazard and the boss. */
+  radar(): RadarThing[] {
+    const out: RadarThing[] = this.world.hazards.filter((h) => h.alive).map((h) => ({ box: shapeBox(h), vx: h.vx, vy: h.vy, kind: h.pink ? 'pink' : 'hazard' }));
+    const boss = this.bossBox();
+    if (boss) out.push({ box: boss, vx: 0, vy: 0, kind: 'boss' });
+    return out;
+  }
+
+  /** The boss hurt + body boxes in one, padded (null = no box this frame). */
+  private bossBox(): Box | null {
+    const boxes = [...this.boss.hurtBoxes(), ...this.boss.bodyBoxes()];
+    return boxes.length > 0 ? grow(boxes.reduce(union), CT_VIEW.push.bossPad) : null;
   }
 
   private bossTop(): Vec {
@@ -161,7 +181,10 @@ export class Round {
 
   private fight(d: number): void {
     const c = this.hooks.controls();
-    const fire = c.fire || this.hooks.autoFire();
+    const auto = this.hooks.autoFire();
+    const fire = c.fire || auto;
+    // SPARA AUTO: standing still, Ciccio turns to the boss (a casual thumb that just dodged never shoots at nothing)
+    if (auto && c.axisX === 0 && !this.player.locked && !this.player.dashing) this.player.facing = this.bossAt.x < this.player.x ? -1 : 1;
     if (c.swap) {
       this.weapon = nextWeapon(this.weapon);
       this.hooks.sfx('select');
@@ -176,7 +199,7 @@ export class Round {
     this.timeMs += d;
     this.step(d);
     if (this.state !== 'fight') return;
-    this.collide();
+    this.collide(d);
     if (this.bossHp <= 0) this.knockout();
   }
 
@@ -187,13 +210,18 @@ export class Round {
     w.player.x = p.x;
     w.player.y = p.center.y;
     w.player.onGround = p.onGround;
-    w.timeMs += d;
-    w.update(d);
-    this.boss.update(d);
+    // CT_PACE: the boss side (the boss and what it throws) runs on its own clock: a gentle opening, then its tempo
+    const bd = this.state === 'fight' ? d * bossTempo(this.pace, this.timeMs) : d;
+    w.timeMs += bd;
+    w.update(bd);
+    this.boss.update(bd);
+    this.trackBody(bd);
+    // CT_PACE mercy: the rest of the attack that just hit the hero poofs as it comes (minions stay)
+    if (w.timeMs < this.mercyUntil) w.popAll(false);
     const hurt = this.boss.hurtBoxes();
     if (hurt[0]) this.bossAt = centerOf(hurt[0]);
     const minions = w.minions();
-    const targets: Target[] = this.state === 'fight' ? [...hurt.map((box) => ({ box, ref: 'boss' as const })), ...minions.map((m, i) => ({ box: minionBox(m), ref: i }))] : [];
+    const targets: Target[] = this.state === 'fight' ? [...hurt.map((box) => ({ box, ref: 'boss' as const })), ...minions.map((m, i) => ({ box: shapeBox(m), ref: i }))] : [];
     this.applyHits(this.shots.update(d, targets, this.bossAt.x), minions);
   }
 
@@ -218,7 +246,7 @@ export class Round {
       if (!h.ex) this.gainCards(cardsForDamage(h.damage));
     }
     const phases = this.def.phases;
-    while (this.phase < phases.length && this.bossHp / this.def.hp <= phases[this.phase] && this.bossHp > 0) {
+    while (this.phase < phases.length && this.bossHp / this.maxHp <= phases[this.phase] && this.bossHp > 0) {
       this.phase++;
       this.boss.onPhase(this.phase);
       this.hooks.sfx('phase');
@@ -232,7 +260,18 @@ export class Round {
     if (Math.floor(this.cards) > before) this.hooks.sfx('cardFull');
   }
 
-  private collide(): void {
+  private trackBody(bd: number): void {
+    const body = this.boss.bodyBoxes();
+    const b = body.length > 0 ? body.reduce(union) : null;
+    const at = b ? { x: b.x + b.w / 2, y: b.y + b.h } : null;
+    if (at && this.bodyAt && bd > 0) {
+      const v = (Math.hypot(at.x - this.bodyAt.x, at.y - this.bodyAt.y) / bd) * 1000;
+      this.bossSpeed += (v - this.bossSpeed) * (1 - Math.exp(-bd / CT_PLAYER.bump.tauMs));
+    }
+    this.bodyAt = at;
+  }
+
+  private collide(d: number): void {
     const p = this.player;
     const box = p.box;
     for (const hz of this.world.hazards) {
@@ -243,7 +282,19 @@ export class Round {
       }
       if (shapeHitsBox(hz, box)) this.hurt(hz.x, hz.spec.texture);
     }
-    for (const b of this.boss.bodyBoxes()) if (boxesOverlap(b, box)) this.hurt(b.x + b.w / 2, 'body');
+    for (const b of this.boss.bodyBoxes()) if (boxesOverlap(b, box)) this.touch(b, d);
+  }
+
+  /**
+   * The boss body: a wall while it moves slowly (CT_PLAYER.bump: walking into it costs no heart) or in the CT_PACE
+   * mercy after a hit (one attack, a charge out and back too, costs one heart at most); a hit when it charges.
+   */
+  private touch(b: Box, d: number): void {
+    const P = CT_PLAYER;
+    const mercy = this.world.timeMs < this.mercyUntil;
+    const to = mercy || this.bossSpeed < P.bump.bossSpeed ? bumpX(this.player.box, b, P.minX, P.maxX) : null;
+    if (to !== null && !this.player.dashing) this.player.shove(to, d);
+    else if (to === null && !mercy) this.hurt(b.x + b.w / 2, 'body');
   }
 
   private parry(hz: Hazard): void {
@@ -259,6 +310,8 @@ export class Round {
   private hurt(fromX: number, by: string): void {
     if (this.god || this.player.invulnerable || !this.player.hurt(fromX)) return;
     this.hurtBy.push(by);
+    // CT_PACE mercy: one attack costs one heart at most
+    this.mercyUntil = this.world.timeMs + this.pace.mercyMs;
     this.hooks.sfx('oof');
     this.hooks.vibrate(CT_FLOW.vibrateHurtMs);
     this.fx.shake(3, 220);
@@ -283,7 +336,7 @@ export class Round {
       const dir = this.player.aim(c);
       this.shots.ex(this.weapon, this.player.muzzle(dir), dir);
       this.player.lock(CT_WEAPONS.ex.lockMs);
-    }
+    } else this.hooks.superEmpty();
   }
 
   private onPlayer(e: string): void {
@@ -342,10 +395,4 @@ export class Round {
     this.player.destroy();
     for (const o of this.arena) o.destroy();
   }
-}
-
-function minionBox(m: Hazard): Box {
-  if (m.w !== undefined && m.h !== undefined) return { x: m.x - m.w / 2, y: m.y - m.h / 2, w: m.w, h: m.h };
-  const r = m.r ?? 6;
-  return { x: m.x - r, y: m.y - r, w: r * 2, h: r * 2 };
 }

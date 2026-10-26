@@ -37,6 +37,8 @@ export interface PlanCtx {
   playerX: number;
   from: Pose;
   rng: () => number;
+  /** the phase opener (Brain.openers): a boss may play it gentler, so a newcomer learns it before it bites */
+  opening?: boolean;
 }
 
 export interface HazardPlan {
@@ -105,6 +107,8 @@ export interface Timeline<A extends string> {
   readonly last: A | null;
   /** attacks started so far */
   readonly n: number;
+  /** the current attack is the phase opener */
+  readonly opening: boolean;
 }
 
 export interface StageEvent<A extends string> {
@@ -113,7 +117,7 @@ export interface StageEvent<A extends string> {
 }
 
 export function newTimeline<A extends string>(): Timeline<A> {
-  return { phase: 0, stage: 'intro', attack: null, t: 0, last: null, n: 0 };
+  return { phase: 0, stage: 'intro', attack: null, t: 0, last: null, n: 0, opening: false };
 }
 
 /** Weighted pick among the attacks of this phase, never the same one twice in a row (when possible). */
@@ -174,7 +178,7 @@ export function stepTimeline<A extends string>(
     else {
       const opener = cur.stage === 'recover' ? undefined : brain.openers[cur.phase];
       const next = opener ?? pickAttack(brain.attacks, cur.phase, cur.last, rnd());
-      cur = { ...cur, stage: 'telegraph', attack: next, last: next, n: cur.n + 1, t };
+      cur = { ...cur, stage: 'telegraph', attack: next, last: next, n: cur.n + 1, opening: opener !== undefined, t };
     }
     events.push({ stage: cur.stage, attack: cur.attack });
   }

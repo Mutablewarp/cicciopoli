@@ -2,19 +2,15 @@
 import type Phaser from 'phaser';
 import { ARENA } from '../../api';
 import { anim, image, sheet } from '../../draw/canvas';
-import { BODY, drawBody } from './art';
 import { drawFar, drawMid, drawNear, MID, NEAR } from './arena';
-import { CWAVE, DROP, drawCheddarWave, drawFrisbee, drawLane, drawMini, drawSalsa, drawStub, drawWhip, FRISBEE, LANE, MINI, STUB, WHIP } from './bits';
-import { ARMF, drawArm, drawLegs, HANDS, LEGS } from './limbs';
+import { CWAVE, DROP, drawCheddarWave, drawFrisbee, drawLane, drawSalsa, drawStub, drawWhip, FRISBEE, LANE, STUB, WHIP } from './bits';
 import { fxKeys, registerFx } from '../oldschool/kit/fxart';
+import { loadParts, PART_TEX, PRE } from './look';
 
-export const PRE = 'ct-doubletriple-';
+export { PRE };
 
 export const TEX = {
-  body: `${PRE}body`,
-  arm: `${PRE}arm`,
-  legs: `${PRE}legs`,
-  mini: `${PRE}mini`,
+  ...PART_TEX,
   frisbee: `${PRE}frisbee`,
   frisbeeAnim: `${PRE}frisbee-a`,
   wave: `${PRE}wave`,
@@ -31,10 +27,7 @@ export const TEX = {
 } as const;
 
 export function loadTextures(scene: Phaser.Scene, k: number): void {
-  sheet(scene, TEX.body, BODY.w, BODY.h, 4, k, drawBody);
-  sheet(scene, TEX.arm, ARMF.w, ARMF.h, HANDS.length, k, drawArm);
-  sheet(scene, TEX.legs, LEGS.w, LEGS.h, 9, k, drawLegs);
-  sheet(scene, TEX.mini, MINI.w, MINI.h, 8, k, drawMini);
+  loadParts(scene, k);
   sheet(scene, TEX.frisbee, FRISBEE.w, FRISBEE.h, 4, k, drawFrisbee);
   anim(scene, TEX.frisbeeAnim, TEX.frisbee, 4, 16);
   sheet(scene, TEX.wave, CWAVE.w, CWAVE.h, 6, k, drawCheddarWave);

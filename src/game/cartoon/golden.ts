@@ -7,7 +7,7 @@
  */
 import type Phaser from 'phaser';
 import type { SfxName } from '../../contracts';
-import { ARENA, HERO_ANIMS, HERO_FRAME } from './api';
+import { ARENA, HERO_ANIMS, HERO_FRAME, type Box } from './api';
 import { DEPTH } from './depths';
 import { TICKET, WRAP, loadGoldenArt, type GoldenKeys } from './goldenArt';
 import { CT_FLOW } from '../../config/cartoon';
@@ -18,6 +18,15 @@ const SCALE = 1.5;
 /** beats (ms): the tear starts at `tear`; crack, peel and rise are counted from it */
 const T = { wrapIn: 650, tear: 1500, crack: 260, peel: 1050, riseAt: 420, rise: 900, shineFrom: 3000, shineEvery: 1800, shineMs: 900 } as const;
 const WRAP_SCALE = 1.15;
+const SHOW_PAD = 6;
+/** What the camera shows of the finale as big as it fits (a phone held upright): the risen ticket, the wrapper it
+ * comes out of and Ciccio dancing under it, down to the arena bottom (world units). */
+export const GOLDEN_SHOW: Box = {
+  x: CX - (TICKET.w * SCALE) / 2 - SHOW_PAD,
+  y: TICKET_Y - (TICKET.h * SCALE) / 2 - SHOW_PAD,
+  w: TICKET.w * SCALE + 2 * SHOW_PAD,
+  h: ARENA.h - (TICKET_Y - (TICKET.h * SCALE) / 2 - SHOW_PAD),
+};
 const CONFETTI_COLORS = [0xffd257, 0xfff3d0, 0xe2401f, 0xff7fb0, 0x2a2f4d, 0xf2a93b] as const;
 const SCRAP_COLORS = [0x4a1f0f, 0x6a2f18, 0xffe38a, 0xb8862a] as const;
 

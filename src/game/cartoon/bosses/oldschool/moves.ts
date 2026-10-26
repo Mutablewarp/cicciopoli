@@ -4,9 +4,9 @@
  * runtime.ts draws each frame, after the idle pose.
  */
 import { ARENA, type Vec } from '../../api';
-import { ARM_POSE, FACE, SAUCE, SAUCE_COLOR } from './art';
+import { SAUCE, SAUCE_COLOR } from './art';
 import { COUNTER } from './arena';
-import { FIST_POSE } from './hand';
+import { ARM_POSE, GLOVE_FROM_SHOULDER, HAND_POSE, PALM, SHOULDER, TIPS_FROM_PALM, turn } from './look';
 import { aim, arc, ballistic, ease, lerp } from './kit/geometry';
 import { SHOCK } from './kit/fxart';
 import type { Move } from './kit/scheduler';
@@ -24,10 +24,14 @@ export function fistHome(T: number): Vec {
   return { x: OS.fistHome.x + Math.sin(T / 820) * 10, y: OS.fistHome.y + Math.sin(T / 430) * 5 };
 }
 
-/** tip of the burger's little arm (throw pose) */
+/** the glove of the burger's little arm in its current pose */
 function armTip(p: OsPose): Vec {
-  return { x: p.bx - 46 * p.bsx - 30, y: p.by - 57 * p.bsy + 2 };
+  const g = turn(GLOVE_FROM_SHOULDER, OS.armAngle[p.arm]);
+  return { x: p.bx + SHOULDER.x * p.bsx + g.x, y: p.by + SHOULDER.y * p.bsy + g.y };
 }
+
+/** the free hand's palm height that puts its finger tips on the floor when it reaches down */
+const POUND_LOW = F - turn(TIPS_FROM_PALM, OS.freeHand.angle[HAND_POSE.down]).y * OS.freeHand.scale - 2;
 
 function wave(c: OsCtx, x: number, dir: -1 | 1, speed: number): void {
   const h = c.world.spawnHazard({ x, y: F - SHOCK.h / 2, vx: dir * speed, w: OS.wave.w, h: OS.wave.h, texture: c.keys.shock, anim: c.keys.shockAnim, lifeMs: 3600 });
@@ -41,7 +45,7 @@ function slam(c: OsCtx): Move {
   let impact = -1;
   c.world.sfx('dash');
   c.flash.tele(s.teleMs, [...c.parts.hand, c.parts.burger]);
-  c.fx.glint(OS.grip.x + 34, OS.grip.y - 96);
+  c.fx.glint(OS.grip.x + PALM.x, OS.grip.y + PALM.y - 90);
   const m: Move = {
     t: 0,
     fire(n) {
@@ -50,7 +54,6 @@ function slam(c: OsCtx): Move {
     },
     update() {
       const p = c.pose;
-      p.face = FACE.shout;
       if (fired < 0) {
         const u = ease(m.t / s.teleMs);
         p.handDy = -s.liftPx * u + Math.sin(m.t * 0.09) * 1.8 * u;
@@ -89,7 +92,8 @@ function flick(c: OsCtx): Move {
   let at = 0;
   c.world.sfx('dash');
   c.flash.tele(f.teleMs, [c.parts.arm, c.parts.burger]);
-  c.fx.glint(c.pose.bx - 44, c.pose.by - 80);
+  const g0 = armTip(c.pose);
+  c.fx.glint(g0.x, g0.y);
   const m: Move = {
     t: 0,
     fire(n) {
@@ -103,7 +107,6 @@ function flick(c: OsCtx): Move {
     },
     update() {
       const p = c.pose;
-      p.face = FACE.shout;
       p.arm = fired >= 0 && m.t - at < 170 ? ARM_POSE.throw : fired >= 2 ? ARM_POSE.waveA : ARM_POSE.windUp;
     },
   };
@@ -138,7 +141,6 @@ function sauce(c: OsCtx): Move {
     },
     update() {
       const p = c.pose;
-      p.face = FACE.shout;
       if (fired < 0) {
         p.bottle[bi] = -0.14 * ease(m.t / tele) + Math.sin(m.t * 0.1) * 0.02;
         return;
@@ -180,7 +182,6 @@ function hop(c: OsCtx): Move {
     },
     update() {
       const p = c.pose;
-      p.face = FACE.shout;
       if (hopN < 0) {
         const u = ease(m.t / tele);
         p.bsx = 1 + 0.16 * u;
@@ -222,7 +223,7 @@ function pound(c: OsCtx, T: () => number): Move {
   let x = c.pose.fx;
   let stageSeen = '';
   c.world.sfx('dash');
-  c.flash.tele(p0.teleMs, [c.parts.fist]);
+  c.flash.tele(p0.teleMs, c.parts.hand);
   c.fx.glint(c.pose.fx, c.pose.fy - 30);
   const m: Move = {
     t: 0,
@@ -233,7 +234,7 @@ function pound(c: OsCtx, T: () => number): Move {
     },
     update(dt) {
       const p = c.pose;
-      p.fistFrame = FIST_POSE.down;
+      p.fistFrame = HAND_POSE.down;
       p.fistAngle = 0;
       const home = fistHome(T());
       if (fired < 0) {
@@ -245,7 +246,7 @@ function pound(c: OsCtx, T: () => number): Move {
       const { stage, u } = poundStage(m.t - at);
       const first = stage !== stageSeen;
       stageSeen = stage;
-      const low = F - 34;
+      const low = POUND_LOW;
       if (stage === 'track') {
         x += (c.world.player.x - x) * (1 - Math.exp(-dt * p0.follow));
         p.fx = x;
@@ -253,7 +254,7 @@ function pound(c: OsCtx, T: () => number): Move {
       } else if (stage === 'lock') {
         if (first) {
           c.fx.shadow(x, p0.lockMs + p0.slamMs, 1.3);
-          c.flash.tele(p0.lockMs, [c.parts.fist]);
+          c.flash.tele(p0.lockMs, c.parts.hand);
         }
         p.fx = x + Math.sin(m.t * 0.12) * 2.2;
         p.fy = home.y - 18 - 10 * u;
@@ -272,9 +273,9 @@ function pound(c: OsCtx, T: () => number): Move {
         p.fx = x;
         p.fy = low;
       } else {
-        const e = ease(u);
-        p.fx = lerp(x, home.x, e);
-        p.fy = lerp(low, home.y, e);
+        // straight up first, then across at its hover height: it never sweeps through a hero jumping the waves
+        p.fx = lerp(x, home.x, ease(Math.max(0, 2 * u - 1)));
+        p.fy = lerp(low, home.y, ease(Math.min(1, 2 * u)));
         if (u >= 1) x = home.x;
       }
     },
@@ -286,7 +287,7 @@ function sweep(c: OsCtx, T: () => number): Move {
   const s = OS.sweep;
   const { x0, x1 } = sweepFrom(c.world.player.x);
   const dir = Math.sign(x1 - x0);
-  const flatY = F - 52;
+  const flatY = F - s.lift;
   const start = { x: c.pose.fx, y: c.pose.fy };
   let at = -1;
   c.world.sfx('dash');
@@ -305,22 +306,22 @@ function sweep(c: OsCtx, T: () => number): Move {
           p.fx = pos.x;
           p.fy = pos.y;
           p.fistSafe = true;
-          p.fistFrame = FIST_POSE.left;
+          p.fistFrame = HAND_POSE.rest;
           return;
         }
         if (p.fistSafe) {
-          c.flash.tele(s.teleMs - s.flyMs, [c.parts.fist]);
+          c.flash.tele(s.teleMs - s.flyMs, c.parts.hand);
           c.fx.dust(x0 - dir * 30, F, dir > 0);
         }
         p.fistSafe = false;
-        p.fistFrame = FIST_POSE.flat;
+        p.fistFrame = HAND_POSE.flat;
         p.fx = x0 - dir * 6 * ease((m.t - s.flyMs) / 200) + Math.sin(m.t * 0.13) * 1.5;
         p.fy = flatY;
         return;
       }
       const tt = m.t - at;
       if (tt < SWEEP_SLIDE_MS + 200) {
-        p.fistFrame = FIST_POSE.flat;
+        p.fistFrame = HAND_POSE.flat;
         p.fx = lerp(x0, x1, Math.min(1, tt / SWEEP_SLIDE_MS));
         p.fy = flatY;
         return;
@@ -328,7 +329,7 @@ function sweep(c: OsCtx, T: () => number): Move {
       const u = (tt - SWEEP_SLIDE_MS - 200) / s.homeMs;
       const pos = arc({ x: x1, y: flatY }, fistHome(T()), s.flyApex, u);
       p.fistSafe = true;
-      p.fistFrame = FIST_POSE.left;
+      p.fistFrame = HAND_POSE.rest;
       p.fistFlip = false;
       p.fx = pos.x;
       p.fy = pos.y;

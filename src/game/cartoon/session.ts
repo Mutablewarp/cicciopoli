@@ -1,22 +1,24 @@
 /**
  * Level 8 flow: the boss map (DOM) -> load the boss + hero at scale k -> a Round -> the report card
  * (or the GOLDEN TICKET finale after the seventh knockout, then the golden report card).
- * Owns progress / settings (cicciopoli.cartoon.v1), input -> controls, HUD + touch controls sync,
- * music, vibration, the QA bot and the boss fallback (a boss module that throws = the stand-in).
+ * Owns progress / settings (cicciopoli.cartoon.v1, the SPARA AUTO switch), input -> controls, HUD + touch
+ * controls sync, music, vibration, the QA bot and the boss fallback (a boss module that throws, or whose
+ * bitmaps did not load, = the stand-in). The bitmaps (api.ts ImageAsset) are preloaded before the art is drawn.
  */
 import type Phaser from 'phaser';
 import type { CartoonBossId, CartoonResultInfo, CartoonSettings, ControlsLayout, Services } from '../../contracts';
 import type { BossDef } from './api';
-import { heroScale, loadHeroArt, loadLogo } from './assets';
+import { heroReady, heroScale, loadHeroArt, loadLogo, preloadImages, unloadHeroArt } from './assets';
+import { HERO_ASSETS } from './hero';
 import { BOSSES, bossDef } from './bosses';
 import { placeholderBoss } from './bosses/placeholder';
 import { Bot } from './bot';
-import { GoldenFinale } from './golden';
+import { GOLDEN_SHOW, GoldenFinale } from './golden';
 import { gradeOf, livePoints, scoreOf, shareTextFor, tipFor, type RoundStats } from './logic/rules';
 import { CartoonProgress } from './logic/store';
 import { Round, type RoundControls } from './round';
 import type { CartoonView } from './view';
-import { CT_FLOW, CT_PLAYER } from '../../config/cartoon';
+import { CT_FLOW, CT_HINT_EMPTY, CT_PLAYER } from '../../config/cartoon';
 
 export type SessionState = 'map' | 'loading' | 'round' | 'finale' | 'results';
 
@@ -51,6 +53,7 @@ export class CartoonSession {
   private gen = 0;
   private dtMs = 16;
   private controlsKey = '';
+  private hintAt = -1e9;
   private readonly cleanups: Array<() => void> = [];
 
   constructor(
@@ -94,7 +97,7 @@ export class CartoonSession {
     });
   }
 
-  /** Loads the boss (and the hero, once) at the current k and starts its round. */
+  /** Loads the boss (and the hero, once): its bitmaps first, then the art at the current k; then its round. */
   async play(id: CartoonBossId): Promise<void> {
     const gen = ++this.gen;
     const { ui } = this.svc;
@@ -104,10 +107,19 @@ export class CartoonSession {
     ui.showHud(false);
     this.setControls(null);
     const def = bossDef(id);
-    ui.setLoading(0.4, `Preparo il set di ${def.name}…`);
+    const msg = `Preparo il set di ${def.name}…`;
+    ui.setLoading(0.1, msg);
     await nextFrame();
     if (gen !== this.gen) return;
     const k = this.view.framing.k;
+    // free what another k or boss left first: their unload drops the bitmaps by prefix, they are fetched again below
+    this.release(def, k);
+    if (!heroReady(this.scene, k)) unloadHeroArt(this.scene);
+    await preloadImages(this.scene, [...HERO_ASSETS, ...(def.assets ?? [])], (p) => gen === this.gen && ui.setLoading(0.1 + p * 0.8, msg));
+    if (gen !== this.gen) return;
+    ui.setLoading(0.95, msg);
+    await nextFrame();
+    if (gen !== this.gen) return;
     const heroK = loadHeroArt(this.scene, k);
     const round = this.startRound(def, k, heroK, gen);
     ui.setLoading(null);
@@ -118,10 +130,23 @@ export class CartoonSession {
     this.svc.audio.music(round.def.music);
   }
 
-  private load(def: BossDef, k: number): void {
+  /** Unloads the boss art in memory unless it is `def` at `k`. */
+  private release(def: BossDef, k: number): void {
     const prev = this.loaded;
-    if (prev && (prev.def !== def || prev.k !== k)) prev.def.unload(this.scene);
-    if (!prev || prev.def !== def || prev.k !== k) def.load(this.scene, k);
+    if (!prev || (prev.def === def && prev.k === k)) return;
+    this.unloadBoss(prev.def);
+    this.loaded = null;
+  }
+
+  /** A boss's textures and the bitmaps it asked for. */
+  private unloadBoss(def: BossDef): void {
+    def.unload(this.scene);
+    for (const a of def.assets ?? []) if (this.scene.textures.exists(a.key)) this.scene.textures.remove(a.key);
+  }
+
+  private load(def: BossDef, k: number): void {
+    this.release(def, k);
+    if (!this.loaded) def.load(this.scene, k);
     this.loaded = { def, k };
   }
 
@@ -136,7 +161,7 @@ export class CartoonSession {
       return make(def);
     } catch (err) {
       console.error(`[cicciopoli] cartoon boss ${def.id} failed, stand-in`, err);
-      def.unload(this.scene);
+      this.unloadBoss(def);
       this.loaded = null;
       return make(placeholderBoss(def.id, def.name, def.intro, def.tagline, '#e8b04a', def.music));
     }
@@ -147,11 +172,20 @@ export class CartoonSession {
       controls: () => this.controls(),
       autoFire: () => this.progress.data.settings.autoFire,
       sfx: (n) => this.svc.audio.sfx(n),
+      superEmpty: () => this.hintEmpty(),
       vibrate: (p) => this.vibrate(p),
       calm: () => this.calm,
       textRes: () => this.view.textRes,
       end: (won, stats) => gen === this.gen && this.end(won, stats),
     };
+  }
+
+  /** EX tapped with no card: say how to fill the cards (not every tap). */
+  private hintEmpty(): void {
+    const now = performance.now();
+    if (now - this.hintAt < CT_HINT_EMPTY.gapMs) return;
+    this.hintAt = now;
+    this.svc.ui.banner(CT_HINT_EMPTY.text, { ms: CT_HINT_EMPTY.ms, tone: 'info', sub: CT_HINT_EMPTY.sub });
   }
 
   private vibrate(p: number | readonly number[]): void {
@@ -180,9 +214,17 @@ export class CartoonSession {
     };
   }
 
+  /** The SPARA AUTO switch: auto-fire on / off, saved (the controls follow on the next sync). */
+  private toggleAutoFire(): void {
+    const s = { ...this.progress.data.settings, autoFire: !this.progress.data.settings.autoFire };
+    this.progress.setSettings(s);
+    this.apply(s);
+  }
+
   update(dtMs: number): void {
     const r = this.round;
     let shake = { x: 0, y: 0 };
+    if (this.svc.input.consume('autoFire')) this.toggleAutoFire();
     if (this.state === 'finale') this.finale?.update(dtMs);
     if (r) {
       if (r.state !== 'fight') for (const a of ['jump', 'dash', 'swap', 'super', 'fire'] as const) this.svc.input.consume(a);
@@ -192,7 +234,8 @@ export class CartoonSession {
       for (let i = 0; i < steps && this.round === r; i++) shake = r.update(this.dtMs);
       if (this.state === 'round') this.sync(r);
     }
-    this.view.update(dtMs, shake, r?.state === 'fight' && this.state === 'round' ? r.focusBox() : null);
+    const fight = r?.state === 'fight' && this.state === 'round' ? r : null;
+    this.view.update(dtMs, shake, fight ? fight.focus() : null, fight ? fight.radar() : [], this.finale ? GOLDEN_SHOW : null);
   }
 
   private sync(r: Round): void {
@@ -298,7 +341,8 @@ export class CartoonSession {
     this.cleanups.forEach((fn) => fn());
     this.cleanups.length = 0;
     this.clearStage();
-    this.loaded?.def.unload(this.scene);
+    if (this.loaded) this.unloadBoss(this.loaded.def);
     this.loaded = null;
+    unloadHeroArt(this.scene);
   }
 }

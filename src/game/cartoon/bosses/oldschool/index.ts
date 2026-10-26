@@ -1,12 +1,14 @@
 /**
- * Boss 5 · THE OLD SCHOOL (BOSS-C lane): the smiling burger of the "The Old School" shirt held up by a GIANT
- * white glove in a 1930s diner. Phase 1 the hand slams, the burger flicks bacon, the bottles rain sauce and
- * the burger hops off; phase 2 the hand becomes a fist that pounds after the player and sweeps the floor.
+ * Boss 5 · THE OLD SCHOOL (BOSS-C lane): the waving burger of the "The Old School" shirt held up by the shirt's
+ * GIANT white glove (the art is cut out of the shirt, look.ts) in a 1930s diner. Phase 1 the hand slams, the
+ * burger flicks bacon, the bottles rain sauce and the burger hops off; phase 2 the burger sits on the floor and
+ * the hand flies free: it reaches down at the player and scoops the floor.
  */
 import type Phaser from 'phaser';
 import type { BossDef } from '../../api';
 import { unloadPrefix, worldSprite } from '../../draw/canvas';
 import { MID, NEAR } from './arena';
+import { OS_ASSETS } from './look';
 import { createOldSchool } from './runtime';
 import { loadTextures, PRE, TEX } from './textures';
 import { OS } from './tuning';
@@ -21,6 +23,7 @@ export const OLDSCHOOL: BossDef = {
   music: 'cartoonBoss',
   hp: OS.hp,
   phases: OS.phases,
+  assets: OS_ASSETS,
   load(scene: Phaser.Scene, k: number): void {
     loadTextures(scene, k);
   },

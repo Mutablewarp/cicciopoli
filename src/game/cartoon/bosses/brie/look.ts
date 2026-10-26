@@ -1,21 +1,45 @@
-/** Monsieur Brie's texture keys (all prefixed 'ct-brie-' so unloadPrefix drops them) and their loading. */
+/**
+ * Monsieur Brie's textures (all prefixed 'ct-brie-' so unloadPrefix drops them): the bitmaps cut from the
+ * shirt (BRIE_ASSETS, preloaded by the CORE; load() numbers their frames) and the vector props.
+ */
 import type Phaser from 'phaser';
+import type { ImageAsset } from '../../api';
 import { anim, image, sheet } from '../../draw/canvas';
 import { alertBurst } from './kit/toon';
-import { ARM, BERET, LEGS, PUDDLE, WEDGE, WEDGE_EXPR, ARM_POSES, drawArm, drawBeret, drawLegs, drawPuddle, drawWedge } from './art-body';
-import { BIKE, drawBike } from './art-bike';
+import { cutStrip, rescaledCopy, stripAssets, type Strip } from './kit/bits';
+import { PUDDLE, drawPuddle } from './art';
 import { ALERT, BAGUETTE, MARK, PUFF, SHADOW, STAR, WAVE, WHEEL, drawBaguette, drawMark, drawPuff, drawShadow, drawStar, drawWave, drawWheel } from './art-props';
 import { loadArena } from './arena';
+import { BRIE_ART as A } from './sheet';
 
 export const PREFIX = 'ct-brie-';
 
+/** The shirt cut-outs, by texture name. */
+const STRIPS: Readonly<Record<'wedge' | 'beret' | 'glove' | 'foot' | 'bike' | 'basket' | 'wheelF' | 'wheelR', Strip>> = {
+  wedge: A.wedge,
+  beret: A.beret,
+  glove: A.glove,
+  foot: A.foot,
+  bike: A.bike,
+  basket: A.basket,
+  wheelF: A.wheelF,
+  wheelR: A.wheelR,
+};
+
+export const BRIE_ASSETS: readonly ImageAsset[] = stripAssets(PREFIX, STRIPS);
+
 export const KEY = {
-  bike: `${PREFIX}bike`,
   wedge: `${PREFIX}wedge`,
-  arm: `${PREFIX}arm`,
-  legs: `${PREFIX}legs`,
-  puddle: `${PREFIX}puddle`,
   beret: `${PREFIX}beret`,
+  glove: `${PREFIX}glove`,
+  foot: `${PREFIX}foot`,
+  bike: `${PREFIX}bike`,
+  basket: `${PREFIX}basket`,
+  wheelF: `${PREFIX}wheelF`,
+  wheelR: `${PREFIX}wheelR`,
+  /** the beret as a boomerang hazard (k-scaled copy) */
+  beretToss: `${PREFIX}beret-toss`,
+  puddle: `${PREFIX}puddle`,
   baguette: `${PREFIX}baguette`,
   wheel: `${PREFIX}wheel`,
   wave: `${PREFIX}wave`,
@@ -29,12 +53,9 @@ export const KEY = {
 } as const;
 
 export function loadBrie(scene: Phaser.Scene, k: number): void {
-  sheet(scene, KEY.bike, BIKE.w, BIKE.h, BIKE.frames, k, drawBike);
-  sheet(scene, KEY.wedge, WEDGE.w, WEDGE.h, WEDGE_EXPR.length, k, drawWedge);
-  sheet(scene, KEY.arm, ARM.w, ARM.h, ARM_POSES.length, k, drawArm);
-  sheet(scene, KEY.legs, LEGS.w, LEGS.h, 6, k, drawLegs);
+  for (const [name, s] of Object.entries(STRIPS)) cutStrip(scene, `${PREFIX}${name}`, s);
+  rescaledCopy(scene, KEY.beret, A.beret, KEY.beretToss, k / A.pxPerUnit);
   sheet(scene, KEY.puddle, PUDDLE.w, PUDDLE.h, 4, k, drawPuddle);
-  image(scene, KEY.beret, BERET.w, BERET.h, k, drawBeret);
   sheet(scene, KEY.baguette, BAGUETTE.w, BAGUETTE.h, 2, k, drawBaguette);
   sheet(scene, KEY.wheel, WHEEL.w, WHEEL.h, 2, k, drawWheel);
   sheet(scene, KEY.wave, WAVE.w, WAVE.h, 2, k, drawWave);

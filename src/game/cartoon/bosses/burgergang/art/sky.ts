@@ -9,6 +9,8 @@ import { ellipse, smooth } from './parts';
 const W = ARENA.w;
 const H = ARENA.h;
 export const MOON = { x: 470, y: 72, r: 34 } as const;
+/** every wide layer runs this far past the arena edges (a shake never shows an edge) */
+export const BLEED = 16;
 
 export function seeded(seed: number): () => number {
   let a = seed >>> 0;
@@ -38,7 +40,7 @@ export function sky(ctx: CanvasRenderingContext2D): void {
   g.addColorStop(0.82, '#c98a6e');
   g.addColorStop(1, '#5a3d4a');
   ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(-BLEED, -BLEED, W + BLEED * 2, H + BLEED * 2);
   wash(ctx, rnd, 'rgba(120,100,170,0.10)', 40, 0, 0, W, 200, 40);
   wash(ctx, rnd, 'rgba(255,200,150,0.07)', 24, 0, 170, W, 80, 50);
   for (let i = 0; i < 36; i++) {
@@ -63,7 +65,7 @@ export function sky(ctx: CanvasRenderingContext2D): void {
   }
   // sea with the moon's path
   ctx.fillStyle = '#4b4778';
-  ctx.fillRect(0, 252, W, 50);
+  ctx.fillRect(-BLEED, 252, W + BLEED * 2, 50);
   ctx.strokeStyle = 'rgba(255,236,190,0.55)';
   ctx.lineWidth = 1.4;
   for (let i = 0; i < 9; i++) {
@@ -89,7 +91,7 @@ function city(ctx: CanvasRenderingContext2D, rnd: () => number): void {
   const base = 300;
   const far = '#5b4a76';
   ctx.fillStyle = far;
-  for (let x = 120; x < W; x += 18 + rnd() * 16) {
+  for (let x = 120; x < W + BLEED; x += 18 + rnd() * 16) {
     const h = 16 + rnd() * 26;
     ctx.fillRect(x, base - h - 30, 16 + rnd() * 12, h + 30);
   }
@@ -135,7 +137,7 @@ function city(ctx: CanvasRenderingContext2D, rnd: () => number): void {
     }
   }
   ctx.fillStyle = '#4f4068';
-  ctx.fillRect(0, 272, W, 30);
+  ctx.fillRect(-BLEED, 272, W + BLEED * 2, 30);
   for (let i = 0; i < 90; i++) {
     ctx.fillStyle = `rgba(255,214,130,${0.35 + rnd() * 0.5})`;
     ctx.fillRect(110 + rnd() * (W - 110), 232 + rnd() * 62, 1.6, 2.2);

@@ -1,13 +1,13 @@
 /**
- * Boss 2 · PANCETTA LO SKATER (the PANCETTA shirt): the pig in dungarees and a red bandana on his
- * skateboard, in a skatepark on the Palermo seafront. Phase 0 on the floor, phase 1 up on the half-pipe
- * in the background. BOSS-A lane.
+ * Boss 2 · PANCETTA LO SKATER (the PANCETTA shirt): the pig in dungarees and a knotted bandana crouching
+ * on his skateboard, cut from the shirt's line art (PANCETTA_ASSETS), in a skatepark on the Palermo
+ * seafront. Phase 0 on the floor, phase 1 up on the half-pipe in the background. BOSS-A lane.
  */
 import type { BossDef } from '../../api';
 import { unloadPrefix } from '../../draw/canvas';
 import { runBoss } from '../brie/kit/runner';
 import { PANCETTA as C } from './config';
-import { KEY, PREFIX, buildArena, loadPancetta } from './look';
+import { KEY, PANCETTA_ASSETS, PREFIX, buildArena, loadPancetta } from './look';
 import { PANCETTA_BRAIN } from './patterns';
 import { makePancettaRig } from './rig';
 
@@ -19,6 +19,7 @@ export const PANCETTA: BossDef = {
   music: 'cartoonBoss',
   hp: C.hp,
   phases: C.phases,
+  assets: PANCETTA_ASSETS,
   load: loadPancetta,
   buildArena,
   create: (world) =>

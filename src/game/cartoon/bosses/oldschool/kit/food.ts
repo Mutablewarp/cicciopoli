@@ -1,52 +1,11 @@
 /**
  * Burger ingredients in the rubber-hose style for the BOSS-C bosses (canvas 2D in world units, no Phaser):
- * domed sesame bun, bottom bun, lumpy beef patty, dripping cheddar, wavy bacon, sauce drops.
+ * lumpy beef patty (the frisbee), wavy bacon (the flicked strips), sauce drops.
  */
 import { INK, LINE } from '../../../draw/canvas';
 import { C, cel, ell, gloss, hose, smooth, type Pt } from './style';
 
 type Ctx = CanvasRenderingContext2D;
-
-/** Domed top bun: flat bottom at y = bottom, centre cx. */
-export function bunTop(ctx: Ctx, cx: number, bottom: number, w: number, h: number, seeds = true, lw = LINE): void {
-  const l = cx - w / 2;
-  const r = cx + w / 2;
-  cel(ctx, (c) => {
-    c.beginPath();
-    c.moveTo(l, bottom);
-    c.bezierCurveTo(l - w * 0.03, bottom - h * 1.33, r + w * 0.03, bottom - h * 1.33, r, bottom);
-    c.quadraticCurveTo(cx, bottom + h * 0.16, l, bottom);
-    c.closePath();
-  }, C.bun, C.bunShade, w * 0.07, h * 0.15, lw);
-  gloss(ctx, cx - w * 0.2, bottom - h * 0.74, w * 0.17, h * 0.11, -0.45, 0.5);
-  if (!seeds) return;
-  const at: readonly (readonly [number, number, number])[] = [
-    [-0.3, 0.5, 0.5], [-0.1, 0.78, -0.3], [0.12, 0.66, 0.4], [0.3, 0.45, -0.6], [-0.02, 0.4, 0.1], [0.2, 0.86, 0.2], [-0.38, 0.24, 0.9],
-  ];
-  for (const [fx, fy, rot] of at) {
-    ell(ctx, cx + fx * w, bottom - fy * h, w * 0.028, w * 0.015, rot);
-    ctx.fillStyle = C.seed;
-    ctx.fill();
-    ctx.strokeStyle = INK;
-    ctx.lineWidth = lw * 0.45;
-    ctx.stroke();
-  }
-}
-
-/** Bottom bun: flat top at y = top. */
-export function bunBottom(ctx: Ctx, cx: number, top: number, w: number, h: number, lw = LINE): void {
-  const l = cx - w / 2;
-  const r = cx + w / 2;
-  cel(ctx, (c) => {
-    c.beginPath();
-    c.moveTo(l, top);
-    c.lineTo(r, top);
-    c.bezierCurveTo(r + w * 0.03, top + h * 0.9, r - w * 0.05, top + h, r - w * 0.13, top + h);
-    c.lineTo(l + w * 0.13, top + h);
-    c.bezierCurveTo(l + w * 0.05, top + h, l - w * 0.03, top + h * 0.9, l, top);
-    c.closePath();
-  }, C.bun, C.bunShade, w * 0.05, h * 0.3, lw);
-}
 
 /** Lumpy grilled beef patty centred on (cx, cy). */
 export function patty(ctx: Ctx, cx: number, cy: number, w: number, h: number, lw = LINE): void {
@@ -75,35 +34,6 @@ export function patty(ctx: Ctx, cx: number, cy: number, w: number, h: number, lw
     ell(ctx, cx - w * 0.32 + i * w * 0.13, cy - h * (i % 2 ? 0.25 : 0.05), w * 0.016, h * 0.07);
     ctx.fill();
   }
-}
-
-/** Cheddar slice whose top edge sits at y, corners drooping, drips = [x offset, length] hanging down. */
-export function cheese(ctx: Ctx, cx: number, y: number, w: number, drips: readonly (readonly [number, number])[], lw = LINE, color: string = C.cheddar): void {
-  const l = cx - w / 2;
-  const r = cx + w / 2;
-  const sorted = [...drips].sort((a, b) => b[0] - a[0]);
-  cel(ctx, (c) => {
-    c.beginPath();
-    c.moveTo(l - 5, y + 6);
-    c.lineTo(l + 3, y - 1);
-    c.lineTo(r - 3, y - 1);
-    c.lineTo(r + 5, y + 7);
-    c.lineTo(r - 4, y + 4);
-    for (const [dx, len] of sorted) {
-      const x = cx + dx;
-      c.lineTo(x + 4, y + 4);
-      c.quadraticCurveTo(x + 4, y + len, x, y + len + 2);
-      c.quadraticCurveTo(x - 4, y + len, x - 4, y + 4);
-    }
-    c.lineTo(l + 4, y + 4);
-    c.closePath();
-  }, color, C.cheddarShade, 1.2, 1.6, lw);
-  ctx.strokeStyle = C.cheddarLight;
-  ctx.lineWidth = lw * 0.8;
-  ctx.beginPath();
-  ctx.moveTo(l + 6, y + 1.2);
-  ctx.lineTo(cx, y + 1.2);
-  ctx.stroke();
 }
 
 /** Wavy bacon strip from x0 to x1 around y (amp = wave height, th = thickness). */

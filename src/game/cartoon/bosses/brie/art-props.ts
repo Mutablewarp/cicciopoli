@@ -4,7 +4,7 @@
  * Frame 1 of the baguette / wheel = the PINK parryable version.
  */
 import { contactShadow, ellipse, ink, pieEye, shade, shine, smooth, TAU } from './kit/toon';
-import { CRUST, PASTE, loaf } from './art-body';
+import { CRUST, PASTE, SHIRT, loaf } from './art';
 
 export const PINK = '#ff8fc0';
 export const BAGUETTE = { w: 52, h: 16 } as const;
@@ -23,7 +23,7 @@ export function drawBaguette(ctx: CanvasRenderingContext2D, frame: number): void
 export function drawWheel(ctx: CanvasRenderingContext2D, frame: number): void {
   const c = WHEEL.w / 2;
   const r = WHEEL.r;
-  const rind = frame ? PINK : '#f7f2e4';
+  const rind = frame ? PINK : SHIRT.white;
   ellipse(ctx, c, c, r, r);
   ctx.fillStyle = rind;
   ctx.fill();

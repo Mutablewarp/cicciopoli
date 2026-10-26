@@ -1,56 +1,33 @@
 import type { SongSrc } from '../sequencer';
-import { bars, chart, hit, push, REST, shout, stab, two, walk } from './swing';
+import { A_CH, bars, CH, chart, CLIMB, HEAD, HOOK, hit, pah, push, shout, stab, TUNE_A, TUNE_A3, two, walk, type Bar } from './swing';
 
 /**
- * Level 8 boss fights: hot-jazz big band in Bb major, 200 bpm swing on a triplet grid, 64 bars (76.8 s) so a
- * 60-90 s fight never hears the same chorus twice. Lead = clarinet (square reed, vibrato on held notes),
- * harm = the brass section (two detuned saws per note: stabs, pushes, shout punches), bass = tuba, in two
- * under the head and walking everywhere else, drums = brushes and a ride, jungle toms on the bridge and the
- * drum break, crashes on the section downbeats.
- * Form: A A2 B A3 (a 32-bar chorus on rhythm changes: Bb-G7-Cm7-F7, bridge D7-G7-C7-F7), SOLO SOLO2 (clarinet
- * triplet runs and blue-note riffs over A changes), DRUMS (stop-time tom break with brass hits, the clarinet
- * climbing over it), SHOUT (the whole band on the hook, brass punching every chord) and a snare roll that
- * falls back onto the hook.
+ * Level 8 boss fights: hot-jazz big band in C major, 168 bpm swing on a triplet grid, 48 bars (68.6 s). The
+ * clarinet (lead, vibrato on held notes) sings the map's tune and its hook (swing.ts HOOK) hot; the brass
+ * section (harm, two detuned saws) stays out of its way: long "doo-wah" pads under the first chorus, then
+ * "pah"s, pushes, and shout punches only in the out chorus. Tuba in two under the head, walking after;
+ * brushes and a ride, jungle toms on the bridge and the break, crashes on the section downbeats.
+ * Form: A A2 B A3 (the map's AABA), BRK (stop-time on the bridge changes, the clarinet answering the brass
+ * hits with the hook's cell) and SHOUT (the whole band on the hook), then a snare fill back onto the top.
  */
-const BB = 'D4+F4+Bb4';
-const G7 = 'D4+F4+B4';
-const CM7 = 'Eb4+G4+Bb4';
-const F7 = 'Eb4+A4+C5';
-const BB7 = 'D4+F4+Ab4';
-const EB6 = 'Eb4+G4+C5';
-const EDIM = 'E4+G4+Db5';
-const D7 = 'D4+F#4+C5';
-const C7 = 'E4+G4+Bb4';
+const A2_CH: readonly Bar[] = [...HEAD, [CH.C, CH.G7], [CH.C, CH.C]];
+/** The bridge, rhythm-changes style: III7 VI7 II7 V7, two bars each. */
+const B_CH: readonly Bar[] = [[CH.E7, CH.E7], [CH.E7, CH.E7], [CH.A7, CH.A7], [CH.A7, CH.A7], [CH.D7, CH.D7], [CH.D7, CH.D7], [CH.G7, CH.G7], [CH.G7, CH.G7]];
 
-type Bar = readonly [string, string];
-/** Rhythm changes, A section: two chords a bar. */
-const A_CH: readonly Bar[] = [[BB, G7], [CM7, F7], [BB, G7], [CM7, F7], [BB, BB7], [EB6, EDIM], [BB, F7], [BB, F7]];
-/** The bridge: each dominant for two bars. */
-const B_CH: readonly Bar[] = [[D7, D7], [D7, D7], [G7, G7], [G7, G7], [C7, C7], [C7, C7], [F7, F7], [F7, F7]];
-
-const A_TWO = bars(
-  two('Bb1', 'G1'), two('C2', 'F1'), two('Bb1', 'G1'), two('C2', 'F2'),
-  two('Bb1', 'Ab1'), two('Eb2', 'E2'), two('F1', 'C2'), two('Bb1', 'F1'),
-);
+const HEAD_TWO: readonly Bar[] = [['C2', 'G1'], ['G1', 'D2'], ['C2', 'G1'], ['C2', 'E2'], ['F1', 'C2'], ['F1', 'Ab1']];
+const A_TWO = chart([...HEAD_TWO, ['C2', 'A1'], ['D2', 'G1']], two);
+const A2_TWO = chart([...HEAD_TWO, ['C2', 'G1'], ['C2', 'B1']], two);
 const A_WALK = bars(
-  walk('Bb1', 'D2', 'G1', 'B1'), walk('C2', 'Eb2', 'F2', 'A1'),
-  walk('Bb1', 'A1', 'G1', 'B1'), walk('C2', 'G1', 'F1', 'A1'),
-  walk('Bb1', 'F1', 'Ab1', 'D2'), walk('Eb2', 'G1', 'E2', 'C2'),
-  walk('D2', 'Bb1', 'C2', 'A1'), walk('Bb1', 'D2', 'F2', 'A1'),
+  walk('C2', 'E2', 'G2', 'F#2'), walk('G2', 'F2', 'D2', 'B1'),
+  walk('C2', 'G1', 'A1', 'B1'), walk('C2', 'G1', 'Bb1', 'E2'),
+  walk('F2', 'A2', 'C3', 'A2'), walk('Ab2', 'F2', 'C2', 'D2'),
+  walk('C2', 'E2', 'A1', 'C#2'), walk('D2', 'F#2', 'G1', 'B1'),
 );
 const B_WALK = bars(
-  walk('D2', 'F#2', 'A2', 'C3'), walk('D3', 'A2', 'F#2', 'Ab2'),
-  walk('G2', 'F2', 'D2', 'B1'), walk('G1', 'A1', 'B1', 'Db2'),
-  walk('C2', 'E2', 'G2', 'Bb2'), walk('C3', 'Bb2', 'G2', 'F#2'),
-  walk('F2', 'A2', 'C3', 'A2'), walk('F2', 'Eb2', 'C2', 'A1'),
-);
-
-/** The hook (first four bars of A, A2, A3 and SHOUT). */
-const HOOK = bars(
-  'D5 . F5 G5 - Bb5 B5 - - D6 - .',
-  'C6 - . Bb5 - G5 A5 - - F5 - Eb5',
-  'D5 . F5 G5 - Bb5 B5 - - G5 - B5',
-  'C6 - - Eb6 - C6 A5 - - F5 - .',
+  walk('E2', 'G#2', 'B2', 'D3'), walk('E3', 'D3', 'B2', 'G#2'),
+  walk('A2', 'C#3', 'E3', 'C#3'), walk('A2', 'G2', 'E2', 'C#2'),
+  walk('D2', 'F#2', 'A2', 'C3'), walk('D3', 'C3', 'A2', 'F#2'),
+  walk('G2', 'B2', 'D3', 'B2'), walk('G2', 'F2', 'D2', 'B1'),
 );
 
 const SW = 'kh . . sh . h kh . . sh . h';
@@ -60,144 +37,73 @@ const TOMC = 'kcT . t t . t kT . t t . t';
 const FILL = 'kh . . sh . h s s s S s S';
 const BRK1 = 'kc . . t . t T . t t . t';
 const BRK2 = 'T . t t . t T . t T t t';
-const ROLL = 'S s s S s s S s s S S S';
 const PUNCH = 'kc . . kS . h kh . . kS . h';
 const PUNCH2 = 'kh . . kS . h kh . . kS . h';
-const groove = (open: string, body: string, end = FILL): string => bars(open, body, body, body, body, body, body, end);
+const groove = (open: string, body: string): string => bars(open, body, body, body, body, body, body, FILL);
 
 export const cartoonBoss: SongSrc = {
-  bpm: 200,
+  bpm: 168,
   stepsPerBeat: 3,
   stepsPerBar: 12,
   loop: true,
-  lead: { wave: 0.5, vol: 0.105, a: 0.012, d: 0.1, sus: 0.85, r: 0.06, gate: 0.92, cutoff: 2600, vib: { cents: 14, rate: 5.8, delay: 0.18 } },
-  harm: { wave: 'sawtooth', vol: 0.068, a: 0.012, d: 0.12, sus: 0.6, r: 0.07, gate: 0.8, cutoff: 1900, unison: 9 },
-  bass: { wave: 'sawtooth', vol: 0.19, a: 0.012, d: 0.12, sus: 0.6, r: 0.05, gate: 0.72, cutoff: 700 },
-  drums: 0.2,
+  lead: { wave: 0.5, vol: 0.11, a: 0.012, d: 0.1, sus: 0.85, r: 0.06, gate: 0.9, cutoff: 2600, vib: { cents: 14, rate: 5.8, delay: 0.18 } },
+  harm: { wave: 'sawtooth', vol: 0.05, a: 0.014, d: 0.12, sus: 0.6, r: 0.07, gate: 0.8, cutoff: 1700, unison: 9 },
+  bass: { wave: 'sawtooth', vol: 0.18, a: 0.012, d: 0.12, sus: 0.6, r: 0.05, gate: 0.72, cutoff: 700 },
+  drums: 0.19,
   // a beat behind, quiet: a little hall around the clarinet
-  echo: { time: 0.3, fb: 0.15, mix: 0.1 },
+  echo: { time: 0.36, fb: 0.14, mix: 0.09 },
   patterns: {
-    A: {
-      bars: 8,
-      lead: bars(
-        HOOK,
-        '. . Bb5 D6 - Bb5 F5 - . Ab5 - Bb5',
-        'G5 - - Eb5 - G5 Bb5 - - Db6 - .',
-        'D6 - . C6 - Bb5 A5 - F5 G5 - A5',
-        'Bb5 - - - - . . . . . C5 C#5',
-      ),
-      harm: chart(A_CH, push),
-      bass: A_TWO,
-      drums: groove(SWC, SW),
-    },
+    A: { bars: 8, lead: TUNE_A, harm: chart(A_CH, two), bass: A_TWO, drums: groove(SWC, SW) },
     A2: {
       bars: 8,
-      lead: bars(
-        HOOK,
-        'Bb5 - . D6 - F6 - - . D6 - Ab5',
-        'G5 - - Bb5 - Eb6 Db6 - - Bb5 - G5',
-        'F5 - . D5 - F5 Eb5 - - C5 - A4',
-        'Bb4 - - D5 - F5 Bb5 - - . . .',
-      ),
-      harm: chart(A_CH, push),
-      bass: A_TWO,
+      lead: bars(HOOK, CLIMB, 'E5 - - C5 - - D5 - - B4 - -', 'C5 - - - - . . . . . D5 D#5'),
+      harm: chart(A2_CH, pah),
+      bass: A2_TWO,
       drums: groove(SWC, SW),
     },
-    // the bridge on jungle toms: long singing notes, the brass stabbing on 1 and 3
+    // the bridge on jungle toms: the hook's cell on each dominant, every call answered a bar later
     B: {
       bars: 8,
       lead: bars(
-        'F#5 - - - - A5 - - . C6 - D6',
-        '- - - C6 - A5 F#5 - - D5 - F5',
-        '- - . G5 - B5 D6 - - F6 - .',
-        'E6 - . D6 - B5 Ab5 - - F5 - D5',
-        'E5 - - - - G5 - - . Bb5 - C6',
-        '- - - Bb5 - G5 E5 - - C5 - Eb5',
-        '- - . F5 - A5 C6 - - Eb6 - .',
-        'D6 - . C6 - A5 F5 - - . C5 C#5',
+        'E5 - G#5 B5 - - C#6 - - B5 - -',
+        'G#5 - - E5 - - D5 - - . . .',
+        'A4 - C#5 E5 - - F#5 - - E5 - -',
+        'C#5 - - A4 - - G4 - - . . .',
+        'D5 - F#5 A5 - - B5 - - A5 - -',
+        'F#5 - - D5 - - C5 - - . . .',
+        'G4 - B4 D5 - - E5 - - D5 - -',
+        'B4 - - G4 - - F4 - - . . B4',
       ),
       harm: chart(B_CH, stab),
       bass: B_WALK,
       drums: groove(TOMC, TOM),
     },
-    A3: {
+    A3: { bars: 8, lead: TUNE_A3, harm: chart(A_CH, push), bass: A_WALK, drums: groove(SWC, SW) },
+    // stop-time on the bridge changes: the brass hits, the clarinet answers with the hook's cell, then climbs
+    BRK: {
       bars: 8,
       lead: bars(
-        HOOK,
-        'D6 - . Bb5 - F5 Ab5 - - F5 - D5',
-        'Eb5 - - G5 - Bb5 Db6 - - Bb5 - G5',
-        'F5 - . D5 - F5 A5 - - C6 - Eb6',
-        'D6 - - - - - Bb5 - . . . .',
-      ),
-      harm: chart(A_CH, push),
-      bass: A_WALK,
-      drums: groove(SWC, SW),
-    },
-    // clarinet solo, chorus 1: triplet runs, the brass holding "doo-wah" backgrounds
-    SOLO: {
-      bars: 8,
-      lead: bars(
-        'F5 G5 A5 Bb5 - D6 B5 - A5 G5 - F5',
-        'Eb5 - G5 Bb5 - C6 A5 - F5 Eb5 D5 C5',
-        'D5 F5 Bb5 D6 - Bb5 B5 D6 F6 D6 - B5',
-        'C6 - Bb5 G5 - Eb5 A5 - C6 Eb6 - C6',
-        'D6 - - Bb5 - - Ab5 - F5 D5 - Bb4',
-        'Eb5 F5 G5 Bb5 - G5 E5 G5 Bb5 Db6 - Bb5',
-        'D6 - C6 Bb5 - F5 A5 - C6 Eb6 D6 C6',
-        'Bb5 - - F5 - D5 Bb4 - - . . .',
-      ),
-      harm: chart(A_CH, two),
-      bass: A_WALK,
-      drums: groove(SWC, SW),
-    },
-    // chorus 2: a blue-note riff repeated, then flurries up to the top of the horn
-    SOLO2: {
-      bars: 8,
-      lead: bars(
-        'Db6 D6 - Bb5 - F5 D6 - - B5 - .',
-        'C6 - - Eb6 - C6 A5 - - F5 - .',
-        'Db6 D6 - Bb5 - F5 D6 - - B5 - .',
-        'C6 Eb6 F6 Eb6 - C6 A5 C6 Eb6 F6 - -',
-        '- - - D6 - Bb5 Ab5 - - F5 - D5',
-        'Eb5 G5 Bb5 Eb6 - Bb5 Db6 - Bb5 G5 - E5',
-        'F5 - D5 F5 - Bb5 A5 C6 Eb6 F6 - Eb6',
-        'D6 - - - - - . . . . . .',
-      ),
-      harm: chart(A_CH, stab),
-      bass: A_WALK,
-      drums: groove(SWC, SW),
-    },
-    // stop-time tom break on the bridge changes: the clarinet answers the brass hits, then climbs
-    DRUMS: {
-      bars: 8,
-      lead: bars(
-        REST,
-        '. . . . . . F#5 A5 C6 D6 - .',
-        REST,
-        '. . . . . . G5 B5 D6 F6 - .',
-        'E5 - - - - - - - - - - -',
-        'G5 - - - - - - - - - - -',
+        '. . . . . . . . . . . .',
+        '. . . . . . E5 - G#5 B5 - -',
+        '. . . . . . . . . . . .',
+        '. . . . . . A5 - C#6 E6 - -',
+        'F#5 - - - - - - - - - - -',
         'A5 - - - - - - - - - - -',
-        'C6 - - - - - . . . . C5 C#5',
+        'B5 - - - - - - - - - - -',
+        'D6 - - - - - . . . . . B4',
       ),
-      harm: bars(hit(D7), hit(D7), hit(G7), hit(G7), push(C7), push(C7), push(F7), stab(F7)),
-      bass: bars(hit('D2'), hit('D2'), hit('G1'), hit('G1'), hit('C2'), hit('C2'), hit('F1'), walk('F2', 'Eb2', 'C2', 'A1')),
-      drums: bars(BRK1, BRK2, BRK1, BRK2, BRK1, BRK2, BRK1, ROLL),
+      harm: bars(hit(CH.E7), hit(CH.E7), hit(CH.A7), hit(CH.A7), push(CH.D7), push(CH.D7), push(CH.G7), stab(CH.G7)),
+      bass: bars(hit('E2'), hit('E2'), hit('A1'), hit('A1'), two('D2', 'A1'), two('D2', 'F#2'), two('G1', 'D2'), walk('G2', 'F2', 'D2', 'B1')),
+      drums: bars(BRK1, BRK2, BRK1, BRK2, BRK1, BRK2, BRK1, FILL),
     },
-    // out chorus: the hook over brass punches, the clarinet screaming to F6, a roll back onto the top
+    // out chorus: the hook over brass punches, the clarinet up to F6, then a fill back onto the top
     SHOUT: {
       bars: 8,
-      lead: bars(
-        HOOK,
-        'F6 - - - - - D6 - - Bb5 - Ab5',
-        'G5 - Bb5 Eb6 - G5 Db6 - - Bb5 - G5',
-        'F5 - D5 F5 - Bb5 A5 - C6 Eb6 - F6',
-        'D6 - - Bb5 - - . . . . C5 C#5',
-      ),
+      lead: bars(HOOK, 'F5 - A5 C6 - - F6 - - D6 - -', 'C6 - - Ab5 - - F5 - - Ab5 - -', 'G5 - C6 E6 - - C#6 - - A5 - -', 'D6 - - A5 - - G5 - - D5 - B4'),
       harm: chart(A_CH, shout),
       bass: A_WALK,
       drums: groove(PUNCH, PUNCH2),
     },
   },
-  order: ['A', 'A2', 'B', 'A3', 'SOLO', 'SOLO2', 'DRUMS', 'SHOUT'],
+  order: ['A', 'A2', 'B', 'A3', 'BRK', 'SHOUT'],
 };

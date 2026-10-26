@@ -29,51 +29,47 @@
     padding: 0 0 calc(var(--safe-b) + 16px) calc(var(--safe-l) + 24px);
     justify-content: flex-start;
   }
+  .cc-tpad__cap {
+    width: calc(72px * var(--k));
+    height: calc(58px * var(--k));
+  }
   .cc-tpad__pill {
     width: calc(176px * var(--k));
+    height: calc(80px * var(--k));
   }
   .cc-tact-zone {
     --k: 1;
     right: calc(var(--safe-r) + 14px);
     bottom: calc(var(--safe-b) + 12px);
     width: calc(300px * var(--k));
-    height: calc(172px * var(--k));
+    height: calc(176px * var(--k));
   }
   /* bottom row SPARA, SCATTO, SALTA (big, at the thumb's rest in the corner); EX and ARMA above */
   .cc-tbtn--super {
-    --s: 64;
-    --x: 20;
-    --y: 6;
+    --s: 74;
+    --x: 14;
+    --y: 0;
   }
   .cc-tbtn--swap {
-    --s: 60;
-    --x: 108;
-    --y: 8;
+    --s: 74;
+    --x: 104;
+    --y: 2;
+    top: calc(var(--y) * var(--k) * 1px);
+    left: calc(var(--x) * var(--k) * 1px);
   }
   .cc-tbtn--fire {
     --s: 80;
     --x: 8;
-    --y: 88;
+    --y: 86;
   }
   .cc-tbtn--dash {
     --s: 80;
     --x: 98;
-    --y: 88;
+    --y: 86;
   }
   .cc-tbtn--jump {
     --s: 110;
     --x: 188;
-    --y: 58;
-  }
-  /* sparo automatico: no SPARA, ARMA drops into its place and EX stands over SCATTO */
-  .cc-tact-zone.is-auto .cc-tbtn--swap {
-    --s: 66;
-    --x: 12;
-    --y: 96;
-  }
-  .cc-tact-zone.is-auto .cc-tbtn--super {
-    --s: 64;
-    --x: 106;
-    --y: 6;
+    --y: 56;
   }
 }

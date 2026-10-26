@@ -1,12 +1,13 @@
 /**
- * Boss 6 · DOUBLE TRIPLE (BOSS-C lane): the walking double burger of the shirt, teal sneakers and a peace
- * sign, on a Palermo street at dusk in front of the Ciccio's storefront. Phase 1 it throws its patties
+ * Boss 6 · DOUBLE TRIPLE (BOSS-C lane): the walking double burger of the shirt (the art is cut out of the shirt,
+ * look.ts), blue sneakers and a peace sign, on a Palermo street at dusk in front of the Ciccio's storefront. Phase 1 it throws its patties
  * like frisbees, rolls three cheddar waves, cracks bacon whips and stomps across; phase 2 it splits in two.
  */
 import type Phaser from 'phaser';
 import type { BossDef } from '../../api';
 import { unloadPrefix, worldSprite } from '../../draw/canvas';
 import { NEAR } from './arena';
+import { DT_ASSETS } from './look';
 import { createDoubleTriple } from './runtime';
 import { loadTextures, PRE, TEX } from './textures';
 import { DT } from './tuning';
@@ -21,6 +22,7 @@ export const DOUBLETRIPLE: BossDef = {
   music: 'cartoonBoss',
   hp: DT.hp,
   phases: DT.phases,
+  assets: DT_ASSETS,
   load(scene: Phaser.Scene, k: number): void {
     loadTextures(scene, k);
   },

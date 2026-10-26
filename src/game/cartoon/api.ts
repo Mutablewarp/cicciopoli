@@ -32,8 +32,9 @@ export interface Box {
 /**
  * The hero = Ciccio after the owner's drawing ref/level8_ciccio_hero.png: black slick hair, round black
  * sunglasses, big friendly face, navy three-piece suit, white shirt, navy polka-dot tie, white pocket
- * square, white four-finger gloves, big glossy black shoes, rubber-hose limbs. Body ~44 world units
- * tall (frame HERO_FRAME), feet on the frame's bottom-centre, facing RIGHT (the core flips it).
+ * square, white four-finger gloves, big glossy black shoes, rubber-hose limbs. Body ~52 world units
+ * tall from hair to sole (frame HERO_FRAME), cut from the drawing itself (hero/index.ts HERO_ASSETS),
+ * feet on the frame's bottom-centre, facing RIGHT (the core flips it).
  * Animation keys the HERO lane registers (frames / fps its own choice, loops unless noted):
  */
 export const HERO_FRAME = { w: 64, h: 64, footY: 62 } as const;
@@ -71,6 +72,20 @@ export const FX = {
   dust: 'ct-dust', //             anim once: landing / dash dust puff
   card: 'ct-card', //             super meter card (frame 0 empty, 1 full) — the UI may draw its own
 } as const;
+
+/* ------------------------------------------------------------------ bitmap art (v8) */
+
+/**
+ * v8: a bitmap the CORE preloads with the Phaser loader BEFORE it calls loadHero() / BossDef.load(), so the
+ * art can come from the owner's references (the hero cut out of ref/level8_ciccio_hero.png, the bosses cut out
+ * of the shirts) instead of being redrawn by hand. `url` is relative to the site root (a file under public/,
+ * e.g. 'level8/brie/body.webp'); `key` must start with the module's texture prefix ('ct-hero', 'ct-brie' …) so
+ * unloadPrefix() frees it. PNG or WebP (both decode on iOS Safari 14+).
+ */
+export interface ImageAsset {
+  readonly key: string;
+  readonly url: string;
+}
 
 /* ------------------------------------------------------------------ boss modules (BOSS lanes) */
 
@@ -170,6 +185,8 @@ export interface BossDef {
   hp: number;
   /** hp fractions where the next phase starts, descending, e.g. [0.66, 0.33] */
   phases: readonly number[];
+  /** v8: bitmaps the CORE preloads (awaited) before load(); load() may then cut frames / anims from them */
+  assets?: readonly ImageAsset[];
   /** draw and register every texture / anim of this boss AND its arena at scale k */
   load(scene: Phaser.Scene, k: number): void;
   /** add the arena (background layers, foreground props) to the scene; depth < 0 behind the action */

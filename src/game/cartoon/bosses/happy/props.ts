@@ -1,11 +1,42 @@
 /**
  * HAPPY BOX props and projectiles (vector): spray-paint clouds (the PINK smiley one is parryable), paint
- * drops, the mini Happy boxes, the spray-can rocket, its lane warning, paint splats and the phase-2 mess.
+ * drops, the spray-can rocket, its lane warning, paint splats and the phase-2 wall splashes.
  */
 import { INK, LINE, inked } from '../../draw/canvas';
 import { type Ctx, WHITE, ell, pieEye, seeded, shutEye, sparkle, splatDrawer } from '../tuma/kit/toon';
-import { BLUE, ROCKET_TONE, sprayCan } from './art';
-import { BODY, MINI, PAINT, ROCKET } from './config';
+import { PAINT, ROCKET } from './config';
+
+/** The rocket can is teal: on screen, pink always means parryable. */
+const ROCKET_TONE = ['#7fe0c4', '#26b08a', '#13705a'] as const;
+
+/** A spray can (centre x, y; rot 0 = nozzle up), body tones light / mid / dark. */
+function sprayCan(ctx: Ctx, x: number, y: number, rot: number, s: number, tone: readonly [string, string, string]): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  ctx.scale(s, s);
+  ctx.beginPath();
+  ctx.roundRect(-8, -14, 16, 30, 3);
+  const g = ctx.createLinearGradient(-8, 0, 8, 0);
+  g.addColorStop(0, tone[0]);
+  g.addColorStop(0.4, tone[1]);
+  g.addColorStop(1, tone[2]);
+  inked(ctx, g, LINE * 0.8);
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.fillRect(-5, -11, 2.4, 24);
+  ctx.beginPath();
+  ctx.moveTo(-7, -14);
+  ctx.quadraticCurveTo(0, -24, 7, -14);
+  ctx.closePath();
+  inked(ctx, '#aab2bc', LINE * 0.8);
+  ctx.beginPath();
+  ctx.rect(-2.5, -24, 5, 5);
+  inked(ctx, '#e8eef2', LINE * 0.6);
+  ctx.beginPath();
+  ctx.rect(-8, 12, 16, 4);
+  inked(ctx, '#9aa3ad', LINE * 0.6);
+  ctx.restore();
+}
 
 /** Spray clouds (PUFF): one frame per PAINT colour; the last one (pink) wears a smile. */
 export function drawPuff(ctx: Ctx, f: number): void {
@@ -58,43 +89,6 @@ export function drawDrop(ctx: Ctx, f: number): void {
   ctx.fillStyle = 'rgba(255,255,255,0.65)';
   ell(ctx, 5.5, 14, 1.5, 3, 0.3);
   ctx.fill();
-}
-
-/** Mini Happy box (MINI): 0 standing, 1 jumping (feet tucked), 2 landing squash. Body centred. */
-export function drawMini(ctx: Ctx, f: number): void {
-  const sq = f === 2 ? 1.18 : 1;
-  ctx.save();
-  ctx.translate(MINI.w / 2, MINI.h * 0.56);
-  ctx.scale((sq * MINI.w) / 34, MINI.h / 36 / sq);
-  const feetY = f === 1 ? 9 : 13;
-  for (const x of [-6, 6]) {
-    ell(ctx, x * 1.2, feetY, 5.5, 3);
-    inked(ctx, BLUE.base, LINE * 0.7);
-  }
-  ctx.beginPath();
-  ctx.moveTo(-11, -9);
-  ctx.lineTo(11, -10);
-  ctx.lineTo(9, 10);
-  ctx.lineTo(-9, 10);
-  ctx.closePath();
-  inked(ctx, BLUE.base, LINE * 0.9);
-  ctx.beginPath();
-  ctx.moveTo(-6, -10);
-  ctx.bezierCurveTo(-5, -19, 5, -19, 6, -10);
-  ctx.strokeStyle = INK;
-  ctx.lineWidth = 3 + LINE * 1.4;
-  ctx.stroke();
-  ctx.strokeStyle = '#f6c443';
-  ctx.lineWidth = 3;
-  ctx.stroke();
-  pieEye(ctx, -4, -3, 3.2, 4.3, -0.7, 0, 0, BLUE.base);
-  pieEye(ctx, 4, -3.5, 3.2, 4.3, -0.7, 0, 0, BLUE.base);
-  ctx.beginPath();
-  ctx.moveTo(-6, 3);
-  ctx.quadraticCurveTo(0, 9, 6, 3);
-  ctx.closePath();
-  inked(ctx, WHITE, LINE * 0.6);
-  ctx.restore();
 }
 
 /** The spray-can rocket flying left (ROCKET): teal, so it never reads as a pink parryable. 2 jet frames. */
@@ -165,32 +159,5 @@ export function drawDecal(ctx: Ctx, f: number): void {
   for (let i = 0; i < 3; i++) {
     const x = 26 + i * 9 + r() * 4;
     ctx.fillRect(x, 30, 3, 14 + r() * 10);
-  }
-}
-
-/** Phase-2 paint mess over the box (same frame as the body sheet: the box never moves in it). */
-export function drawMess(ctx: Ctx): void {
-  const top = BODY.h - 200;
-  const r = seeded(5);
-  for (const [x, y, rr, c] of [[74, 66, 7, '#f6d23c'], [120, 70, 6, '#4fd1a8'], [70, 140, 8, '#ff9a3c'], [138, 112, 6, '#f6d23c'], [112, 146, 5, WHITE]] as const) {
-    ctx.beginPath();
-    for (let i = 0; i <= 10; i++) {
-      const a = (i / 10) * Math.PI * 2;
-      const q = rr * (0.7 + r() * 0.5);
-      ctx.lineTo(x + Math.cos(a) * q, top + y + Math.sin(a) * q);
-    }
-    ctx.closePath();
-    ctx.fillStyle = c;
-    ctx.fill();
-    ctx.fillRect(x - 1.2, top + y, 2.4, rr * 1.6 + r() * 6);
-  }
-  for (const [x, c] of [[64, '#4fd1a8'], [96, '#f6d23c'], [126, '#ff9a3c']] as const) {
-    ctx.beginPath();
-    ctx.moveTo(x - 6, top + 50);
-    ctx.quadraticCurveTo(x, top + 44, x + 6, top + 50);
-    ctx.lineTo(x + 2, top + 62);
-    ctx.arc(x, top + 62, 2, 0, Math.PI);
-    ctx.closePath();
-    inked(ctx, c, LINE * 0.6);
   }
 }

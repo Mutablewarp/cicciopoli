@@ -1,16 +1,15 @@
 /**
- * THE OLD SCHOOL live boss (BossRuntime): builds the part sprites (hand back / front, burger, little arm,
- * floating fist, the two sauce bottles), runs the pure scheduler, poses everything each frame (idle life
- * first, then the current move) and reports hurt / body boxes in world units.
+ * THE OLD SCHOOL live boss (BossRuntime): builds the shirt's parts (the giant hand's back and front layers,
+ * the burger, its little waving arm) and the two sauce bottles, runs the pure scheduler, poses everything each
+ * frame (idle life first, then the current move) and reports hurt / body boxes in world units.
  */
 import { ARENA, type BossRuntime, type BossWorld, type Box } from '../../api';
-import { ARM, ARM_POSE, BURGER, FACE } from './art';
 import { COUNTER } from './arena';
-import { FIST_POSE, GRIP, HAND } from './hand';
 import { FxPlayer } from './kit/fxplay';
 import { Flash } from './kit/flash';
 import { part, put, Temps, Timers } from './kit/rig';
 import { Scheduler, type Move } from './kit/scheduler';
+import { ARM_POSE, BURGER_ORIGIN, HAND_POSE, originAt, PALM, SHOULDER, TIPS_FROM_PALM, turn } from './look';
 import { fistHome, makeMove } from './moves';
 import { DECK1, DECK2, type OsAttack } from './pattern';
 import { koMove, transformMove } from './story';
@@ -19,20 +18,29 @@ import { OS } from './tuning';
 import type { OsCtx, OsPose } from './types';
 
 const F = ARENA.floorY;
+const B = OS.box;
+
+/** where the free hand's palm and finger tips are (world), and its whole turn (deg) */
+export function freeHand(p: OsPose): { tips: { x: number; y: number }; angle: number } {
+  const angle = OS.freeHand.angle[p.fistFrame] + p.fistAngle;
+  const v = turn(TIPS_FROM_PALM, p.fistFlip ? -angle : angle, p.fistFlip);
+  return { tips: { x: p.fx + v.x * OS.freeHand.scale, y: p.fy + v.y * OS.freeHand.scale }, angle };
+}
 
 export function createOldSchool(world: BossWorld): BossRuntime {
   const { scene, k } = world;
   const d = OS.depth;
   const temps = new Temps();
   const timers = new Timers();
-  const handBack = part(scene, TEX.handBack, k, d.handBack, 0, GRIP.x / HAND.w, GRIP.y / HAND.h);
-  const handFront = part(scene, TEX.handFront, k, d.handFront, 0, GRIP.x / HAND.w, GRIP.y / HAND.h);
-  const burger = part(scene, TEX.burger, k, d.burger, FACE.smile, 0.5, BURGER.footY / BURGER.h);
-  const arm = part(scene, TEX.arm, k, d.arm, 0, ARM.sx / ARM.w, ARM.sy / ARM.h);
-  const fist = part(scene, TEX.fist, k, d.fist, 0).setVisible(false);
+  const palmSrc = OS.art.palm;
+  const handBack = part(scene, TEX.handBack, k, d.handBack, 0, ...originAt('handBack', palmSrc));
+  const handFront = part(scene, TEX.handFront, k, d.handFront, 0, ...originAt('handFront', palmSrc));
+  const burger = part(scene, TEX.burger, k, d.burger, 0, ...BURGER_ORIGIN);
+  const arm = part(scene, TEX.arm, k, d.arm, 0, ...originAt('arm', OS.art.shoulder));
   const bottles = OS.bottles.map((b) => part(scene, TEX.bottle, k, d.bottles, b.frame, 0.5, 55 / 56));
-  const all = [handBack, handFront, burger, arm, fist, ...bottles];
-  const flash = new Flash(() => all, () => [handBack, handFront, burger, arm, fist]);
+  const hand = [handBack, handFront];
+  const all = [...hand, burger, arm, ...bottles];
+  const flash = new Flash(() => all, () => [...hand, burger, arm]);
   const pose: OsPose = {
     handDy: 0,
     handAngle: 0,
@@ -42,13 +50,13 @@ export function createOldSchool(world: BossWorld): BossRuntime {
     by: OS.grip.y,
     bsx: 1,
     bsy: 1,
-    face: FACE.smile,
+    bAngle: 0,
     arm: ARM_POSE.waveA,
     fist: false,
     fistSafe: false,
     fx: OS.fistHome.x,
     fy: OS.fistHome.y,
-    fistFrame: FIST_POSE.left,
+    fistFrame: HAND_POSE.rest,
     fistFlip: false,
     fistAngle: 0,
     bottle: OS.bottles.map(() => 0),
@@ -61,7 +69,7 @@ export function createOldSchool(world: BossWorld): BossRuntime {
     flash,
     timers,
     keys: { bacon: TEX.bacon, sauce: TEX.sauce, shock: TEX.fx.shock, shockAnim: TEX.fx.shockAnim },
-    parts: { burger, arm, hand: [handBack, handFront], fist, bottles },
+    parts: { burger, arm, hand, bottles },
     phase: 0,
     volleys: 0,
   };
@@ -72,17 +80,18 @@ export function createOldSchool(world: BossWorld): BossRuntime {
   let move: Move | null = null;
   let story: Move | null = null;
   const clock = (): number => T;
+  const wave = (): number => (Math.floor(T / OS.idle.waveMs) % 2 ? ARM_POSE.waveA : ARM_POSE.waveB);
 
   function idle(): void {
     const p = pose;
     const b = Math.sin(T / OS.idle.breatheMs) * 0.03;
+    p.arm = wave();
+    p.bAngle = 0;
     if (c.phase === 0) {
       p.hand = 'grip';
       p.held = true;
       p.handDy = Math.sin(T / OS.idle.bobMs) * 3;
       p.handAngle = Math.sin(T / OS.idle.swayMs) * 2;
-      p.face = FACE.smile;
-      p.arm = Math.floor(T / OS.idle.waveMs) % 2 ? ARM_POSE.waveA : ARM_POSE.waveB;
       p.bsx = 1 + b;
       p.bsy = 1 - b;
     } else {
@@ -91,8 +100,6 @@ export function createOldSchool(world: BossWorld): BossRuntime {
       const contact = ph < 0.08 || ph > 0.92;
       p.hand = 'gone';
       p.held = false;
-      p.face = FACE.angry;
-      p.arm = Math.floor(T / OS.idle.waveMs) % 2 ? ARM_POSE.waveA : ARM_POSE.waveB;
       p.bx = OS.floorSpot.x;
       p.by = F - 10 * lift;
       p.bsx = contact ? 1.1 : 1 - 0.04 * lift;
@@ -102,7 +109,7 @@ export function createOldSchool(world: BossWorld): BossRuntime {
       p.fistSafe = false;
       p.fx = h.x;
       p.fy = h.y;
-      p.fistFrame = FIST_POSE.left;
+      p.fistFrame = HAND_POSE.rest;
       p.fistFlip = false;
       p.fistAngle = Math.sin(T / 500) * 6;
     }
@@ -113,22 +120,27 @@ export function createOldSchool(world: BossWorld): BossRuntime {
   function draw(): void {
     const p = pose;
     const hy = OS.grip.y + p.handDy;
-    handBack.setVisible(p.hand !== 'gone');
-    handFront.setVisible(p.hand === 'grip' && p.held);
-    put(handBack, k, OS.grip.x, hy, 1, 1, p.handAngle);
-    put(handFront, k, OS.grip.x, hy, 1, 1, p.handAngle);
+    const free = p.hand === 'gone';
+    for (const s of hand) s.setVisible(!free || p.fist);
+    if (free) {
+      const { angle } = freeHand(p);
+      const sc = OS.freeHand.scale;
+      for (const s of hand) put(s, k, p.fx, p.fy, p.fistFlip ? -sc : sc, sc, p.fistFlip ? -angle : angle);
+      handBack.setDepth(d.free);
+      handFront.setDepth(d.free + 0.1);
+    } else {
+      for (const s of hand) put(s, k, OS.grip.x + PALM.x, hy + PALM.y, 1, 1, p.handAngle);
+      handBack.setDepth(d.handBack);
+      handFront.setDepth(d.handFront);
+    }
     if (p.held) {
       p.bx = OS.grip.x;
       p.by = hy;
     }
     const wob = Math.sin(T * 0.06) * 0.05 * wobble;
-    put(burger, k, p.bx, p.by, p.bsx + wob, p.bsy - wob);
-    burger.setFrame(p.face);
-    put(arm, k, p.bx - 46 * p.bsx, p.by - 57 * p.bsy);
-    arm.setFrame(p.arm);
-    fist.setVisible(p.fist);
-    put(fist, k, p.fx, p.fy, 1, 1, p.fistAngle);
-    fist.setFrame(p.fistFrame).setFlipX(p.fistFlip);
+    put(burger, k, p.bx, p.by, p.bsx + wob, p.bsy - wob, p.bAngle);
+    const sh = turn({ x: SHOULDER.x * p.bsx, y: SHOULDER.y * p.bsy }, p.bAngle);
+    put(arm, k, p.bx + sh.x, p.by + sh.y, 1, 1, OS.armAngle[p.arm] + p.bAngle);
     bottles.forEach((s, i) => {
       const q = p.bottle[i];
       put(s, k, OS.bottles[i].x, COUNTER.top + 1, q >= 0 ? 1 + q * 0.5 : 1 - q * 0.6, q >= 0 ? 1 - q : 1 - q * 0.6);
@@ -138,14 +150,18 @@ export function createOldSchool(world: BossWorld): BossRuntime {
 
   function boxes(): Box[] {
     const p = pose;
-    const out: Box[] = [{ x: p.bx - 50 * p.bsx, y: p.by - 88 * p.bsy, w: 100 * p.bsx, h: 86 * p.bsy }];
+    const out: Box[] = [{ x: p.bx - B.burgerHalfW * p.bsx, y: p.by - B.burgerTop * p.bsy, w: 2 * B.burgerHalfW * p.bsx, h: (B.burgerTop - 4) * p.bsy }];
     if (p.hand !== 'gone') {
-      const top = OS.grip.y + p.handDy - 36;
-      out.push({ x: OS.grip.x + 6, y: top, w: ARENA.w - OS.grip.x - 6, h: F - top });
-    }
-    if (p.fist && !p.fistSafe) {
-      if (p.fistFrame === FIST_POSE.flat) out.push({ x: p.fx - (p.fistFlip ? 38 : 58), y: F - OS.sweep.h - 2, w: OS.sweep.w, h: OS.sweep.h });
-      else out.push({ x: p.fx - OS.fist.r, y: p.fy - OS.fist.r, w: OS.fist.r * 2, h: OS.fist.r * 2 + 4 });
+      const px = OS.grip.x + PALM.x;
+      const top = OS.grip.y + p.handDy + PALM.y - B.handTop;
+      out.push({ x: px - B.handLeft, y: top, w: B.handLeft + B.handRight, h: F - top });
+    } else if (p.fist && !p.fistSafe) {
+      const { tips } = freeHand(p);
+      const pad = B.freePad;
+      const x0 = Math.min(p.fx, tips.x) - pad;
+      const x1 = Math.max(p.fx, tips.x) + pad;
+      if (p.fistFrame === HAND_POSE.flat) out.push({ x: x0, y: F - OS.sweep.h, w: x1 - x0, h: OS.sweep.h });
+      else out.push({ x: x0, y: Math.min(p.fy, tips.y) - pad, w: x1 - x0, h: Math.abs(p.fy - tips.y) + 2 * pad });
     }
     return out;
   }

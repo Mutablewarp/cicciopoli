@@ -1,6 +1,11 @@
 /* Level 8 touch controls (ControlsMode 'cartoon', cartoon/pad.ts + cartoon/controls.ts): 1930s enamel discs with fat
-   ink outlines. Left: the ◀ ▶ pill with the ▲ cap. Right: SALTA, SPARA, SCATTO, ARMA, SUPER laid out in art units
-   scaled by --k. Portrait: inside the tall band under the arena (stage.css). Landscape: one column each side of it. */
+   ink outlines. Left: the ◀ ▶ pill with the ▲ cap. Right: SALTA, SPARA (+ its AUTO switch plate), SCATTO, ARMA, EX laid
+   out in art units scaled by --k (BRIEF v8: every disc >= 64 CSS px, SALTA >= 88, at 360 px wide and in landscape).
+   Portrait: inside the compact band under the arena (stage.css). Landscape: one column each side of it, ARMA (a rare
+   tap) above the pad on the left. SPARA's AUTO plate and EX's card ring: discs.css; the first-fight coach: coach.css. */
+@import './discs.css';
+@import './coach.css';
+
 .cc-controls:not([data-mode='cartoon']) .cc-tpad-zone,
 .cc-controls:not([data-mode='cartoon']) .cc-tact-zone,
 .cc-controls[data-mode='cartoon'] .cc-pad-zone,
@@ -18,7 +23,6 @@
   display: flex;
   align-items: flex-end;
   justify-content: flex-start;
-  padding-left: 4px;
   touch-action: none;
 }
 .cc-tpad {
@@ -26,7 +30,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: calc(8px * var(--k));
+  gap: calc(6px * var(--k));
   pointer-events: none;
 }
 .cc-tpad__cap,
@@ -39,17 +43,18 @@
   transition: transform 50ms;
 }
 .cc-tpad__cap {
-  width: calc(76px * var(--k));
-  height: calc(62px * var(--k));
+  width: calc(72px * var(--k));
+  height: calc(58px * var(--k));
   border: 3.5px solid var(--t-ink);
   border-radius: 40px 40px 14px 14px;
   box-shadow: 0 5px 0 var(--t-ink);
 }
 .cc-tpad__pill {
+  position: relative;
   display: flex;
   gap: 3px;
-  width: calc(176px * var(--k));
-  height: calc(84px * var(--k));
+  width: calc(156px * var(--k));
+  height: calc(80px * var(--k));
   padding: 3.5px;
   border-radius: 999px;
   background: var(--t-ink);
@@ -85,11 +90,11 @@
   --k: 1;
   position: relative;
   flex: none;
-  width: calc(206px * var(--k));
-  height: calc(270px * var(--k));
+  width: calc(214px * var(--k));
+  height: calc(204px * var(--k));
 }
 .cc-tbtn {
-  --s: 80;
+  --s: 72;
   --x: 0;
   --y: 0;
   --size: calc(var(--s) * var(--k) * 1px);
@@ -109,40 +114,32 @@
   /* hit slop: a fingertip slightly off the rim still counts */
   content: '';
   position: absolute;
-  inset: -8px;
+  inset: -6px;
   border-radius: 50%;
 }
-/* portrait: two columns, the rare ones (ARMA, SUPER) on top, SALTA big at the thumb's rest */
+/* portrait: an arc round SALTA (big, at the thumb's rest in the corner): SCATTO beside it, SPARA above that, ARMA and
+   EX on top (centres >= 5 art px apart, rim to rim) */
 .cc-tbtn--swap {
-  --s: 62;
-  --x: 15;
+  --s: 70;
+  --x: 69;
   --y: 5;
 }
 .cc-tbtn--super {
-  --s: 68;
-  --x: 116;
-  --y: 6;
+  --x: 142;
+  --y: 20;
 }
 .cc-tbtn--fire {
-  --x: 6;
-  --y: 88;
+  --x: 0;
+  --y: 39;
 }
 .cc-tbtn--dash {
-  --x: 12;
-  --y: 186;
+  --x: 36;
+  --y: 129;
 }
 .cc-tbtn--jump {
-  --s: 110;
-  --x: 93;
-  --y: 145;
-}
-/* sparo automatico: no SPARA, ARMA drops into its place */
-.cc-tact-zone.is-auto .cc-tbtn--swap {
-  --s: 66;
-  --x: 12;
-  --y: 96;
-}
-.cc-tbtn--jump {
+  --s: 100;
+  --x: 114;
+  --y: 101;
   --face: var(--t-red);
   --face-hi: var(--t-red-hi);
   --face-lo: var(--t-red-lo);
@@ -154,7 +151,7 @@
   --face-lo: #2a5488;
   --label: var(--t-white);
 }
-.cc-tbtn--swap,
+.cc-tbtn--fire.is-auto,
 .cc-tbtn--super.is-ready {
   --face: var(--t-gold);
   --face-hi: var(--t-gold-hi);
@@ -181,8 +178,8 @@
   filter: brightness(1.12);
 }
 .cc-tbtn__icon svg {
-  width: calc(var(--size) * 0.46);
-  height: calc(var(--size) * 0.46);
+  width: calc(var(--size) * 0.44);
+  height: calc(var(--size) * 0.44);
 }
 .cc-tbtn--jump .cc-tbtn__icon svg {
   width: calc(var(--size) * 0.36);
@@ -191,7 +188,7 @@
 .cc-tbtn__name {
   font-family: var(--f-toon);
   font-weight: 900;
-  font-size: calc(11px * var(--k));
+  font-size: calc(12px * var(--k));
   line-height: 1;
   letter-spacing: 0.04em;
   color: var(--label);
@@ -204,70 +201,41 @@
   -webkit-text-stroke: 0;
 }
 .cc-tbtn--jump .cc-tbtn__name {
-  font-size: calc(16px * var(--k));
+  font-size: calc(17px * var(--k));
 }
 .cc-tbtn__weapon svg {
-  width: calc(var(--size) * 0.52);
-  height: calc(var(--size) * 0.52);
+  width: calc(var(--size) * 0.5);
+  height: calc(var(--size) * 0.5);
   filter: drop-shadow(0 2px 0 rgba(28, 21, 17, 0.35));
-}
-.cc-tbtn__minis {
-  display: flex;
-  gap: 2px;
-  margin-bottom: 2px;
-}
-.cc-tbtn__minis i {
-  width: calc(var(--size) * 0.11);
-  height: calc(var(--size) * 0.16);
-  border: 1.5px solid var(--t-ink);
-  border-radius: 2px;
-  background: #cdb48a;
-}
-.cc-tbtn__minis i.is-full {
-  background: linear-gradient(160deg, var(--t-gold-hi), var(--t-gold) 55%, var(--t-gold-lo));
-}
-.cc-tbtn--super.is-empty .cc-tbtn__face {
-  filter: saturate(0.5) brightness(0.86);
-}
-.cc-tbtn--super.is-ready .cc-tbtn__face {
-  animation: cc-tsuper 0.9s ease-in-out infinite;
-}
-.cc-tbtn--super.is-ready .cc-tbtn__name {
-  color: var(--t-red);
-}
-@keyframes cc-tsuper {
-  50% {
-    box-shadow: 0 5px 0 var(--t-ink), 0 0 0 4px var(--t-gold-hi), 0 0 22px 6px rgba(251, 224, 140, 0.8);
-    transform: rotate(-4deg) scale(1.04);
-  }
 }
 .cc-tbtn.is-disabled .cc-tbtn__face {
   filter: saturate(0.3) brightness(0.65);
 }
 
-/* sizes: pad (176) + cluster (206) + gutters must fit the width; narrow or short phones shrink the set, tablets grow it */
-@media (orientation: portrait) and (max-width: 411px) {
+/* sizes: pad (156) + cluster (214) + side padding must fit the width; narrower phones shrink the set (360 px wide:
+   discs 64+, SALTA 92), tablets grow it */
+@media (orientation: portrait) and (max-width: 389px) {
+  .cc-tpad-zone,
+  .cc-tact-zone {
+    --k: 0.96;
+  }
+}
+@media (orientation: portrait) and (max-width: 374px) {
   .cc-tpad-zone,
   .cc-tact-zone {
     --k: 0.92;
   }
 }
-@media (orientation: portrait) and (max-width: 380px) {
+@media (orientation: portrait) and (max-width: 359px) {
   .cc-tpad-zone,
   .cc-tact-zone {
-    --k: 0.86;
-  }
-}
-@media (orientation: portrait) and (max-width: 359px), (orientation: portrait) and (max-height: 640px) {
-  .cc-tpad-zone,
-  .cc-tact-zone {
-    --k: 0.76;
+    --k: 0.82;
   }
 }
 @media (orientation: portrait) and (min-width: 600px) {
   .cc-tpad-zone,
   .cc-tact-zone {
-    --k: 1.25;
+    --k: 1.5;
   }
   .cc-tpad-zone {
     padding-left: 24px;
@@ -275,94 +243,95 @@
 }
 
 /* ------------------------------------------------------------ landscape: two side columns, never over the arena
-   The game host is inset by one column on each side (--l8-col, plus the safe areas), so the arena is framed between
-   them (core framing fits it in the host) and no thumb or button ever covers the fight. Wide phones lose nothing (the
-   columns sit in the letterbox the 16:9 arena leaves anyway); short ones trade a slightly smaller arena for a clear
-   view. Left column: the aim pad, its whole height is the pad's hit area. Right column: the action discs. */
+   The game host is inset by a column on each side (plus the safe areas), so the arena is framed between them and no
+   thumb or button ever covers the fight. Left column (--l8-col-l, wide enough for ◀ and ▶ of 64+ px each at --k8
+   0.92): the aim pad (its whole height is the pad's hit area) with ARMA above it and the coach's tag above that.
+   Right column (--l8-col): EX, SPARA, SCATTO, SALTA zig-zagging down to the thumb's rest. */
 @media (orientation: landscape) {
   .is-touch.is-l8 {
     --k8: 0.92;
     --l8-col: calc(var(--k8) * 112px + 10px);
+    --l8-col-l: calc(var(--k8) * 150px + 10px);
   }
   .is-touch.is-l8 .game-host {
-    left: calc(var(--safe-l) + var(--l8-col));
+    left: calc(var(--safe-l) + var(--l8-col-l));
     right: calc(var(--safe-r) + var(--l8-col));
   }
   .cc-tpad-zone {
-    --k: calc(var(--k8, 0.92) * 0.8);
+    --k: var(--k8, 0.92);
     position: absolute;
     left: 0;
     bottom: 0;
-    width: calc(var(--safe-l) + var(--l8-col, 113px));
+    width: calc(var(--safe-l) + var(--l8-col-l, 148px));
     height: calc(300px * var(--k8, 0.92) + var(--safe-b) + 8px);
     padding: 0 5px calc(var(--safe-b) + 14px) calc(var(--safe-l) + 5px);
     justify-content: center;
     pointer-events: auto;
   }
+  /* ▲ cap 79 x 64, ◀ ▶ halves 64 x 65 (pill minus its 3.5 px ink rim and 3 px gap) at --k8 0.92 */
+  .cc-tpad__cap {
+    width: calc(86px * var(--k));
+    height: calc(70px * var(--k));
+  }
   .cc-tpad__pill {
-    width: calc(112px * var(--k8, 0.92));
+    width: calc(150px * var(--k));
+    height: calc(78px * var(--k));
   }
   .cc-tact-zone {
     --k: var(--k8, 0.92);
     position: absolute;
     right: calc(var(--safe-r) + 5px);
-    bottom: calc(var(--safe-b) + 8px);
+    bottom: calc(var(--safe-b) + 4px);
     width: calc(112px * var(--k));
-    height: calc(300px * var(--k));
+    height: calc(303px * var(--k));
     pointer-events: none;
   }
   .cc-tbtn {
     pointer-events: auto;
   }
-  /* zig-zag down the column: ARMA + EX on top, SPARA, SCATTO, SALTA big at the thumb's rest in the corner */
-  .cc-tbtn--swap {
-    --s: 52;
-    --x: 0;
-    --y: 0;
-  }
   .cc-tbtn--super {
-    --s: 56;
-    --x: 56;
-    --y: 10;
+    --x: 40;
+    --y: 0;
   }
   .cc-tbtn--fire {
-    --s: 68;
     --x: 0;
-    --y: 70;
+    --y: 60;
   }
   .cc-tbtn--dash {
-    --s: 68;
-    --x: 44;
-    --y: 128;
+    --x: 40;
+    --y: 130;
   }
   .cc-tbtn--jump {
-    --s: 96;
-    --x: 8;
-    --y: 204;
-  }
-  /* sparo automatico: no SPARA, EX centred on top and ARMA drops into its place */
-  .cc-tact-zone.is-auto .cc-tbtn--super {
-    --s: 60;
-    --x: 26;
-    --y: 0;
-  }
-  .cc-tact-zone.is-auto .cc-tbtn--swap {
-    --s: 60;
+    --s: 98;
     --x: 2;
-    --y: 72;
+    --y: 205;
+  }
+  /* ARMA crosses to the left column, centred over the pad: (zone left) -> (safe-l + 5 + (150 - 72) / 2 art px), its
+     bottom 10 px over the ▲ cap (the pad is 154 art px tall, 14 px over the bottom; the zone 303 art px, 4 px) */
+  .cc-tbtn--swap {
+    --s: 72;
+    top: calc(77px * var(--k) - 20px);
+    left: calc(var(--safe-l) + var(--safe-r) + 10px + 151px * var(--k) - 100vw);
   }
 }
+/* shorter phones: the right column (303 art px + the 49 px HUD bar) must stay under the HUD's pause button */
 @media (orientation: landscape) and (max-height: 340px) {
   .is-touch.is-l8 {
+    --k8: 0.86;
+  }
+}
+@media (orientation: landscape) and (max-height: 318px) {
+  .is-touch.is-l8 {
     --k8: 0.8;
+  }
+}
+@media (orientation: landscape) and (max-height: 296px) {
+  .is-touch.is-l8 {
+    --k8: 0.72;
   }
 }
 @media (orientation: landscape) and (min-height: 600px) {
   .is-touch.is-l8 {
     --k8: 1.1;
   }
-}
-/* five gold cards would vanish on the gold SUPER face: red pips when it is ready */
-.cc-tbtn--super.is-ready .cc-tbtn__minis i.is-full {
-  background: var(--t-red);
 }

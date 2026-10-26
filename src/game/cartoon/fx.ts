@@ -100,7 +100,9 @@ export class RoundFx {
     g.fillTriangle(-6, h / 2 - 1, 6, h / 2 - 1, -10, h / 2 + 9);
     g.lineBetween(-6, h / 2, -10, h / 2 + 9);
     g.lineBetween(6, h / 2, -10, h / 2 + 9);
-    const x = Math.max(w / 2 + 4, Math.min(ARENA.w - w / 2 - 4, anchor.x));
+    // inside the arena part on screen (a pushed-in phone view): a boss at the edge still says its line in full
+    const v = this.scene.cameras.main.worldView;
+    const x = Math.max(Math.max(0, v.x) + w / 2 + 4, Math.min(Math.min(ARENA.w, v.right) - w / 2 - 4, anchor.x));
     const y = Math.max(h / 2 + 4, anchor.y - h / 2 - 12);
     this.balloon = this.scene.add.container(x, y, [g, t]).setDepth(DEPTH.balloon).setScale(0.2);
     this.scene.tweens.add({ targets: this.balloon, scale: 1, duration: 260, ease: 'Back.Out' });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CT_PLAYER } from '../../../../config/cartoon';
 import { ARENA } from '../../api';
-import { BALL, BODY, TUMA_CFG as C } from './config';
+import { TUMA_CFG as C, TUMA_RIG } from './config';
 import { landingSpans, widestGap } from './kit/geom';
 import { MIN_TELEGRAPH_MS } from './kit/sched';
 import { honeyRain, lemonVolley, sunBeams } from './plan';
@@ -46,19 +46,28 @@ describe('DON TUMA patterns', () => {
     }
   });
 
-  it('the chair jaws and the cheese wheel can be jumped (they stay well under the jump apex)', () => {
+  it('the chair jaws and the wheel of tuma can be jumped (they stay well under the jump apex)', () => {
     expect(C.jaws.h + 5).toBeLessThan(APEX * 0.6);
-    expect(BALL.r * 1.8 * C.scale).toBeLessThan(APEX * 0.6);
+    expect(C.spin.r * 2).toBeLessThan(APEX * 0.6);
   });
 
-  it('straight shots from a hero on the ground hit him, lounging and standing (hurt boxes reach the floor)', () => {
+  it('the first volley of the fight is the gentle one (fewer citrus, slower)', () => {
+    const shots = lemonVolley(lcg(5), 0, { x: 420, y: 140 }, 100, false, true);
+    expect(shots).toHaveLength(C.firstLemons.n);
+    expect(C.firstLemons.n).toBeLessThan(C.lemon.n[0]);
+    expect(C.firstLemons.flightMs).toBeGreaterThan(C.lemon.flightMs[0]);
+  });
+
+  it('straight shots from a hero on the ground hit him (hurt boxes reach the floor), touching the chair hurts', () => {
     const F = ARENA.floorY;
-    const top = (b: readonly number[]): number => F + (b[1] - BODY.footY) * C.scale;
-    const bottom = (b: readonly number[]): number => F + (b[1] + b[3] - BODY.footY) * C.scale;
+    const ay = TUMA_RIG.anchor[1];
+    const top = (b: readonly number[]): number => F + (b[1] - ay) * C.scale;
+    const bottom = (b: readonly number[]): number => F + (b[1] + b[3] - ay) * C.scale;
     // every height a standing hero can fire from (its whole hit box, feet excluded) is covered
-    for (const boxes of [C.hurt.seat, C.hurt.stand]) {
-      expect(Math.min(...boxes.map(top))).toBeLessThanOrEqual(F - CT_PLAYER.hitH);
-      expect(Math.max(...boxes.map(bottom))).toBeGreaterThanOrEqual(F - 6);
-    }
+    expect(Math.min(...C.hurt.map(top))).toBeLessThanOrEqual(F - CT_PLAYER.hitH);
+    expect(Math.max(...C.hurt.map(bottom))).toBeGreaterThanOrEqual(F - 6);
+    // the field ends where his body box starts
+    const left = Math.min(...C.bodyBox.map((b) => C.x + (b[0] - TUMA_RIG.anchor[0]) * C.scale));
+    expect(left).toBeGreaterThanOrEqual(C.field[1]);
   });
 });

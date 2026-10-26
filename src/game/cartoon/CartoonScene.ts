@@ -48,8 +48,10 @@ export class CartoonScene extends Phaser.Scene {
     let seen = { w: v.cssW, h: v.cssH, portrait: v.portrait };
     const onViewport = (): void => {
       // the phone turned (or the window changed a lot) mid-fight: pause, no hit while the player re-grips
+      // (not during the title card: the stage settles its HUD / controls bands there)
       const d = CT_VIEW.pauseOnResize;
-      if (v.portrait !== seen.portrait || Math.abs(v.cssW - seen.w) > seen.w * d || Math.abs(v.cssH - seen.h) > seen.h * d) this.pause();
+      const big = v.portrait !== seen.portrait || Math.abs(v.cssW - seen.w) > seen.w * d || Math.abs(v.cssH - seen.h) > seen.h * d;
+      if (big && this.session?.round?.state === 'fight') this.pause();
       seen = { w: v.cssW, h: v.cssH, portrait: v.portrait };
       this.session?.layout();
     };

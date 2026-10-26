@@ -166,9 +166,9 @@ export class ArenaWorld implements BossWorld {
     h.destroy();
   }
 
-  /** Knockout sweep: every hazard pops (no onDeath: nothing new may spawn). */
-  popAll(): void {
-    for (const h of [...this.hazards]) this.kill(h, false);
+  /** Knockout sweep: every hazard pops (no onDeath: nothing new may spawn); `minions` false keeps the minions. */
+  popAll(minions = true): void {
+    for (const h of [...this.hazards]) if (minions || h.hp === null) this.kill(h, false);
     this.prune();
   }
 

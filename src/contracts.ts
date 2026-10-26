@@ -99,7 +99,8 @@ export interface CiccioArtPack extends ArtPack {
 /* ---------------------------------------------------------------- INPUT */
 
 /** dash / swap / super: level 8 (SCATTO, ARMA, SUPER buttons; keyboard per src/input). */
-export type EdgeAction = 'jump' | 'fire' | 'club' | 'pause' | 'dash' | 'swap' | 'super';
+/** v8: 'autoFire' = level 8 tap on the SPARA AUTO switch (the CORE toggles the auto-fire setting and saves it). */
+export type EdgeAction = 'jump' | 'fire' | 'club' | 'pause' | 'dash' | 'swap' | 'super' | 'autoFire';
 
 export interface GameInput {
   /** -1 left, 0 none, +1 right. When both directions are held the LAST pressed wins. */

@@ -1,46 +1,71 @@
 /**
- * Monsieur Brie's puppet: the bicycle (its own sprite, so it can roll away), and a container with the
- * legs, the wedge, the throwing arm, the beret and the knockout puddle. Picks frames and squash /
- * stretch from the runner's frame: pedalling and blinking at rest, readable wind-up poses, the wheelie,
- * the flight off the bike, the melt.
+ * Monsieur Brie's puppet, rebuilt from the shirt cut-outs: the bicycle group (rear wheel, front wheel, the
+ * frame with his pedalling legs as printed, and the basket in front of him), the wedge with its face
+ * frames, the beret, and rubber-hose arms / legs drawn live between the cut gloves and feet. Pedalling
+ * spokes, bob and squash at rest, readable wind-up poses, the wheelie, the flight off the bike, the melt.
  */
-import { ARENA, type BossWorld } from '../../api';
+import type Phaser from 'phaser';
+import { ARENA, type BossWorld, type Vec } from '../../api';
 import { worldSprite } from '../../draw/canvas';
 import { part, placeAt, type Rig, type RigFrame } from './kit/runner';
-import { BRIE as C } from './config';
-import { ARM, BERET, LEGS, PUDDLE, WEDGE } from './art-body';
-import { BIKE } from './art-bike';
+import { hex, hose, pinned, toLocal, type HoseStyle } from './kit/bits';
+import { BRIE as C, type ArmPose } from './config';
+import { PUDDLE, SHIRT } from './art';
 import { STAR } from './art-props';
 import { KEY } from './look';
+import { BRIE_ART as A } from './sheet';
+import { pickPose, type Mode } from './poses';
 import type { BrieAttack } from './patterns';
 
 const F = ARENA.floorY;
-const EX = { idle: 0, blink: 1, windup: 2, shout: 3, hurt: 4, angry: 5, angryBlink: 6, dizzy: 7, angryShout: 8 } as const;
-const AR = { grip: 0, raise: 1, throw: 2, twirl: 3, basket: 4, bundle: 5, fist: 6, limp: 7 } as const;
-const LG = { stand: 0, stepL: 1, stepR: 2, crouch: 3, tuck: 4, splat: 5 } as const;
+const PX = A.pxPerUnit;
+const L = (c: Vec): Vec => toLocal(A.origin, PX, c);
+const FACE = Object.fromEntries(A.faces.map((f, i) => [f, i])) as Record<(typeof A.faces)[number], number>;
 const HAZARD: Record<string, { texture: string; anim?: string }> = {
   baguette: { texture: KEY.baguette },
   wheel: { texture: KEY.wheel },
-  beret: { texture: KEY.beret },
+  beret: { texture: KEY.beretToss },
   wave: { texture: KEY.wave, anim: KEY.waveAnim },
 };
+const ARM: HoseStyle = { w: C.limb.arm.w, edge: C.limb.arm.edge, fill: hex(SHIRT.white), ink: hex(SHIRT.ink) };
+const LEG: HoseStyle = { w: C.limb.leg.w, edge: C.limb.leg.edge, fill: hex(SHIRT.white), ink: hex(SHIRT.ink) };
 
-type Mode = 'bike' | 'skid' | 'fly' | 'foot' | 'ko';
-/** how long a landing squash lasts */
-const LAND_MS = 260;
+const add = (a: Vec, b: Vec): Vec => ({ x: a.x + b.x, y: a.y + b.y });
+/** the glove as printed points along the arm shoulder → wrist: that direction is its rotation 0 */
+const GLOVE_DIR = Math.atan2(A.pivots.wrist.y - A.pivots.shoulderR.y, A.pivots.wrist.x - A.pivots.shoulderR.x);
+
+/** Hose control point: the middle of a → b pushed sideways by `bend`. */
+function bendOf(a: Vec, b: Vec, bend: number): Vec {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const d = Math.hypot(dx, dy) || 1;
+  return { x: (a.x + b.x) / 2 - (dy / d) * bend, y: (a.y + b.y) / 2 + (dx / d) * bend };
+}
 
 export function makeBrieRig(world: BossWorld): Rig<BrieAttack> {
   const { scene, k } = world;
+  const P = A.pivots;
   const T = C.transform;
   const shadow = worldSprite(scene, 0, F, KEY.shadow, k).setDepth(-1);
-  const bike = part(scene, KEY.bike, k, BIKE.footX, BIKE.footY, BIKE.w, BIKE.h).setDepth(0);
-  const legs = part(scene, KEY.legs, k, LEGS.footX, LEGS.footY, LEGS.w, LEGS.h);
-  const wedge = part(scene, KEY.wedge, k, WEDGE.footX, WEDGE.footY, WEDGE.w, WEDGE.h);
-  const arm = part(scene, KEY.arm, k, ARM.sx, ARM.sy, ARM.w, ARM.h);
-  const beret = part(scene, KEY.beret, k, BERET.w / 2, BERET.h * 0.6, BERET.w, BERET.h);
+  // the bicycle: behind him (wheels, frame, printed legs) and in front of him (basket, loaf, bottle, glove)
+  const wheelR = pinned(scene, KEY.wheelR, A.wheelR, P.hubR, PX).setPosition(L(P.hubR).x, L(P.hubR).y);
+  const wheelF = pinned(scene, KEY.wheelF, A.wheelF, P.hubF, PX).setPosition(L(P.hubF).x, L(P.hubF).y);
+  const frame = pinned(scene, KEY.bike, A.bike, A.origin, PX);
+  const bike = scene.add.container(0, 0, [wheelR, wheelF, frame]).setDepth(0);
+  const basket = scene.add.container(0, 0, [pinned(scene, KEY.basket, A.basket, A.origin, PX)]).setDepth(0.2);
+  // his body: legs and the left arm behind the wedge, the beret on top; the right arm in front of all
+  const legs = [scene.add.graphics(), scene.add.graphics()];
+  const feet = [0, 1].map(() => pinned(scene, KEY.foot, A.foot, P.ankle, PX));
+  const armLG = scene.add.graphics();
+  const gloveL = pinned(scene, KEY.glove, A.glove, P.wrist, PX);
+  const wedge = pinned(scene, KEY.wedge, A.wedge, P.wedgeBase, PX);
+  const beret = pinned(scene, KEY.beret, A.beret, P.beret, PX);
   const puddle = part(scene, KEY.puddle, k, PUDDLE.footX, PUDDLE.footY, PUDDLE.w, PUDDLE.h);
   const stars = [0, 1, 2].map(() => part(scene, KEY.star, k, STAR.w / 2, STAR.h / 2, STAR.w, STAR.h));
-  const body = scene.add.container(0, 0, [legs, wedge, arm, beret, puddle, ...stars]).setDepth(0);
+  const body = scene.add.container(0, 0, [legs[0], feet[0], legs[1], feet[1], armLG, gloveL, wedge, beret, puddle, ...stars]).setDepth(0.1);
+  const armRG = scene.add.graphics();
+  const gloveR = pinned(scene, KEY.glove, A.glove, P.wrist, PX);
+  const front = scene.add.container(0, 0, [armRG, gloveR]).setDepth(0.3);
   const puffs = [0, 1, 2, 3].map(() => worldSprite(scene, 0, 0, KEY.puff, k).setDepth(1).setVisible(false));
   let puffN = 0;
   let prevT = 0;
@@ -54,45 +79,34 @@ export function makeBrieRig(world: BossWorld): Rig<BrieAttack> {
     p.once('animationcomplete', () => p.setVisible(false));
   };
 
-  const crossed = (at: number, t: number): boolean => prevT < at && at <= t;
+  /** One arm: hose from the shoulder to the pose's hand, the cut glove turned along the hose. */
+  function drawArm(g: Phaser.GameObjects.Graphics, glove: Phaser.GameObjects.Sprite, sh: Vec, pose: ArmPose, sway: number): void {
+    const hand = { x: sh.x + pose.hand.x, y: sh.y + pose.hand.y + sway };
+    const c = bendOf(sh, hand, pose.bend);
+    g.clear();
+    hose(g, sh, c, hand, ARM);
+    glove.setPosition(hand.x, hand.y).setRotation(Math.atan2(hand.y - c.y, hand.x - c.x) - GLOVE_DIR + pose.twist);
+  }
+
+  /** Both legs from the hips under the wedge to the cut feet on the floor (on foot only). */
+  function drawLegs(wb: Vec, lift: readonly [number, number], spread: number): void {
+    C.rig.hips.forEach((h, i) => {
+      const hip = add(wb, h);
+      const a = C.rig.ankles[i] ?? C.rig.ankles[0];
+      const ankle = { x: a.x * spread, y: a.y - (lift[i] ?? 0) };
+      const g = legs[i];
+      const foot = feet[i];
+      if (!g || !foot) return;
+      g.clear();
+      hose(g, hip, bendOf(hip, ankle, i ? 5 : -5), ankle, LEG);
+      foot.setPosition(ankle.x, ankle.y).setRotation(C.limb.footRot);
+    });
+  }
 
   function modeOf(f: RigFrame<BrieAttack>): Mode {
     if (f.stage === 'ko') return 'ko';
     if (f.stage === 'transform') return f.t < T.skidMs ? 'skid' : f.t < T.skidMs + T.flyMs ? 'fly' : 'foot';
     return f.phase === 0 ? 'bike' : 'foot';
-  }
-
-  /** arm frame + wedge expression for the current attack beat */
-  function act(f: RigFrame<BrieAttack>, onBike: boolean): [number, number] {
-    const angry = !onBike;
-    const tele = f.stage === 'telegraph';
-    const active = f.stage === 'active';
-    const hazards = f.plan?.hazards ?? [];
-    const throwing = active && hazards.some((h) => f.t >= h.atMs && f.t < h.atMs + 220);
-    const shout = angry ? EX.angryShout : EX.shout;
-    const windup = angry ? EX.angryShout : EX.windup;
-    switch (f.stage === 'telegraph' || active ? f.attack : null) {
-      case 'baguette':
-      case 'volley':
-        return [throwing ? AR.throw : AR.raise, throwing ? shout : windup];
-      case 'wheels':
-        return [AR.basket, throwing ? shout : windup];
-      case 'bounce':
-        return [AR.fist, throwing ? shout : windup];
-      case 'charge':
-        return [AR.grip, tele ? EX.windup : EX.shout];
-      case 'beret':
-        return tele ? [AR.twirl, EX.windup] : [f.t < 300 ? AR.throw : AR.fist, EX.shout];
-      case 'javelin':
-        return [throwing ? AR.throw : AR.bundle, throwing ? shout : windup];
-      case 'hop':
-        return [AR.fist, shout];
-      default: {
-        const blink = (f.clock + 1700) % 3400 < 130;
-        const idle = angry ? (blink ? EX.angryBlink : EX.angry) : blink ? EX.blink : EX.idle;
-        return [onBike ? AR.grip : AR.limp, idle];
-      }
-    }
   }
 
   function draw(f: RigFrame<BrieAttack>): void {
@@ -104,116 +118,71 @@ export function makeBrieRig(world: BossWorld): Rig<BrieAttack> {
     const mode = modeOf(f);
     const fs = f.pose.f === -1 ? 1 : -1;
     const onBike = mode === 'bike' || mode === 'skid' || (mode === 'ko' && f.phase === 0 && f.t < C.ko.wobbleMs);
-    let [armF, ex] = act(f, onBike);
-    if (f.hit < 130 && f.stage !== 'ko') ex = EX.hurt;
-    let sx = 1;
-    let sy = 1;
-    let rot = 0;
-    let px = 0;
-    let py = -90;
-    let legF: number = f.clock % 520 < 260 ? LG.stepL : LG.stepR;
-    // wind-ups and moves
-    if (f.attack === 'charge' && f.stage === 'telegraph') {
-      rot = 0.24 * Math.min(1, f.t / 350);
-      px = 52;
-      py = 0;
-      if (Math.floor(f.t / 220) !== Math.floor(prevT / 220)) puff(f.pose.x + 56 * fs, F);
-    } else if (f.attack === 'charge' && f.stage === 'active' && f.plan?.move) {
-      const a = f.plan.move(f.t);
-      const b = f.plan.move(f.t + 30);
-      rot = Math.max(-0.35, Math.min(0.35, ((a.y - b.y) / 30) * 0.5));
-    } else if (f.attack === 'hop' && f.stage === 'telegraph') {
-      legF = LG.crouch;
-      sx = 1.12;
-      sy = 0.84;
-    } else if (f.attack === 'hop' && f.stage === 'active') {
-      const h = C.hop;
-      const back = h.outMs + h.holdMs + h.backMs;
-      const since = f.t >= back ? f.t - back : f.t >= h.outMs ? f.t - h.outMs : -1;
-      const airborne = (f.t < h.outMs) || (f.t >= h.outMs + h.holdMs && f.t < back);
-      legF = airborne ? LG.tuck : since >= 0 && since < LAND_MS ? LG.splat : LG.stand;
-      if (!airborne && since >= 0 && since < LAND_MS) {
-        const u = 1 - since / LAND_MS;
-        sx = 1 + 0.2 * u;
-        sy = 1 - 0.2 * u;
-      }
-      if (!airborne && f.t >= back) [armF, ex] = [AR.limp, EX.angry];
-    } else if (f.stage === 'telegraph') {
-      sx = 1 + 0.04 * Math.sin(f.t / 60);
-      sy = 2 - sx;
-    }
-    if (mode === 'skid') {
-      rot = -0.1;
-      px = -52;
-      py = 0;
-      ex = EX.shout;
-      if (Math.floor(f.t / 110) !== Math.floor(prevT / 110)) puff(f.pose.x - 50, F);
-    }
-    if (mode === 'fly') {
-      const u = (f.t - T.skidMs) / T.flyMs;
-      rot = u * Math.PI * 2;
-      legF = LG.tuck;
-      armF = AR.fist;
-      ex = EX.angryShout;
-    }
-    if (mode === 'foot' && f.stage === 'transform') {
-      const u = (f.t - T.skidMs - T.flyMs) / (C.transformMs - T.skidMs - T.flyMs);
-      legF = u < 0.4 ? LG.splat : LG.stand;
-      sx = 1 + 0.2 * Math.max(0, 1 - u * 2.5);
-      sy = 2 - sx;
-      ex = EX.angryShout;
-      armF = AR.fist;
-      if (crossed(T.skidMs + T.flyMs, f.t)) {
-        puff(f.pose.x - 20, F);
-        puff(f.pose.x + 20, F);
-      }
-    }
+    const pz = pickPose(f, mode, onBike, prevT, puff);
+    let face: number = FACE[pz.face];
+    if (f.hit < 130 && f.stage !== 'ko') face = FACE.hurt;
+    let { sx, sy } = pz;
     if (f.hit < 140 && f.stage !== 'ko') {
       const w = 0.035 * Math.sin(f.hit / 16);
       sx *= 1 + w;
       sy *= 1 - w;
     }
-    // landings throw up dust
-    if (f.stage === 'active' && f.plan) for (const c of f.plan.cues) if (c.sfx === 'blast' && crossed(c.atMs, f.t)) {
-      puff(f.pose.x - 26, F);
-      puff(f.pose.x + 26, F);
-    }
 
     // the bicycle
-    const pedal = Math.floor(f.clock / (f.attack === 'charge' && f.stage !== 'recover' ? 32 : 75)) % BIKE.frames;
+    const spin = Math.floor(f.clock / (f.attack === 'charge' && f.stage !== 'recover' ? 30 : 70));
+    const spoke = 3 - (spin % 4);
+    wheelR.setFrame(spoke);
+    wheelF.setFrame((spoke + 2) % 4);
     if (onBike) {
-      bike.setVisible(true).setFrame(pedal);
-      placeAt(bike, f.pose.x, f.pose.y, (sx * fs) / k, sy / k, rot * fs, px * k, py * k);
+      frame.setFrame(0);
+      bike.setVisible(true);
+      basket.setVisible(true);
+      for (const o of [bike, basket]) placeAt(o, f.pose.x, f.pose.y, sx * fs, sy, pz.rot * fs, pz.px, pz.py);
     } else if (f.stage === 'transform' || (mode === 'ko' && f.phase === 0)) {
       // the empty bike rolls away on its own: tumbling after the transformation, upright after a knockout
       const flung = f.stage === 'transform';
       const tt = flung ? f.t - T.skidMs : f.t - C.ko.wobbleMs;
       const x = flyFrom - (flung ? T.skidBack : 0) + Math.max(0, tt) * T.bikeRoll;
-      bike.setVisible(x < ARENA.w + 120).setFrame(pedal);
-      placeAt(bike, x, F, 1 / k, 1 / k, flung ? tt * T.bikeSpin : 0, 0, -27 * k);
-    } else bike.setVisible(false);
+      frame.setFrame(1);
+      for (const o of [bike, basket]) {
+        o.setVisible(x < ARENA.w + 160);
+        placeAt(o, x, F, 1, 1, flung ? tt * T.bikeSpin : 0, 0, -30);
+      }
+    } else {
+      bike.setVisible(false);
+      basket.setVisible(false);
+    }
 
-    // the body
-    const w = onBike ? C.rig.bikeWedge : C.rig.footWedge;
-    const bob = onBike ? Math.sin(f.clock / 75 / 2) * 1.4 : Math.sin(f.clock / 300) * 1.2;
-    const crouch = legF === LG.crouch || legF === LG.splat ? 8 : 0;
-    const breathe = onBike ? 0 : Math.sin(f.clock / 300) * 0.03;
-    legs.setVisible(!onBike && mode !== 'ko').setFrame(legF);
-    wedge.setPosition(w.x, w.y + bob + crouch).setFrame(ex).setScale((1 + breathe) / k, (1 - breathe) / k).setRotation(onBike ? -0.05 : 0);
-    const sh = { x: w.x + C.rig.shoulder.x, y: w.y + C.rig.shoulder.y + bob + crouch };
-    arm.setPosition(sh.x, sh.y).setFrame(armF).setRotation(armF === AR.limp ? Math.sin(f.clock / 380) * 0.15 : 0);
+    // the body (local units from the feet, facing left)
+    const bob = onBike ? Math.sin(f.clock / 150) * 1.2 : Math.sin(f.clock / 300) * 1.2;
+    const wb = onBike ? { x: C.rig.bikeWedge.x, y: C.rig.bikeWedge.y + bob } : { x: C.rig.footWedge.x, y: C.rig.footWedge.y + bob + pz.crouch };
+    const breathe = onBike ? 0 : Math.sin(f.clock / 300) * 0.025;
+    wedge.setPosition(wb.x, wb.y).setFrame(face).setScale((1 + breathe) / PX, (1 - breathe) / PX).setRotation(onBike ? 0 : pz.lean);
+    for (const g of [...legs, ...feet]) g.setVisible(!onBike && mode !== 'ko');
+    if (!onBike) drawLegs(wb, pz.lift, pz.spread);
+    // arms: the right one always; the left one only off the bike (on it, its glove holds the loaf in the basket)
+    const sway = pz.arm === 'limp' ? Math.sin(f.clock / 380) * 3 : 0;
+    drawArm(armRG, gloveR, add(wb, C.rig.shoulder), C.arms[pz.arm], sway);
+    armLG.setVisible(!onBike);
+    gloveL.setVisible(!onBike);
+    if (!onBike) drawArm(armLG, gloveL, add(wb, C.rig.shoulderL), C.arms[pz.armL], -sway);
+    // the beret: on the head, twirled on a finger, or away as a boomerang
     const beretOut = f.attack === 'beret' && f.stage === 'active';
-    const twirl = f.attack === 'beret' && f.stage === 'telegraph';
-    if (twirl) beret.setPosition(sh.x + C.rig.twirlHand.x, sh.y + C.rig.twirlHand.y - 6).setRotation((f.t / 1000) * C.beret.spin * (Math.PI / 180));
-    else beret.setPosition(w.x + C.rig.beret.x, w.y + C.rig.beret.y + bob + crouch).setRotation(-0.15 + Math.sin(f.clock / 420) * 0.06);
+    if (pz.arm === 'twirl') {
+      const hand = add(add(wb, C.rig.shoulder), C.arms.twirl.hand);
+      beret.setPosition(hand.x, hand.y - 8).setRotation((f.t / 1000) * C.beret.spin * (Math.PI / 180));
+    } else beret.setPosition(wb.x + C.rig.beret.x, wb.y + C.rig.beret.y).setRotation(Math.sin(f.clock / 420) * 0.05);
     beret.setVisible(!beretOut);
     puddle.setVisible(false);
     for (const s of stars) s.setVisible(false);
+    wedge.setVisible(true);
+    armRG.setVisible(true);
+    gloveR.setVisible(true);
     if (mode === 'ko') drawKo(f, onBike);
-    placeAt(body, f.pose.x, f.pose.y, sx * fs, sy, rot * fs, px, py);
+    for (const o of [body, front]) placeAt(o, f.pose.x, f.pose.y, sx * fs, sy, pz.rot * fs, pz.px, pz.py);
 
     const lift = Math.max(0, F - f.pose.y);
-    shadow.setPosition(f.pose.x, F).setScale(((onBike ? 2.1 : 1.1) * Math.max(0.35, 1 - lift / 220)) / k, 1 / k);
+    shadow.setPosition(f.pose.x, F).setScale(((onBike ? 2.2 : 1.2) * Math.max(0.35, 1 - lift / 220)) / k, 1 / k);
     shadow.setVisible(mode !== 'ko' || f.t < C.ko.wobbleMs);
     prevT = f.t;
   }
@@ -221,17 +190,14 @@ export function makeBrieRig(world: BossWorld): Rig<BrieAttack> {
   function drawKo(f: RigFrame<BrieAttack>, onBike: boolean): void {
     const K = C.ko;
     if (f.t < K.wobbleMs) {
-      wedge.setFrame(EX.dizzy).setRotation(Math.sin(f.t / 45) * 0.12);
-      arm.setFrame(AR.limp);
-      legs.setVisible(!onBike).setFrame(LG.splat);
+      wedge.setFrame(FACE.dizzy).setRotation(Math.sin(f.t / 45) * 0.12);
+      for (const g of [...legs, ...feet]) g.setVisible(!onBike);
       return;
     }
-    legs.setVisible(false);
-    wedge.setVisible(false);
-    arm.setVisible(false);
+    for (const o of [...legs, ...feet, armLG, gloveL, armRG, gloveR, wedge]) o.setVisible(false);
     const u = (f.t - K.wobbleMs) / K.meltMs;
-    const frame = u < 0.33 ? 0 : u < 0.66 ? 1 : u < 1 ? 2 : 2 + (Math.floor(f.t / 160) % 2);
-    puddle.setVisible(true).setFrame(frame).setPosition(0, 0);
+    const fr = u < 0.33 ? 0 : u < 0.66 ? 1 : u < 1 ? 2 : 2 + (Math.floor(f.t / 160) % 2);
+    puddle.setVisible(true).setFrame(fr).setPosition(0, 0);
     const b = Math.min(1, Math.max(0, (f.t - K.wobbleMs - K.meltMs * 0.5) / K.meltMs));
     beret
       .setVisible(true)
@@ -245,18 +211,12 @@ export function makeBrieRig(world: BossWorld): Rig<BrieAttack> {
   }
 
   return {
-    parts: [bike, legs, wedge, arm, beret, puddle],
-    draw(f): void {
-      wedge.setVisible(true);
-      arm.setVisible(true);
-      draw(f);
-    },
+    parts: [wheelR, wheelF, frame, wedge, beret, gloveR, gloveL, ...feet],
+    draw,
     hazard: (kind) => HAZARD[kind] ?? { texture: KEY.baguette },
     destroy(): void {
-      body.destroy();
-      bike.destroy();
-      shadow.destroy();
-      for (const p of puffs) p.destroy();
+      for (const o of [bike, basket, body, front, shadow, ...puffs]) o.destroy();
     },
   };
 }
+

@@ -41,6 +41,9 @@ const chord = (v: Voice, t: number, names: readonly string[], p: number, hold: n
 const thump = (v: Voice, t: number, peak: number, d = 0.28): void =>
   tone(v, { wave: 'sine', t, f: 140, to: 45, slide: 0.18, a: 0.001, d, peak });
 
+/** The first bar of the level 8 hook (tracks/swing.ts HOOK): [offset s, note, hold s], a swung quarter = 0.3 s. */
+const HOOK_HEAD: readonly (readonly [number, string, number])[] = [[0, 'C5', 0.14], [0.2, 'E5', 0.04], [0.3, 'G5', 0.22], [0.6, 'A5', 0.22], [0.9, 'G5', 0.5]];
+
 const crash = (v: Voice, t: number, d: number, peak: number): void => {
   hiss(v, { t, a: 0.002, d, peak, type: 'highpass', f: 4200 });
   hiss(v, { t, d: d * 0.35, peak: peak * 0.6, type: 'bandpass', f: 3000, q: 0.6 });
@@ -94,7 +97,7 @@ export const CARTOON_SFX: Readonly<Record<CartoonSfx, Recipe>> = {
 
   ex: (v, t, p) => {
     // big brassy BWAMP: a low brass chord sagging off, a kick thump, a crack and a cymbal splash
-    chord(v, t, ['Bb2', 'F3', 'Bb3', 'D4'], p, 0.08, 0.3, 0.09, 0.93);
+    chord(v, t, ['C3', 'G3', 'C4', 'E4'], p, 0.08, 0.3, 0.09, 0.93);
     thump(v, t, 0.45);
     tone(v, { wave: 'triangle', t, f: 300 * p, to: 110 * p, slide: 0.06, a: 0.001, d: 0.08, peak: 0.2 });
     hiss(v, { t, d: 0.06, peak: 0.5, type: 'bandpass', f: 1200, q: 0.9 });
@@ -129,11 +132,11 @@ export const CARTOON_SFX: Readonly<Record<CartoonSfx, Recipe>> = {
       hiss(v, { t: t + dt, d: 0.012, peak: 0.25, type: 'highpass', f: 5000 });
       bell(v, t + dt, 1020 * p, i ? 0.9 : 0.35, 0.2);
     });
-    // ...a cymbal crash on a kick and the brass sting "ta-DAAA"
+    // ...a cymbal crash on a kick and the brass sting "ta-DAAA" in C, the key of the level 8 hook
     crash(v, t + 0.44, 1, 0.3);
     thump(v, t + 0.44, 0.35, 0.3);
-    chord(v, t + 0.44, ['F4', 'Bb4', 'D5'], p, 0.06, 0.08, 0.08);
-    chord(v, t + 0.62, ['F4', 'Bb4', 'D5', 'F5'], p, 0.4, 0.45, 0.07);
+    chord(v, t + 0.44, ['G4', 'C5', 'E5'], p, 0.06, 0.08, 0.08);
+    chord(v, t + 0.62, ['G4', 'C5', 'E5', 'G5'], p, 0.4, 0.45, 0.07);
   },
 
   roundBell: (v, t, p) => {
@@ -158,32 +161,26 @@ export const CARTOON_SFX: Readonly<Record<CartoonSfx, Recipe>> = {
 
   ticket: (v, t, p) => {
     // BIGLIETTO D'ORO: a snare roll swelling into the big band...
-    for (let i = 0; i < 12; i++) hiss(v, { t: t + i * 0.04, d: 0.05, peak: 0.1 + i * 0.018, type: 'bandpass', f: 1900, q: 0.7 });
-    // ...a swung "ba-da-ba" pickup, two hits (Bb, Eb6) and the long Bb6/9 "DAAAH" with vibrato
-    ['F4', 'G4', 'A4'].forEach((n, i) => horn(v, t + 0.5 + i * 0.1, hz(n) * p, 0.03, 0.05, 0.12));
-    const hits = [
-      [0.8, ['D4', 'F4', 'Bb4'], 'Bb2'],
-      [1.0, ['Eb4', 'G4', 'C5'], 'Eb2'],
-    ] as const;
-    for (const [dt, notes, root] of hits) {
-      chord(v, t + dt, notes, p, 0.05, 0.1, 0.08);
-      tone(v, { wave: 'triangle', t: t + dt, f: hz(root) * p, a: 0.005, hold: 0.05, d: 0.1, peak: 0.16 });
-      thump(v, t + dt, 0.3, 0.18);
-    }
-    const at = t + 1.25;
-    ['D4', 'F4', 'G4', 'Bb4', 'C5', 'D5'].forEach((n) =>
-      tone(v, { wave: 'sawtooth', t: at, f: hz(n) * p, a: 0.03, hold: 1, d: 0.7, peak: 0.05, lp: 1500, lpTo: 3600, vib: [14, 5.5] }),
+    for (let i = 0; i < 9; i++) hiss(v, { t: t + i * 0.04, d: 0.05, peak: 0.1 + i * 0.022, type: 'bandpass', f: 1900, q: 0.7 });
+    // ...the brass shouts the level 8 hook, "do-mi SOL LA SOL" (swung, a quarter = 0.3 s), over a C chord...
+    chord(v, t + 0.4, ['E4', 'G4', 'C5'], p, 0.05, 0.1, 0.07);
+    thump(v, t + 0.4, 0.3, 0.18);
+    for (const [dt, n, hold] of HOOK_HEAD) horn(v, t + 0.4 + dt, hz(n) * p, hold, 0.06, 0.12);
+    // ...and lands on the long C6/9 "DAAAH" with vibrato
+    const at = t + 1.6;
+    ['E4', 'G4', 'A4', 'C5', 'D5', 'E5'].forEach((n) =>
+      tone(v, { wave: 'sawtooth', t: at, f: hz(n) * p, a: 0.03, hold: 0.8, d: 0.6, peak: 0.05, lp: 1500, lpTo: 3600, vib: [14, 5.5] }),
     );
-    tone(v, { wave: 'triangle', t: at, f: hz('Bb1') * p, a: 0.01, hold: 1, d: 0.7, peak: 0.18 });
-    crash(v, at, 1.6, 0.22);
+    tone(v, { wave: 'triangle', t: at, f: hz('C2') * p, a: 0.01, hold: 0.8, d: 0.6, peak: 0.18 });
+    crash(v, at, 1.4, 0.22);
     thump(v, at, 0.4);
-    // a harp glissando of gold up the Bb pentatonic, then twinkles raining over the held chord
-    ['Bb5', 'C6', 'D6', 'F6', 'G6', 'Bb6', 'C7', 'D7', 'F7', 'G7', 'Bb7'].forEach((n, i) =>
+    // a harp glissando of gold up the C pentatonic, then twinkles raining over the held chord
+    ['C6', 'D6', 'E6', 'G6', 'A6', 'C7', 'D7', 'E7', 'G7', 'A7', 'C8'].forEach((n, i) =>
       tone(v, { wave: 'triangle', t: at + 0.04 + i * 0.045, f: hz(n) * p, a: 0.002, d: 0.25, peak: 0.05 }),
     );
     for (let i = 0; i < 12; i++) {
-      const n = ['F7', 'Bb7', 'D7', 'G7', 'Bb7', 'D8'][i % 6];
-      tone(v, { wave: 'sine', t: at + 0.65 + i * 0.085, f: hz(n) * p, a: 0.002, d: 0.16, peak: 0.05 - i * 0.003 });
+      const n = ['G7', 'C8', 'E7', 'A7', 'C8', 'E8'][i % 6];
+      tone(v, { wave: 'sine', t: at + 0.55 + i * 0.075, f: hz(n) * p, a: 0.002, d: 0.16, peak: 0.05 - i * 0.003 });
     }
   },
 

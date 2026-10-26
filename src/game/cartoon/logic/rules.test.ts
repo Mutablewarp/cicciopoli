@@ -3,7 +3,9 @@ import { CT_CARDS, CT_PLAYER } from '../../../config/cartoon';
 import {
   addCards,
   betterGrade,
+  bossTempo,
   boxesOverlap,
+  bumpX,
   cardsForDamage,
   circleHitsBox,
   gradeOf,
@@ -11,6 +13,7 @@ import {
   parMs,
   parryHits,
   scoreOf,
+  shapeBox,
   superAction,
   tipFor,
   TIPS,
@@ -26,6 +29,21 @@ describe('geometry', () => {
     expect(boxesOverlap(hero, { x: 200, y: 290, w: 30, h: 30 })).toBe(false);
     expect(circleHitsBox({ x: 100 + CT_PLAYER.hitW + 5, y: 290 }, 6, hero)).toBe(true);
     expect(circleHitsBox({ x: 100 + CT_PLAYER.hitW + 7, y: 290 }, 6, hero)).toBe(false);
+    expect(shapeBox({ x: 50, y: 40, w: 20, h: 10 })).toEqual({ x: 40, y: 35, w: 20, h: 10 });
+    expect(shapeBox({ x: 50, y: 40, r: 5 })).toEqual({ x: 45, y: 35, w: 10, h: 10 });
+  });
+});
+
+describe('touching a slow boss', () => {
+  const body = { x: 440, y: 150, w: 130, h: 168 };
+  const at = (x: number) => ({ ...hero, x: x - hero.w / 2 });
+  it('pushes the hero out on the side of its centre', () => {
+    expect(bumpX(at(445), body, 20, 620)).toBe(440 - hero.w / 2);
+    expect(bumpX(at(560), body, 20, 620)).toBe(570 + hero.w / 2);
+  });
+  it('the other side when a wall is in the way, null when neither side has room', () => {
+    expect(bumpX(at(560), { ...body, x: 490 }, 20, 620)).toBe(490 - hero.w / 2);
+    expect(bumpX(at(30), { x: 0, y: 150, w: 640, h: 168 }, 20, 620)).toBeNull();
   });
 });
 
@@ -89,5 +107,19 @@ describe('grade and score', () => {
     expect(tipFor({ ...perfect, parries: 0, supers: 5 }, true)).toBe(TIPS.parries);
     expect(tipFor(perfect, true)).toBe(TIPS.great);
     expect(tipFor(perfect, false)).toBe(TIPS.lost);
+  });
+});
+
+describe('boss pacing', () => {
+  const pace = { tempo: 0.9, openFrom: 0.4, openMs: 5000, hp: 1, mercyMs: 0 };
+  it('eases from openFrom up to tempo over the opening, then holds', () => {
+    expect(bossTempo(pace, 0)).toBeCloseTo(0.4);
+    expect(bossTempo(pace, 2500)).toBeCloseTo(0.65);
+    expect(bossTempo(pace, 5000)).toBeCloseTo(0.9);
+    expect(bossTempo(pace, 60_000)).toBeCloseTo(0.9);
+    expect(bossTempo(pace, 1000)).toBeLessThan(bossTempo(pace, 2000));
+  });
+  it('no opening: the tempo from the start', () => {
+    expect(bossTempo({ tempo: 1, openFrom: 0.2, openMs: 0, hp: 1, mercyMs: 0 }, 0)).toBe(1);
   });
 });

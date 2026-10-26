@@ -3,8 +3,7 @@
  * apart) and the funny knockout (dizzy burgers with stars, a tired peace sign, then they flatten).
  */
 import { ARENA } from '../../api';
-import { DT_FACE } from './art';
-import { LEG, POSE } from './limbs';
+import { LEG, POSE } from './look';
 import { arc, ease } from '../oldschool/kit/geometry';
 import type { Move } from '../oldschool/kit/scheduler';
 import { shake } from './moves';
@@ -31,7 +30,6 @@ export function splitMove(c: DtCtx): Move {
         p.minis = false;
         p.bx = startX + Math.sin(t * 0.12) * 3 * u;
         p.by = F;
-        p.face = t < 300 ? DT_FACE.hurt : DT_FACE.shout;
         p.armL = POSE.upL;
         p.armR = POSE.upR;
         p.legs = LEG.crouch;
@@ -53,7 +51,6 @@ export function splitMove(c: DtCtx): Move {
         const pos = arc({ x: startX, y: F }, { x: DT.minis[i].x, y: F }, 60 + i * 30, u);
         mp.x = pos.x;
         mp.y = pos.y;
-        mp.face = u < 1 ? DT_FACE.shout : DT_FACE.cool;
         mp.legs = u < 1 ? LEG.tuck : LEG.stand;
         mp.sx = u < 1 ? 0.95 : 1;
         mp.sy = u < 1 ? 1.08 : 1;
@@ -84,9 +81,8 @@ export function koMove(c: DtCtx): Move {
         p.m.forEach((mp, i) => {
           mp.x = mx[i];
           mp.y = groundY(mp.y, t);
-          mp.face = DT_FACE.ko;
           mp.legs = LEG.stand;
-          mp.arm = i === 0 && t % 900 < 450 ? POSE.peace : POSE.limp;
+          mp.arm = i === 0 && t % 900 < 450 ? POSE.upL : POSE.limp;
           mp.sx = 1 + (i ? -wob : wob) + 0.2 * fl;
           mp.sy = 1 - (i ? -wob : wob) - 0.26 * fl;
         });
@@ -94,7 +90,6 @@ export function koMove(c: DtCtx): Move {
       }
       p.bx = x0;
       p.by = groundY(p.by, t);
-      p.face = DT_FACE.ko;
       p.legs = LEG.stand;
       p.armL = POSE.limp;
       p.armR = t % 900 < 450 ? POSE.peace : POSE.limp;

@@ -1,18 +1,20 @@
 /**
- * DON TUMA in the ring (BossRuntime). Phase 0: lounging in the deck chair — citrus lobs, sun beams from
- * his sunglasses, honey rain. Transformation: he jumps out furious and the chair comes alive. Phase 1:
- * standing — faster citrus, three beams, the chair jaws, the cheese-wheel roll. Knockout: dizzy, then he
- * melts into a puddle under his coppola. Every attack: wind-up pose + sparkle + sound >= 500 ms first.
+ * DON TUMA in the ring (BossRuntime): the mascot of the shirt, lounging in his deck chair the whole fight.
+ * Phase 0: citrus lobbed from the waving glove, sun beams off his sunglasses, honey from the awning.
+ * Transformation: he boils red with anger and bounces in the chair. Phase 1: faster citrus, three beams,
+ * his folding deck chair comes alive and bites, the wheel of tuma he kicks rolls at the hero.
+ * Knockout: dizzy, then he melts into the chair. Every attack: wind-up pose + glint + sound >= 500 ms first.
  */
 import type Phaser from 'phaser';
 import { ARENA, type BossRuntime, type BossWorld, type Box, type HazardHandle } from '../../api';
-import { TF } from './art';
-import { BALL, BODY, SHOT, TK, TUMA_CFG as C, TUMA_LINES, type TumaAttack } from './config';
-import { Fx, ToonBody } from './kit/body';
+import { SHOT, SPOT, TK, TUMA_CFG as C, TUMA_LINES, TUMA_RIG, type TumaAttack, type TumaPart, tumaTex } from './config';
+import { Fx } from './kit/fx';
 import type { Shot, Span } from './kit/geom';
+import { Rig } from './kit/rig';
 import { Later, Scheduler } from './kit/sched';
-import { honeyRain, lemonVolley, sunBeams } from './plan';
 import { SPLAT } from './kit/toon';
+import { honeyRain, lemonVolley, sunBeams } from './plan';
+import { type TumaPose, applyPose } from './poses';
 import { BEAM, JAWS, SPLAT_OF } from './props';
 
 const F = ARENA.floorY;
@@ -20,40 +22,40 @@ const SPLAT_BY_SHOT: Record<number, number> = { [SHOT.lemon]: SPLAT_OF.lemon, [S
 
 export function createTuma(world: BossWorld): BossRuntime {
   const scene: Phaser.Scene = world.scene;
-  const texK = Math.min(world.k, C.kMax) * C.scale;
   const rng = (): number => world.rng();
-  const chair = scene.add.sprite(C.seatX, F, TK.chair).setOrigin(0.5, BODY.footY / BODY.h).setScale(C.scale / texK).setDepth(2);
-  const body = new ToonBody(scene, TK.body, texK, BODY, C.seatX, F, C.scale, 3);
-  body.setLoop(TF.idle, 6);
+  const rig = new Rig<TumaPart>(scene, TUMA_RIG, C.scale, tumaTex(world.k), C.x, F, 3);
   const jawsY = F - (JAWS.footY - JAWS.h / 2);
   const pet = scene.add.sprite(C.jaws.restX, jawsY, TK.jaws, 1).setScale(1 / world.k).setDepth(2).setVisible(false);
   const fx = new Fx(scene, world.k);
   const later = new Later();
   const sched = new Scheduler<TumaAttack>(C.attacks, rng, C.startMs);
   let phase = 0;
-  let mode: 'seat' | 'rage' | 'stand' | 'ko' = 'seat';
+  let mode: 'fight' | 'rage' | 'ko' = 'fight';
   let modeMs = 0;
-  let upright = false;
-  let landed = false;
+  let pose: TumaPose = 'idle';
+  let poseMs = 0;
   let melted = false;
   let t = 0;
   let volleys = 0;
   let count = 0;
-  let rollDir = 0;
-  let petState: 'home' | 'tele' | 'out' = 'home';
   let beams: Span[] = [];
   let drops: Shot[] = [];
 
+  const hold = (p: TumaPose, ms: number): void => {
+    pose = p;
+    poseMs = ms;
+  };
   const glint = (x: number, y: number): void => {
     fx.add(TK.glint, x, y, 480, { frames: [0, 1], fps: 10, loop: true, depth: 8, tick: (s, p) => s.setAngle(p * 120).setAlpha(1 - p * p) });
   };
-  const dust = (x: number): void => {
-    for (const dx of [-24, 24]) fx.add(TK.dust, x + dx, F - 10, 330, { frames: [0, 1, 2], fps: 10, depth: 4, tick: (s, p) => s.setX(x + dx * (1 + p)) });
+  const dust = (x: number, y = F - 10): void => {
+    for (const dx of [-24, 24]) fx.add(TK.dust, x + dx, y, 330, { frames: [0, 1, 2], fps: 10, depth: 4, tick: (s, p) => s.setX(x + dx * (1 + p)) });
   };
   const splat = (x: number, base: number): void => {
     fx.add(TK.splat, x, F - SPLAT.h / 2 + 3, 300, { frames: [base, base + 1, base + 2], fps: 10, depth: 1 });
   };
-  const hand = (): { x: number; y: number } => (upright ? body.at(150, 18) : body.at(88, 10));
+  const glove = (): { x: number; y: number } => rig.live('wave', SPOT.glove[0], SPOT.glove[1]);
+  const glasses = (): { x: number; y: number } => rig.live('body', SPOT.glasses[0], SPOT.glasses[1]);
 
   function shoot(s: Shot): void {
     world.spawnHazard({
@@ -78,12 +80,11 @@ export function createTuma(world: BossWorld): BossRuntime {
   }
 
   function launchPet(dir: -1 | 1): void {
-    petState = 'out';
     pet.setVisible(false);
     const J = C.jaws;
     world.sfx('chomp');
     world.spawnHazard({
-      x: dir < 0 ? J.restX : J.outX,
+      x: dir < 0 ? J.restX - 60 : J.outX,
       y: jawsY,
       vx: dir * J.speed,
       w: J.w,
@@ -102,11 +103,33 @@ export function createTuma(world: BossWorld): BossRuntime {
             world.sfx('chomp');
             later.add(J.warnMs, () => launchPet(1));
           });
-        } else if (dir > 0 && h.x >= J.restX) {
-          h.destroy();
-          petState = 'home';
-          pet.setVisible(true);
-        }
+        } else if (dir > 0 && h.x >= J.restX - 60) h.destroy();
+      },
+    });
+  }
+
+  function rollWheel(): void {
+    const S = C.spin;
+    let dir = -1;
+    dust(S.fromX);
+    world.sfx('blast');
+    world.spawnHazard({
+      x: S.fromX,
+      y: F - S.r,
+      vx: -S.speed,
+      r: S.r * 0.9,
+      texture: TK.wheel,
+      lifeMs: 9000,
+      update(h: HazardHandle, dt: number): void {
+        if (mode === 'ko') return h.destroy();
+        h.sprite.setAngle(h.sprite.angle + ((dir * S.speed * dt) / 1000 / S.r) * (180 / Math.PI));
+        h.y = F - S.r;
+        if (dir < 0 && h.x <= S.minX) {
+          dir = 1;
+          h.vx = S.speed;
+          world.shake(4, 160);
+          world.sfx('blast');
+        } else if (dir > 0 && h.x >= S.fromX + 30) h.destroy();
       },
     });
   }
@@ -115,42 +138,42 @@ export function createTuma(world: BossWorld): BossRuntime {
     // the sun beams always get their balloon: the column warning alone is easy to miss on a phone
     if (++count % C.sayEvery === 0 || kind === 'beam') world.say(TUMA_LINES[kind], 1100);
     if (kind === 'lemons') {
-      body.hold(upright ? TF.sReach : TF.reach, ms);
-      body.kick(-0.08);
-      glint(hand().x, hand().y);
+      hold('reach', ms);
+      rig.kick(-0.08);
+      later.add(150, () => glint(glove().x, glove().y));
       world.sfx('dash');
     } else if (kind === 'beam') {
-      body.hold(upright ? TF.sReach : TF.glint, ms + 700);
-      const p = upright ? hand() : body.at(105, 102);
-      glint(p.x, p.y);
+      hold('glint', ms + 700);
+      later.add(200, () => glint(glasses().x, glasses().y));
       world.sfx('cardFull');
       beams = sunBeams(rng, phase, world.player.x);
       for (const [a, b] of beams) fx.add(TK.beam, (a + b) / 2, F - BEAM.h / 2, ms, { frames: [0], depth: 1, tick: (s, p) => s.setAlpha(0.6 + 0.4 * Math.abs(Math.cos(p * 9))) });
     } else if (kind === 'honey') {
-      body.hold(TF.honey, ms + 700);
+      hold('honey', ms + 700);
       world.sfx('squeeze');
       drops = honeyRain(rng, world.player.x);
       for (const d of drops) fx.add(TK.shot, d.x, d.y, ms + d.delayMs, { frames: [SHOT.honey], depth: 6, tick: (s, p) => s.setScale((0.3 + 0.7 * Math.min(1, p * 1.5)) / world.k) });
     } else if (kind === 'jaws') {
-      petState = 'tele';
-      body.hold(TF.sThrow, ms);
+      hold('whistle', ms);
+      pet.setVisible(true).setX(C.jaws.restX - 40);
       glint(pet.x - 24, pet.y - 34);
       world.sfx('chomp');
     } else {
-      body.hold(TF.crouch, ms);
-      body.kick(0.14);
-      dust(body.x);
+      hold('windup', ms);
+      rig.kick(0.12);
+      glint(C.spin.fromX, F - C.spin.r * 2);
       world.sfx('dash');
     }
   }
 
   function fire(kind: TumaAttack): void {
     if (kind === 'lemons') {
-      const from = hand();
-      body.hold(upright ? TF.sThrow : TF.throw, 600);
-      body.kick(0.1);
+      const from = glove();
+      hold('throw', 600);
+      rig.kick(0.1);
       world.sfx('lob');
-      for (const s of lemonVolley(rng, phase, from, world.player.x, volleys++ % C.lemon.pinkEvery === 1)) later.add(s.delayMs, () => shoot(s));
+      const first = volleys === 0;
+      for (const s of lemonVolley(rng, phase, from, world.player.x, volleys++ % C.lemon.pinkEvery === 1, first)) later.add(s.delayMs, () => shoot(s));
     } else if (kind === 'beam') {
       world.sfx('ex');
       world.shake(3, 220);
@@ -163,103 +186,46 @@ export function createTuma(world: BossWorld): BossRuntime {
     } else if (kind === 'jaws') {
       launchPet(-1);
     } else {
-      rollDir = -1;
-      body.pivot(BALL.y);
-      body.hold(TF.ball, 60000);
-      world.sfx('blast');
-    }
-  }
-
-  function roll(dt: number): void {
-    const d = (C.spin.speed * dt) / 1000;
-    body.x += rollDir * d;
-    body.angle += ((rollDir * d) / (BALL.r * C.scale)) * (180 / Math.PI);
-    if (rollDir < 0 && body.x <= C.spin.minX) {
-      rollDir = 1;
-      world.shake(4, 160);
-      world.sfx('blast');
-      body.kick(0.25);
-    } else if (rollDir > 0 && body.x >= C.standX) {
-      rollDir = 0;
-      body.x = C.standX;
-      body.angle = 0;
-      body.pivot(BODY.footY);
-      body.release();
-      body.kick(0.2);
-      dust(body.x);
+      hold('kick', 500);
+      rig.kick(0.2);
+      rollWheel();
     }
   }
 
   function rage(dt: number): void {
     modeMs += dt;
-    if (modeMs < 900) {
-      body.x = C.seatX + Math.sin(modeMs / 16) * 2;
-      return;
+    rig.lift = Math.abs(Math.sin(modeMs / 140)) * 10 * Math.max(0, 1 - modeMs / C.transformMs);
+    if (Math.floor(modeMs / 280) !== Math.floor((modeMs - dt) / 280)) {
+      rig.kick(0.18);
+      dust(C.x - 60);
+      fx.add(TK.dust, glasses().x + 30, glasses().y - 60, 500, { frames: [0, 1, 2], fps: 6, depth: 8, tick: (s, p) => s.setY(glasses().y - 60 - p * 30).setAlpha(1 - p) });
     }
-    if (modeMs < 1400) {
-      const p = (modeMs - 900) / 500;
-      if (!upright) {
-        upright = true;
-        chair.setVisible(false);
-        pet.setVisible(true).setFrame(2);
-        dust(C.seatX);
-        world.sfx('chomp');
-        body.setLoop(TF.angry, 6);
-        body.release();
-      }
-      body.x = C.seatX + (C.standX - C.seatX) * p;
-      body.lift = Math.sin(p * Math.PI) * 56;
-      return;
+    if (modeMs >= C.transformMs) {
+      mode = 'fight';
+      rig.lift = 0;
+      hold('idle', 0);
     }
-    if (!landed) {
-      landed = true;
-      body.lift = 0;
-      body.x = C.standX;
-      body.kick(0.3);
-      world.shake(5, 220);
-      dust(body.x);
-    }
-    if (modeMs >= C.transformMs) mode = 'stand';
   }
 
   function knockout(dt: number): void {
     modeMs += dt;
-    if (modeMs < 1400) {
-      body.angle = Math.sin(modeMs / 110) * 7;
-    } else if (!melted) {
+    if (modeMs >= 1400 && !melted) {
       melted = true;
-      body.angle = 0;
-      body.hold(TF.melt, 1e9);
-      body.kick(0.5);
+      hold('melt', 1e9);
+      rig.kick(0.5);
       world.sfx('melt');
-      for (const dx of [-40, 0, 40]) splat(body.x + dx, SPLAT_OF.honey);
-    }
-    if (pet.visible) pet.setAngle(Math.max(-90, -modeMs / 6)).setY(jawsY + Math.min(20, modeMs / 40));
-  }
-
-  function petIdle(): void {
-    if (!pet.visible || mode === 'ko') return;
-    if (petState === 'tele') {
-      pet.setFrame(Math.floor(t / 60) % 2 ? 2 : 1);
-      pet.x = C.jaws.restX + Math.sin(t / 22) * 2.5;
-    } else {
-      pet.setFrame(Math.floor(t / 380) % 3 === 0 ? 0 : 1);
-      pet.x = C.jaws.restX;
+      for (const dx of [-40, 0, 40]) splat(C.x + dx - 40, SPLAT_OF.honey);
     }
   }
 
-  const ballBox = (): Box => body.box(BALL.x - BALL.r * 0.9, BALL.y - BALL.r * 0.9, BALL.r * 1.8, BALL.r * 1.8);
+  const boxes = (list: readonly (readonly number[])[]): Box[] => list.map(([x, y, w, h]) => rig.box(x, y, w, h));
 
   return {
     hurtBoxes(): readonly Box[] {
-      if (mode === 'ko') return [];
-      if (rollDir !== 0) return [ballBox()];
-      return (upright ? C.hurt.stand : C.hurt.seat).map(([x, y, w, h]) => body.box(x, y, w, h));
+      return mode === 'ko' ? [] : boxes(C.hurt);
     },
     bodyBoxes(): readonly Box[] {
-      if (mode === 'ko') return [];
-      if (rollDir !== 0) return [ballBox()];
-      return upright ? [body.box(62, 50, 88, 146)] : [body.box(86, 66, 84, 100), body.box(26, 148, 66, 40)];
+      return mode === 'ko' ? [] : boxes(C.bodyBox);
     },
     update(dt: number): void {
       t += dt;
@@ -272,10 +238,11 @@ export function createTuma(world: BossWorld): BossRuntime {
           if (e.type === 'telegraph') telegraph(e.kind, sched.current?.telegraphMs ?? 600);
           else if (e.type === 'fire') fire(e.kind);
         }
-        if (rollDir !== 0) roll(dt);
-        petIdle();
       }
-      body.update(dt);
+      if (poseMs > 0) poseMs -= dt;
+      const now: TumaPose = mode === 'ko' && !melted ? 'dizzy' : poseMs > 0 ? pose : mode === 'rage' ? 'rage' : 'idle';
+      applyPose(rig, now, t, phase > 0);
+      rig.update(dt);
     },
     onPhase(p: number): void {
       if (p <= phase || mode === 'ko') return;
@@ -284,29 +251,25 @@ export function createTuma(world: BossWorld): BossRuntime {
       modeMs = 0;
       sched.setPhase(p, C.transformMs);
       later.clear();
-      body.hold(TF.rage, 900);
-      body.kick(-0.2);
+      pet.setVisible(false);
+      hold('idle', 0);
+      rig.setTint(C.angryTint);
+      rig.kick(-0.2);
       world.shake(5, 500);
       world.sfx('phase');
       world.say(TUMA_LINES.rage, 1400);
     },
     onHit(): void {
-      body.flash();
+      rig.flash();
     },
     onKnockout(): void {
       mode = 'ko';
       modeMs = 0;
       sched.stop();
       later.clear();
-      rollDir = 0;
-      upright = true;
-      chair.setVisible(false);
-      body.angle = 0;
-      body.lift = 0;
-      body.pivot(BODY.footY);
-      body.release();
-      body.setLoop(TF.dizzy, 5);
-      pet.setVisible(upright && phase > 0).setFrame(1).setX(C.jaws.restX);
+      rig.lift = 0;
+      hold('idle', 0);
+      pet.setVisible(false);
       world.say(TUMA_LINES.ko, 1500);
     },
     get done(): boolean {
@@ -315,8 +278,7 @@ export function createTuma(world: BossWorld): BossRuntime {
     destroy(): void {
       later.clear();
       fx.clear();
-      body.destroy();
-      chair.destroy();
+      rig.destroy();
       pet.destroy();
     },
   };

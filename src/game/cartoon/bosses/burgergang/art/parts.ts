@@ -1,7 +1,7 @@
 /**
- * Rubber-hose drawing kit of the Burger Gang lane: smooth paths, hose limbs, pie-cut eyes, white
- * four-finger gloves, sneakers, heart sunglasses, the soda cup and can. World units on a context
- * already scaled by k (draw/canvas.ts); every part outlined in ink.
+ * Rubber-hose drawing kit of the Burger Gang lane for what is not cut from the shirt (the gang's fries box, the
+ * soda cans, the dizzy eyes, the arena): smooth paths, pink halos, pie-cut eyes, white four-finger gloves, sneakers.
+ * World units on a context already scaled by k (draw/canvas.ts); every part outlined in ink.
  */
 import type { Vec } from '../../../api';
 import { INK, LINE, inked } from '../../../draw/canvas';
@@ -35,24 +35,18 @@ function hose(ctx: CanvasRenderingContext2D, pts: readonly Pt[], width: number, 
   ctx.stroke();
 }
 
-/** Limb from a to b bowing sideways by `bend` at its middle (rubber hose: one smooth arc, no elbow). */
-export function limb(ctx: CanvasRenderingContext2D, a: Vec, b: Vec, bend: number, width: number, color: string): void {
-  const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-  const cx = (a.x + b.x) / 2 - ((b.y - a.y) / len) * bend * 2;
-  const cy = (a.y + b.y) / 2 + ((b.x - a.x) / len) * bend * 2;
-  for (const [style, w] of [[INK, width + LINE * 1.6], [color, width]] as const) {
-    ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.quadraticCurveTo(cx, cy, b.x, b.y);
-    ctx.strokeStyle = style;
-    ctx.lineWidth = w;
-    ctx.stroke();
-  }
-}
-
 export function ellipse(ctx: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, rot = 0): void {
   ctx.beginPath();
   ctx.ellipse(x, y, Math.max(0.1, rx), Math.max(0.1, ry), rot, 0, TAU);
+}
+
+/** Pink things get a soft pink halo so they read as parryable at a glance. */
+export function halo(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): void {
+  const g = ctx.createRadialGradient(x, y, r * 0.6, x, y, r * 1.35);
+  g.addColorStop(0, 'rgba(255,105,173,0.55)');
+  g.addColorStop(1, 'rgba(255,105,173,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(x - r * 1.4, y - r * 1.4, r * 2.8, r * 2.8);
 }
 
 /** Pie-cut eye: white oval, black pupil with a wedge cut out, looking along `look` (-1..1). */
@@ -67,16 +61,6 @@ export function pieEye(ctx: CanvasRenderingContext2D, x: number, y: number, rx: 
   ctx.closePath();
   ctx.fillStyle = INK;
   ctx.fill();
-}
-
-/** Closed eye: a happy arc (up = true) or a sleepy one. */
-export function closedEye(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, up: boolean): void {
-  ctx.beginPath();
-  if (up) ctx.arc(x, y + w * 0.35, w * 0.5, Math.PI * 1.15, Math.PI * 1.85);
-  else ctx.arc(x, y - w * 0.35, w * 0.5, Math.PI * 0.15, Math.PI * 0.85);
-  ctx.strokeStyle = INK;
-  ctx.lineWidth = LINE * 1.2;
-  ctx.stroke();
 }
 
 /** Dizzy spiral eye (knockout). */
@@ -194,86 +178,6 @@ export function heartPath(ctx: CanvasRenderingContext2D, cx: number, cy: number,
   ctx.bezierCurveTo(cx - s * 1.15, cy - s * 0.02, cx - s * 0.6, cy - s * 0.95, cx, cy - s * 0.32);
   ctx.bezierCurveTo(cx + s * 0.6, cy - s * 0.95, cx + s * 1.15, cy - s * 0.02, cx, cy + s * 0.62);
   ctx.closePath();
-}
-
-/** Heart sunglasses (yellow frame, pink lenses, white bolt glints), centre (x, y), total width w. */
-export function shades(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, angle: number): void {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(angle);
-  const s = w * 0.2;
-  const off = w * 0.25;
-  ctx.beginPath();
-  ctx.moveTo(-off + s * 0.6, -s * 0.15);
-  ctx.quadraticCurveTo(0, -s * 0.7, off - s * 0.6, -s * 0.15);
-  ctx.strokeStyle = INK;
-  ctx.lineWidth = 3.4;
-  ctx.stroke();
-  ctx.strokeStyle = COL.frame;
-  ctx.lineWidth = 1.6;
-  ctx.stroke();
-  for (const sx of [-1, 1]) {
-    const cx = sx * off;
-    heartPath(ctx, cx, 0, s);
-    ctx.strokeStyle = INK;
-    ctx.lineWidth = 4.6;
-    ctx.stroke();
-    ctx.strokeStyle = COL.frame;
-    ctx.lineWidth = 2.4;
-    ctx.stroke();
-    const g = ctx.createLinearGradient(cx - s, -s, cx + s, s);
-    g.addColorStop(0, COL.pinkLight);
-    g.addColorStop(0.35, COL.lens);
-    g.addColorStop(1, '#c2205f');
-    ctx.fillStyle = g;
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(cx - s * 0.1, -s * 0.55);
-    ctx.lineTo(cx - s * 0.4, -s * 0.02);
-    ctx.lineTo(cx - s * 0.12, -s * 0.06);
-    ctx.lineTo(cx - s * 0.32, s * 0.36);
-    ctx.lineTo(cx + s * 0.1, -s * 0.18);
-    ctx.lineTo(cx - s * 0.16, -s * 0.14);
-    ctx.closePath();
-    ctx.fillStyle = COL.white;
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
-/** Red soda cup with a straw, bottom centre (x, y), height h, rotated by angle. */
-export function cup(ctx: CanvasRenderingContext2D, x: number, y: number, h: number, angle: number, foam = false): void {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(angle);
-  const w = h * 0.36;
-  const top = w * 1.25;
-  hose(ctx, [[top * 0.15, -h], [top * 0.35, -h - h * 0.32], [top * 0.62, -h - h * 0.42]], 2.2, COL.white);
-  ctx.beginPath();
-  ctx.moveTo(-w, 0);
-  ctx.lineTo(-top, -h);
-  ctx.lineTo(top, -h);
-  ctx.lineTo(w, 0);
-  ctx.closePath();
-  const g = ctx.createLinearGradient(-top, 0, top, 0);
-  g.addColorStop(0, '#ff6a5a');
-  g.addColorStop(0.45, COL.cup);
-  g.addColorStop(1, COL.cupDark);
-  inked(ctx, g, LINE);
-  ctx.beginPath();
-  ctx.moveTo(-w * 1.1, -h * 0.45);
-  ctx.quadraticCurveTo(0, -h * 0.62, w * 1.12, -h * 0.4);
-  ctx.strokeStyle = COL.white;
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.roundRect(-top - 1.2, -h - 3, top * 2 + 2.4, 4, 2);
-  inked(ctx, COL.cupDark, LINE * 0.9);
-  if (foam) {
-    smooth(ctx, [[-top - 2, -h - 2], [-top * 0.6, -h - 9], [-top * 0.1, -h - 6], [top * 0.4, -h - 11], [top + 2, -h - 3], [0, -h + 1]]);
-    inked(ctx, COL.soda, LINE * 0.9);
-  }
-  ctx.restore();
 }
 
 /** Soda can (red or pink), centre (x, y), height h. */

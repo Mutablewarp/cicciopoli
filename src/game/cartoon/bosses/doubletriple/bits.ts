@@ -1,39 +1,22 @@
 /**
- * DOUBLE TRIPLE phase-2 minis and projectiles (canvas 2D in world units, no Phaser): the two small burgers
- * it splits into, the spinning patty frisbee, the rolling cheddar wave (pink = parryable), the bacon whip
+ * DOUBLE TRIPLE projectiles (canvas 2D in world units, no Phaser): the spinning patty frisbee, the rolling cheddar wave (pink = parryable), the bacon whip
  * with its wind-up stub and lane warning, the SALSA CICCIO'S drops.
  */
 import { INK, LINE } from '../../draw/canvas';
-import { bacon, bunBottom, bunTop, cheese, patty, sauceDrop } from '../oldschool/kit/food';
+import { bacon, patty, sauceDrop } from '../oldschool/kit/food';
 import { C, gloss } from '../oldschool/kit/style';
-import { face, SALSA } from './art';
 import { DT } from './tuning';
 
 type Ctx = CanvasRenderingContext2D;
 
-/** mini frame, bottom-centre (44, 82); frames 0-3 = mini A (shades) faces, 4-7 = mini B */
-export const MINI = { w: 88, h: 84, footY: 82, b: 4 } as const;
+/** the pinkish-orange SALSA CICCIO'S */
+const SALSA = '#e8774c';
+
 export const FRISBEE = { w: 48, h: 22 } as const;
 export const CWAVE = { w: 50, h: 34, pink: 3 } as const;
 export const WHIP = { w: 300, h: 26 } as const;
 export const STUB = { w: 72, h: 26 } as const;
 export const DROP = { w: 26, h: 34 } as const;
-
-/** Mini burger: A = top bun with the shades, bacon, patty, cheddar; B = cheddar, patty, cheddar, bare-eyed. */
-export function drawMini(ctx: Ctx, f: number): void {
-  const b = f >= MINI.b;
-  bunBottom(ctx, 44, 70, 72, 12);
-  if (b) cheese(ctx, 44, 66, 74, [[-20, 6]]);
-  patty(ctx, 44, 61, 80, 14);
-  cheese(ctx, 44, 53, 78, b ? [[-22, 9], [18, 13]] : [[14, 12]]);
-  if (!b) bacon(ctx, 4, 84, 50, 2, 5.5, 2.5);
-  bunTop(ctx, 44, 51, 82, 45);
-  ctx.save();
-  ctx.translate(44, 7);
-  ctx.scale(0.78, 0.78);
-  face(ctx, f % MINI.b, 0, 0, !b);
-  ctx.restore();
-}
 
 /** Patty frisbee seen edge-on; 4 spin frames (the shine travels round). */
 export function drawFrisbee(ctx: Ctx, f: number): void {

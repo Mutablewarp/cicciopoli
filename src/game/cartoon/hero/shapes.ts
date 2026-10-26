@@ -5,7 +5,7 @@
 import { INK } from '../draw/canvas';
 
 /** Visible outline of hose limbs and blob unions (world units). */
-export const OUT = 1.25;
+const OUT = 1.25;
 
 export type Blob = { e: [number, number, number, number] } | { c: [number, number, number, number, number] };
 

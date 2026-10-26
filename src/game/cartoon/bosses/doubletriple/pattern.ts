@@ -15,9 +15,11 @@ const F = ARENA.floorY;
 const { frisbee, cheddar, whip, stomp, hop, salsa } = DT;
 const every = (n: number, gap: number): number[] => Array.from({ length: n }, (_, i) => i * gap);
 const HOPS2 = 4;
+/** a frisbee flies out and back (both lanes twice): the act lasts until the second one is home (an upper bound: from the feet x) */
+const homeMs = (x: number): number => frisbee.gapMs + frisbeeThrow(x).lifeMs;
 
 export const DECK1: readonly AttackDef<DtAttack>[] = [
-  { id: 'frisbee', teleMs: frisbee.teleMs, actMs: frisbee.gapMs + 900, restMs: 700, fireAt: every(2, frisbee.gapMs) },
+  { id: 'frisbee', teleMs: frisbee.teleMs, actMs: homeMs(DT.home.x), restMs: 700, fireAt: every(2, frisbee.gapMs) },
   { id: 'cheddar', teleMs: cheddar.teleMs, actMs: 2 * cheddar.gapMs + 600, restMs: 650, fireAt: every(cheddar.n, cheddar.gapMs) },
   { id: 'whip', teleMs: whip.teleMs, actMs: whip.gapMs + 700, restMs: 650, fireAt: every(2, whip.gapMs) },
   { id: 'stomp', teleMs: stomp.teleMs, actMs: 2 * stomp.flightMs + stomp.waitMs + 400, restMs: 700, fireAt: [0, stomp.flightMs + stomp.waitMs] },
@@ -25,7 +27,7 @@ export const DECK1: readonly AttackDef<DtAttack>[] = [
 
 export const DECK2: readonly AttackDef<DtAttack>[] = [
   { id: 'hop', teleMs: hop.teleMs, actMs: HOPS2 * hop.ms + 200, restMs: 600, fireAt: every(HOPS2, hop.ms) },
-  { id: 'frisbee', teleMs: frisbee.teleMs - 50, actMs: frisbee.gapMs + 900, restMs: 600, fireAt: every(2, frisbee.gapMs) },
+  { id: 'frisbee', teleMs: frisbee.teleMs - 50, actMs: homeMs(DT.minis[1].x), restMs: 600, fireAt: every(2, frisbee.gapMs) },
   { id: 'cheddar', teleMs: cheddar.teleMs - 100, actMs: 2 * (cheddar.gapMs - 50) + 600, restMs: 600, fireAt: every(cheddar.n, cheddar.gapMs - 50) },
   { id: 'salsa', teleMs: salsa.teleMs, actMs: (salsa.count - 1) * salsa.gapMs + salsa.flightMs + 200, restMs: 600, fireAt: every(salsa.count, salsa.gapMs) },
   { id: 'whip', teleMs: whip.teleMs, actMs: 800, restMs: 600, fireAt: [0] },

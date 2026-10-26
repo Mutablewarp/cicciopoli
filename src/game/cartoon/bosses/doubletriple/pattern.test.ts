@@ -42,6 +42,20 @@ describe('DOUBLE TRIPLE patterns', () => {
     }
   });
 
+  it('both frisbees are home before the next attack winds up (no boomerang crosses another attack)', () => {
+    for (const [deck, x] of [[DECK1, DT.home.x], [DECK2, DT.minis[1].x]] as const) {
+      const a = deck.find((d) => d.id === 'frisbee');
+      expect(a).toBeDefined();
+      if (a) expect(a.actMs).toBeGreaterThanOrEqual(a.fireAt[a.fireAt.length - 1] + frisbeeThrow(x).lifeMs);
+    }
+  });
+
+  it('a frisbee is in its lane (a 100-unit dip within 4) before it has flown 120 units', () => {
+    const { vx, ax } = frisbeeThrow(DT.home.x);
+    const t = (-vx - Math.sqrt(vx * vx - 2 * ax * 120)) / ax;
+    expect(100 * Math.exp((-t * 1000) / DT.frisbee.glideMs)).toBeLessThan(4);
+  });
+
   it('three cheddar waves leave room to land between them', () => {
     const c = DT.cheddar;
     expect(F - c.h).toBeGreaterThanOrEqual(F - HERO.jumpClear / 2);

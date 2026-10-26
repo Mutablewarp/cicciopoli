@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { CT_PLAYER } from '../../../../config/cartoon';
 import { ARENA } from '../../api';
+import { ATLAS, PARTS } from './art/atlas';
 import { BG, BOXES, MIN_TELEGRAPH_MS } from './config';
 import { FIRST, ROUNDS, frontX, pickRound, planRound, type Round, type Shot, type Stage } from './plan';
 
@@ -165,8 +166,16 @@ describe('burger gang rounds', () => {
 describe('burger gang stance', () => {
   it('leaves no pocket behind the boss at any sway phase', () => {
     for (const [bx, s] of [[BG.bx, 1], [BG.giantBx, BG.giant]] as const) {
-      const rightEdge = bx + (BOXES.body.x + BOXES.body.w) * s - BG.sway;
+      const rightEdge = bx + (BOXES.back.x + BOXES.back.w) * s - BG.sway;
       expect(rightEdge).toBeGreaterThan(CT_PLAYER.maxX - CT_PLAYER.hitW / 2);
+      // the touch boxes have no gap between the bun and the floor behind him
+      expect(BOXES.back.x).toBeLessThanOrEqual(BOXES.body.x + BOXES.body.w);
+    }
+  });
+
+  it('keeps the cup arm inside the arena', () => {
+    for (const [bx, s] of [[BG.bx, 1], [BG.giantBx, BG.giant]] as const) {
+      expect(bx + ((PARTS.armR.ox + (PARTS.armR.w / ATLAS.tex) - ATLAS.foot.x) * BG.wu) * s + BG.sway).toBeLessThanOrEqual(ARENA.w);
     }
   });
 });

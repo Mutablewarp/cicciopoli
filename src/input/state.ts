@@ -9,7 +9,7 @@ import type { Dir4, EdgeAction, GameInput } from '../contracts';
  * 'up' = ↑ / W / cross-pad up / ▲: a direction (axisY) that also counts as jump, except in level 8 (`upJumps` false:
  * ▲ only aims). 'dash' / 'swap' / 'super' = level 8 SCATTO, ARMA, SUPER (edges).
  */
-export type HoldAction = 'left' | 'right' | 'up' | 'down' | 'jump' | 'fire' | 'club' | 'pause' | 'dash' | 'swap' | 'super';
+export type HoldAction = 'left' | 'right' | 'up' | 'down' | 'jump' | 'fire' | 'club' | 'pause' | 'dash' | 'swap' | 'super' | 'autoFire';
 
 interface Hold {
   action: HoldAction;
@@ -25,6 +25,7 @@ const EDGE: Partial<Record<HoldAction, EdgeAction>> = {
   dash: 'dash',
   swap: 'swap',
   super: 'super',
+  autoFire: 'autoFire',
 };
 
 function isDir(a: HoldAction): a is Dir4 {

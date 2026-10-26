@@ -1,11 +1,9 @@
 /**
- * THE OLD SCHOOL story beats: the phase-2 transformation (the hand drops the burger, clenches into a fist
- * with a puff and floats up) and the funny knockout (dizzy burger with stars, the glove waves a diner
- * napkin to surrender).
+ * THE OLD SCHOOL story beats: the phase-2 transformation (the hand drops the burger on the floor and flies
+ * up free with a puff) and the funny knockout (dizzy, wobbling burger with stars, the glove waves surrender).
  */
 import { ARENA, type Vec } from '../../api';
-import { ARM_POSE, FACE } from './art';
-import { FIST_POSE } from './hand';
+import { ARM_POSE, HAND_POSE, PALM as PALM_OFF } from './look';
 import { arc, ease, lerp } from './kit/geometry';
 import type { Move } from './kit/scheduler';
 import { fistHome, shake } from './moves';
@@ -13,8 +11,8 @@ import { OS } from './tuning';
 import type { OsCtx } from './types';
 
 const F = ARENA.floorY;
-/** the palm centre while the hand holds the burger (where the fist appears) */
-const PALM = { x: OS.grip.x + 46, y: OS.grip.y + 4 } as const;
+/** the palm while the hand holds the burger (where the free hand starts from) */
+const PALM = { x: OS.grip.x + PALM_OFF.x, y: OS.grip.y + PALM_OFF.y } as const;
 
 export function transformMove(c: OsCtx, T: () => number): Move {
   let dropped = false;
@@ -26,7 +24,6 @@ export function transformMove(c: OsCtx, T: () => number): Move {
     update() {
       const p = c.pose;
       const t = m.t;
-      p.face = t < 450 ? FACE.hurt : FACE.angry;
       p.arm = ARM_POSE.windUp;
       p.fist = t >= 1100;
       if (t < 500) {
@@ -61,7 +58,7 @@ export function transformMove(c: OsCtx, T: () => number): Move {
       p.hand = 'gone';
       p.fist = true;
       p.fistSafe = true;
-      p.fistFrame = FIST_POSE.left;
+      p.fistFrame = HAND_POSE.rest;
       const u = ease((t - 1100) / 1300);
       const pos = arc(PALM, fistHome(T()), 40, u);
       p.fx = pos.x;
@@ -77,13 +74,12 @@ export function koMove(c: OsCtx): Move {
   const fall: Vec = { x: p.bx, y: p.by };
   const fistFrom: Vec = p.hand === 'gone' ? { x: p.fx, y: p.fy } : { ...PALM };
   c.world.say('Mi arrendo, mi arrendo!', 2000);
-  c.fx.stars(() => ({ x: p.bx, y: p.by - 92 * p.bsy }), OS.koMs);
+  c.fx.stars(() => ({ x: p.bx, y: p.by - OS.box.burgerTop * p.bsy - 8 }), OS.koMs);
   const m: Move = {
     t: 0,
     fire() {},
     update() {
       const t = m.t;
-      p.face = FACE.ko;
       p.arm = ARM_POSE.limp;
       p.hand = 'gone';
       p.held = false;
@@ -95,9 +91,10 @@ export function koMove(c: OsCtx): Move {
       const flat = t > OS.koMs - 900 ? ease((t - OS.koMs + 900) / 500) : 0;
       p.bsx = 1 + Math.sin(t * 0.02) * 0.08 * fade + 0.18 * flat;
       p.bsy = 1 - Math.sin(t * 0.02) * 0.08 * fade - 0.24 * flat;
+      p.bAngle = Math.sin(t * 0.011) * 9 * fade;
       p.fist = true;
       p.fistSafe = true;
-      p.fistFrame = FIST_POSE.surrender;
+      p.fistFrame = HAND_POSE.surrender;
       p.fistFlip = false;
       const e = ease(t / 700);
       p.fx = lerp(fistFrom.x, 470, e);
