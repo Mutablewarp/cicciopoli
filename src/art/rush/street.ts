@@ -8,51 +8,16 @@
  */
 import { Raster, hash2 } from '../hills/raster';
 import { mix, shade } from '../pixel';
-import { RU, type ZonePal } from './colors';
+import { RU } from './colors';
 import { drawText, textWidth } from './font';
 import type { RushZone } from './keys';
 import { FACE_L, faceColours } from './lettering';
 
-export const STRIP_W = 128;
-export const STRIP_H = 256;
-/**
- * Height of the centro and mare left strips: each carries its landmark (the Politeama; the coastal
- * tower and the port) once per period, so taller than any view plus the landmark: never twice on screen.
- */
-export const SIDE_L_H = 1024;
-/** The 12 px kerb + sidewalk band next to the road. */
-export const WALK_D = 12;
+import { roof } from './roofs';
+import { STRIP_W, Strip, WALK_D } from './strip';
 
-export class Strip {
-  readonly r: Raster;
-
-  constructor(readonly side: 'L' | 'R', readonly pal: ZonePal, readonly h = STRIP_H) {
-    this.r = new Raster(STRIP_W, h);
-  }
-
-  x(d: number): number {
-    return this.side === 'L' ? STRIP_W - 1 - d : d;
-  }
-
-  px(d: number, y: number, c: string): void {
-    if (d < 0 || d >= STRIP_W) return;
-    this.r.set(this.x(d), ((y % this.h) + this.h) % this.h, c);
-  }
-
-  rect(d: number, y: number, dw: number, h: number, c: string): void {
-    for (let j = 0; j < h; j++) for (let i = 0; i < dw; i++) this.px(d + i, y + j, c);
-  }
-
-  /** Screen-space pixel at (x, y) with y wrapping (for upright text and logos). */
-  screen(x: number, y: number, c: string): void {
-    this.r.set(x, ((y % this.h) + this.h) % this.h, c);
-  }
-
-  /** Screen x of the left edge of a box of width w whose near (road-side) edge is at distance d. */
-  boxX(d: number, w: number): number {
-    return this.side === 'L' ? STRIP_W - d - w : d;
-  }
-}
+export { roof } from './roofs';
+export { SIDE_L_H, STRIP_H, STRIP_W, Strip, WALK_D } from './strip';
 
 /** Kerb stones next to the road and the paved sidewalk (joints every 8 px). */
 export function sidewalk(s: Strip, kerb = s.pal.kerb): void {
@@ -91,8 +56,8 @@ export interface Facade {
 }
 
 export const FACADE_D = 22;
-const TERRACE_JOINT = '#55524c';
 const FLOOR = 10;
+const BALCONY_LEAF = '#4a8a3a';
 
 /** One palazzo: shop front, floors of windows with shutters and wrought-iron balconies, cornice, roof. */
 export function facade(s: Strip, f: Facade): number {
@@ -120,6 +85,11 @@ export function facade(s: Strip, f: Facade): number {
       if (f.balcony) {
         s.rect(d, y - 2, 2, 9, shade(wall, -0.3));
         for (let j = -2; j < 7; j += 2) s.px(d + 2, y + j, RU.bodyDark);
+      }
+      if (f.balcony && hash2(d, y, 27) < 0.4) {
+        s.px(d, y + 1, BALCONY_LEAF); // potted geraniums on the balcony
+        s.px(d + 1, y + 2, BALCONY_LEAF);
+        s.px(d, y + 3, hash2(y, d, 28) < 0.5 ? '#e04848' : '#e05a9c');
       }
       s.rect(d + 2, y, 6, 5, RU.glassDark);
       s.rect(d + 7, y, 1, 5, shade(wall, 0.15)); // arched lintel catching the light
@@ -159,28 +129,15 @@ export function palazzi(s: Strip, y0: number, y1: number, seed: number, look: Ro
   }
 }
 
-/** Roof terraces (parapet, water tanks, washing lines) or terracotta tiles, out to the strip edge. */
-export function roof(s: Strip, y0: number, len: number, d0: number, kind: 'terrace' | 'tiles'): void {
-  const p = s.pal;
-  for (let y = y0; y < y0 + len; y++) {
+/**
+ * Clipped box hedges along the top and bottom rows of a garden or park lot (d0 out to the strip edge):
+ * a dark root row, a lit top, a ragged inner edge, so the lot never ends in a straight cut.
+ */
+export function hedges(s: Strip, y0: number, len: number, d0: number): void {
+  for (const [y1, dir] of [[y0, 1], [y0 + len - 1, -1]] as const) {
     for (let d = d0; d < STRIP_W; d++) {
-      let c: string;
-      if (kind === 'tiles') c = (d - d0) % 3 === 0 ? p.roofShade : (y + (d % 6 < 3 ? 0 : 2)) % 4 === 0 ? p.roofShade : p.roof;
-      else c = (d - d0) % 12 === 0 || (y - y0) % 12 === 0 ? TERRACE_JOINT : hash2(d, y, 6) < 0.05 ? TERRACE_JOINT : p.terrace;
-      s.px(d, y, c);
-    }
-  }
-  s.rect(d0, y0, 2, len, kind === 'tiles' ? p.roofLight : shade(p.terrace, 0.15)); // parapet / ridge
-  s.rect(d0, y0, STRIP_W - d0, 1, shade(p.roofShade, -0.3));
-  if (kind === 'tiles') return;
-  for (let y = y0 + 6; y + 8 < y0 + len; y += 18) {
-    const d = d0 + 8 + Math.floor(hash2(y, d0, 2) * 20);
-    s.rect(d, y, 6, 6, RU.whiteShade); // water tank
-    s.rect(d, y, 6, 1, RU.white);
-    s.rect(d + 5, y, 1, 6, RU.rim);
-    if (hash2(y, 3, 9) < 0.6) {
-      for (let j = 0; j < 9; j++) s.px(d + 10 + j, y + 2, RU.rim); // washing line
-      for (const [j, c] of [[1, '#e04848'], [3, '#f0f0e8'], [6, '#4a8ad8']] as const) s.rect(d + 11 + j, y + 3, 2, 2, c);
+      const depth = 3 + (hash2(d, y1, 14) < 0.4 ? 1 : 0);
+      for (let k = 0; k < depth; k++) s.px(d, y1 + dir * k, k === 0 ? '#2a5222' : k === depth - 1 ? '#3a6a2e' : '#30602a');
     }
   }
 }

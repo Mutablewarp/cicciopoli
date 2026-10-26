@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RUSH_DELIVERY, RUSH_ITEMS, RUSH_ROAD, RUSH_RUN } from '../../../config/rush';
+import { isTraffic } from './entity';
 import { OracleBot, autopilot } from './oracleBot';
 import { RushRun } from './run';
 import type { RushEvent } from './types';
@@ -7,8 +8,8 @@ import type { RushEvent } from './types';
 const range = (from: number, n: number): number[] => Array.from({ length: n }, (_, i) => from + i);
 const DT = 1000 / 30;
 
-/** Seconds of run time when a swerving scooter showed inside a delivery zone on screen. */
-function scooterInZone(seed: number): number[] {
+/** Seconds of run time when a vehicle showed inside a delivery zone on screen (seed 42 at 22.6 s: a scooter on the bag). */
+function vehicleInZone(seed: number): number[] {
   const run = new RushRun({ seed, driver: 'riflessi', daily: false, hints: false });
   const bot = new OracleBot(run);
   const bad: number[] = [];
@@ -18,7 +19,7 @@ function scooterInZone(seed: number): number[] {
     for (const z of live) {
       if (z.kind !== 'zone' || z.done || z.y > RUSH_ROAD.viewAheadPx.max + RUSH_ITEMS.zoneH / 2 || z.y < -RUSH_DELIVERY.clearPx) continue;
       const inside = live.some(
-        (s) => s.to !== null && Math.abs(s.x - z.x) < (s.w + z.w) / 2 && Math.abs(s.y - z.y) < (s.h + z.h) / 2,
+        (s) => isTraffic(s.kind) && Math.abs(s.x - z.x) < (s.w + z.w) / 2 && Math.abs(s.y - z.y) < (s.h + z.h) / 2,
       );
       if (inside) bad.push(Math.round(run.snapshot.timeMs / 100) / 10);
     }
@@ -27,8 +28,8 @@ function scooterInZone(seed: number): number[] {
 }
 
 describe('delivery zones and the first run', () => {
-  it('no swerving scooter ever shows inside a delivery zone on screen', () => {
-    const bad = range(1, 300).flatMap((seed) => (scooterInZone(seed).length > 0 ? [seed] : []));
+  it('no vehicle ever shows inside a delivery zone on screen', () => {
+    const bad = range(1, 300).flatMap((seed) => (vehicleInZone(seed).length > 0 ? [seed] : []));
     expect(bad).toEqual([]);
   });
 

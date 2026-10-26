@@ -139,3 +139,56 @@ describe('music-only mute', () => {
     expect(run(1)).toBe(0);
   });
 });
+
+describe('intensity (level 6 CICCIO FEVER)', () => {
+  beforeEach(() => {
+    clock = 1;
+    voices = 0;
+    vi.useFakeTimers();
+    vi.stubGlobal('window', {
+      AudioContext: FakeContext,
+      setInterval: (fn: () => void, ms: number) => setInterval(fn, ms),
+      clearInterval: (id: number) => clearInterval(id),
+      setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms),
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  /** Voices of the first `sec` seconds of the rush track, with `setup` applied right after it starts. */
+  const rushVoices = (setup: (a: ReturnType<typeof createAudio>) => void, sec = 3): number => {
+    const a = createAudio();
+    a.unlock();
+    a.music('rush');
+    setup(a);
+    const n = run(sec);
+    a.music(null);
+    run(0.5);
+    return n;
+  };
+
+  it('1 plays the fever arrangement on top of the song (many more voices), 0 goes back', () => {
+    const base = rushVoices(() => undefined);
+    const fever = rushVoices((a) => a.intensity?.(1));
+    expect(fever).toBeGreaterThan(base * 1.4);
+    const back = rushVoices((a) => {
+      a.intensity?.(1);
+      a.intensity?.(0);
+    });
+    expect(back).toBe(base);
+  });
+
+  it('any music change resets it, and it is safe before the first tap', () => {
+    const base = rushVoices(() => undefined);
+    const early = createAudio();
+    expect(() => early.intensity?.(1)).not.toThrow();
+    const reset = rushVoices((a) => {
+      a.intensity?.(1);
+      a.music('rush'); // a new run calls music('rush') again
+    });
+    expect(reset).toBe(base);
+  });
+});

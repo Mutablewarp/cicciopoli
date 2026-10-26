@@ -2,14 +2,16 @@
  * Road objects on screen, created lazily from the snapshot and removed when they leave it:
  * traffic with a drop shadow (a bright outline in high contrast), blinkers, hazards, menu pickups,
  * nuggets floating in the air (fade in), delivery zones with the waving customer on the sidewalk.
- * Also the marks over the road: WAFFLE RADAR chevrons, warnings at the top edge for obstacles not
- * yet on screen, and the green arrow pointing at the next delivery lane.
+ * Also the marks over the road: WAFFLE RADAR chevrons, warnings at the far edge for obstacles not
+ * yet on screen, and the green arrow pointing at the next delivery lane. They all turn with the camera
+ * (side view, v9: they point right, warnings sit at the right edge); food and people stay upright.
+ * v9: FRIES TRAIL fries spin, scooters wobble; the roadworks pit shows its side-view frame on the turned camera.
  */
 import type Phaser from 'phaser';
 import { ITEM_ANIMS, ITEMS } from '../../art/keys';
 import { PICKUP, ROAD_W, RUSH, RUSH_ANIMS } from '../../art/rush/keys';
 import { DEPTH, ENTITY_LOOK } from './config';
-import type { RushFraming } from './framing';
+import type { CamPose, RushFraming } from './framing';
 import { laneX } from './logic/lanes';
 import type { EntityKind, Lane, RushEntityView, RushSnapshot } from './logic/types';
 
@@ -22,6 +24,10 @@ interface Look {
   readonly under: 'shadow' | 'outline' | false;
   /** outline colour in high contrast */
   readonly edge?: number;
+  /** food and people: counter-turned against the camera so they read upright in the side view */
+  readonly upright?: boolean;
+  /** frame drawn turned a quarter for the side view (the roadworks pit: LAVORI reads left to right there) */
+  readonly sideFrame?: number;
 }
 
 const VEHICLE = 0xffffff;
@@ -29,7 +35,7 @@ const ZONE_GLOW = 0x3ad06a;
 const HAZARD = 0xffd83a;
 const veh = (key: string, anim?: string): Look => ({ key, frame: (n) => n, anim, depth: DEPTH.vehicle, under: 'shadow', edge: VEHICLE });
 const hz = (key: string, under: Look['under'], anim?: string): Look => ({ key, frame: () => 0, anim, depth: DEPTH.hazard, under, edge: HAZARD });
-const pk = (frame: number): Look => ({ key: RUSH.pickups, frame: () => frame, depth: DEPTH.pickup, under: false });
+const pk = (frame: number): Look => ({ key: RUSH.pickups, frame: () => frame, depth: DEPTH.pickup, under: false, upright: true });
 
 const LOOKS: Readonly<Record<EntityKind, Look>> = {
   car: veh(RUSH.cars),
@@ -41,7 +47,7 @@ const LOOKS: Readonly<Record<EntityKind, Look>> = {
   ape: veh(RUSH.ape, RUSH_ANIMS.ape),
   cone: hz(RUSH.cone, 'shadow'),
   barrier: hz(RUSH.barrier, 'shadow'),
-  works: hz(RUSH.works, 'outline'),
+  works: { ...hz(RUSH.works, 'outline'), sideFrame: 1 },
   sauce: { ...hz(RUSH.puddle, 'outline', RUSH_ANIMS.puddle), depth: DEPTH.zone + 1 },
   nuggets: pk(PICKUP.nuggets),
   waffle: pk(PICKUP.waffle),
@@ -49,7 +55,8 @@ const LOOKS: Readonly<Record<EntityKind, Look>> = {
   cheddar: pk(PICKUP.cheddar),
   booster: pk(PICKUP.booster),
   fries: pk(PICKUP.fries),
-  airNugget: { key: ITEMS.nugget, frame: () => 0, anim: ITEM_ANIMS.nugget, depth: DEPTH.flight + 2, under: false },
+  fry: { key: RUSH.fry, frame: () => 0, anim: RUSH_ANIMS.fry, depth: DEPTH.pickup, under: false, upright: true },
+  airNugget: { key: ITEMS.nugget, frame: () => 0, anim: ITEM_ANIMS.nugget, depth: DEPTH.flight + 2, under: false, upright: true },
   zone: { key: RUSH.zone, frame: () => 0, anim: RUSH_ANIMS.zone, depth: DEPTH.zone, under: false },
 };
 
@@ -78,6 +85,7 @@ export class EntityView {
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly layer: Phaser.GameObjects.Layer,
+    private readonly pose: CamPose,
   ) {
     const mark = (frame: number): Phaser.GameObjects.Sprite => this.add(scene.add.sprite(0, 0, RUSH.radar, frame), DEPTH.marks).setVisible(false);
     this.radar = [0, 1, 2].map(() => mark(0));
@@ -159,6 +167,11 @@ export class EntityView {
     return e.body;
   }
 
+  /** Kind of a live object (null once it left the screen). */
+  kindOf(id: number): EntityKind | null {
+    return this.ents.get(id)?.view.kind ?? null;
+  }
+
   /** World position of a live object (and of a zone's customer). */
   where(id: number): { x: number; y: number; cx: number; cy: number } | null {
     const e = this.ents.get(id);
@@ -169,11 +182,16 @@ export class EntityView {
   sync(snap: RushSnapshot, timeMs: number): void {
     const seen = new Set<number>();
     const L = ENTITY_LOOK;
+    const turn = -this.pose.rotation;
     for (const v of snap.entities) {
       seen.add(v.id);
       const e = this.ents.get(v.id) ?? this.create(v, timeMs);
-      const x = v.x;
+      // scooters wobble a pixel side to side (no rotation: the art pixels stay square)
+      const x = v.kind === 'scooter' ? v.x + Math.round(Math.sin(timeMs / L.wobbleMs + v.id)) : v.x;
       let y = -v.y;
+      const look = LOOKS[v.kind];
+      if (look.upright) e.body.setRotation(turn);
+      if (look.sideFrame !== undefined) this.turnFrame(e, look.sideFrame);
       if (v.kind === 'airNugget') {
         y += Math.round(Math.sin((timeMs + v.id * 97) / L.bobMs) * L.bobPx);
         e.body.setAlpha(Math.min(1, (timeMs - e.born) / L.fadeInMs));
@@ -188,7 +206,7 @@ export class EntityView {
       if (v.kind === 'zone') {
         e.body.setAlpha(v.done ? L.doneAlpha : 1);
         e.glow?.setPosition(x, y).setAlpha(v.done ? 0 : L.glowMin + L.glowAmp * (0.5 + 0.5 * Math.sin(timeMs / 140)));
-        e.extra?.setPosition(v.side < 0 ? -L.customerOutPx : ROAD_W + L.customerOutPx, y - 6).setFlipX(v.side > 0);
+        e.extra?.setPosition(v.side < 0 ? -L.customerOutPx : ROAD_W + L.customerOutPx, y - 6).setFlipX(v.side > 0).setRotation(turn);
       }
       if (v.kind === 'scooter') this.signal(e, v, x, y, timeMs);
     }
@@ -198,6 +216,12 @@ export class EntityView {
       this.ents.delete(id);
     }
     this.marks(snap, timeMs);
+  }
+
+  /** The side-view frame while the camera is turned (a rotate mid-run swaps it), frame 0 upright; the outline follows in sync. */
+  private turnFrame(e: Ent, sideFrame: number): void {
+    const f = this.view?.side && e.body.texture.has(String(sideFrame)) ? sideFrame : 0;
+    if (Number(e.body.frame.name) !== f) e.body.setFrame(f);
   }
 
   /** Scooter turn signal: an amber dot blinking on the side it will cut into. */
@@ -220,7 +244,7 @@ export class EntityView {
       if (mark) s.setFrame(mark === 'danger' ? 0 : 1).setPosition(laneX(l), -ENTITY_LOOK.radarAheadPx).setAlpha(pulse);
     });
     if (!f) return;
-    const edgeY = f.freeTop + ENTITY_LOOK.edgeMarkPx;
+    const edgeY = f.freeTop + (f.side ? ENTITY_LOOK.edgeMarkSidePx : ENTITY_LOOK.edgeMarkPx);
     const warn = [false, false, false];
     if (snap.phase === 'play' && !snap.truck.flying) {
       for (const v of snap.entities) if (v.ttcMs <= snap.warnMs && v.y - v.h / 2 > f.ahead) warn[v.lane] = true;

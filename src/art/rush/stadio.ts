@@ -8,17 +8,21 @@ import { Raster, hash2 } from '../hills/raster';
 import { shade } from '../pixel';
 import { rectR } from '../rampage/draw';
 import { RU, ZONE_PAL } from './colors';
-import { FACADE_D, STOREFRONT, STRIP_H, STRIP_W, Strip, ciccios, facade, lamp, paving, sidewalk, tree } from './street';
+import { streetLife } from './life';
+import { FACADE_D, STOREFRONT, STRIP_H, STRIP_W, Strip, ciccios, facade, hedges, lamp, paving, sidewalk, tree } from './street';
 
 const PINK = '#c45888';
 const PINK_DARK = '#94406c';
 const SEAT_BLACK = '#26222a';
 const CONCRETE = '#8a8890';
 const PINE = '#2e5a2c';
+/** the rosanero shirts of the fans on the stadium sidewalk */
+const FANS = [PINK, SEAT_BLACK, PINK, '#f0ece0'] as const;
 
-function stadium(s: Strip): void {
-  paving(s, 12, 24, 0, STRIP_H, '#8e8a84');
-  for (let y = 0; y < STRIP_H; y++) {
+/** The stands over rows y0..y0+len (the whole strip by default; the stadio -> mare blend ends them early). */
+export function stadium(s: Strip, y0 = 0, len = STRIP_H): void {
+  paving(s, 12, 24, y0, len, '#8e8a84');
+  for (let y = y0; y < y0 + len; y++) {
     for (let d = 24; d < STRIP_W; d++) {
       let c: string;
       if (d < 32) c = d === 24 ? shade(CONCRETE, -0.3) : (y % 16 < 2 ? shade(CONCRETE, -0.2) : CONCRETE); // outer wall
@@ -34,19 +38,19 @@ function stadium(s: Strip): void {
     }
   }
   // floodlight towers on the roof edge: lamp banks lit even by day
-  for (const y of [40, 168]) {
+  for (const y of [40, 168].filter((row) => row - 6 >= y0 && row + 8 <= y0 + len)) {
     s.rect(104, y - 2, 6, 6, '#5a5862');
     s.rect(112, y - 6, 12, 14, RU.bodyDark);
     for (let j = 0; j < 12; j += 3) for (let i = 0; i < 10; i += 3) s.rect(113 + i, y - 5 + j, 2, 2, j === 0 ? RU.white : RU.amberHot);
   }
   // pink-and-black banners hanging on the outer wall
-  for (const y of [8, 72, 136, 200]) {
+  for (const y of [8, 72, 136, 200].filter((row) => row >= y0 && row + 10 <= y0 + len)) {
     for (let j = 0; j < 10; j++) s.rect(25, y + j, 6, 1, j % 4 < 2 ? PINK : SEAT_BLACK);
   }
 }
 
 /** Roadworks on the sidewalk band: plastic fence, gravel heap, a small yellow digger. */
-function roadworks(s: Strip, y0: number, len: number): void {
+export function roadworks(s: Strip, y0: number, len: number): void {
   for (let y = y0; y < y0 + len; y++) {
     for (let d = 12; d < FACADE_D; d++) s.px(d, y, hash2(d, y, 19) < 0.3 ? '#7a5e40' : '#94744e');
     s.px(12, y, Math.floor(y / 4) % 2 === 0 ? RU.check : RU.white);
@@ -61,13 +65,14 @@ function roadworks(s: Strip, y0: number, len: number): void {
   s.rect(15, dy + 18, 5, 3, RU.rim);
 }
 
-function pines(s: Strip, y0: number, len: number, d0: number): void {
+export function pines(s: Strip, y0: number, len: number, d0: number): void {
   for (let y = y0; y < y0 + len; y++) for (let d = d0; d < STRIP_W; d++) s.px(d, y, hash2(d, y, 13) < 0.2 ? '#4a5a34' : '#3e4e2e');
   for (let k = 0; k < len / 12; k++) {
     const y = y0 + 6 + k * 12 + Math.floor(hash2(k, y0, 3) * 6);
     tree(s, d0 + 14 + Math.floor(hash2(k, d0, 5) * 60), y, 9, PINE);
     tree(s, d0 + 50 + Math.floor(hash2(k, d0, 7) * 40), y + 6, 8, shade(PINE, 0.08));
   }
+  hedges(s, y0, len, d0 + 2);
 }
 
 /** `shop` false: the plain strip, the Ciccio's Stadio storefront left out (the game draws it once). */
@@ -76,6 +81,7 @@ export function stadioSide(side: 'L' | 'R', shop = true): Raster {
   sidewalk(s);
   if (side === 'L') {
     stadium(s);
+    streetLife(s, 41, [], FANS); // fans walking to the stadium
   } else {
     paving(s, 12, FACADE_D, 0, STRIP_H, '#8e8a84');
     pines(s, 0, 96, 12);
@@ -84,6 +90,7 @@ export function stadioSide(side: 'L' | 'R', shop = true): Raster {
     if (shop) ciccios(s, STOREFRONT.stadio.y, STOREFRONT.stadio.len);
     pines(s, 176, 80, 12);
     roadworks(s, 184, 64);
+    streetLife(s, 42, [[STOREFRONT.stadio.y, STOREFRONT.stadio.len]]);
   }
   for (let y = 24; y < STRIP_H; y += 64) lamp(s, y, false);
   return s.r;

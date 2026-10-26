@@ -4,7 +4,7 @@
  *   --play-inset-t  HUD bar height when it overlays the canvas (landscape / desktop), else 0;
  *                   level 7 portrait: down to the bottom of the order ticket slot (ticket + tutorial hint)
  *   --play-inset-b  height from the host bottom to the top of the highest visible touch
- *                   control when the controls overlay the canvas (landscape), else 0;
+ *                   control when the controls overlay the canvas (landscape; 0 in the level 6 side view), else 0;
  *                   includes the safe-area bottom. Level 7 portrait: the action button area
  *   --play-inset-l  level 7 landscape: width of the ticket column (ticket, hint, action button; the ticket <= 30% and <= 260 px), else 0
  * Level 7 parts are the `[data-inset]` elements; CSS tells each one's side with `--dock: top | left | bottom`.
@@ -45,7 +45,9 @@ export function trackInsets(play: HTMLElement, host: HTMLElement, hud: HTMLEleme
     if (h.height < 8) return false;
     const top = getComputedStyle(hud).position === 'absolute' ? Math.max(0, hud.getBoundingClientRect().bottom - h.top) : 0;
     let bottom = 0;
-    if (getComputedStyle(controls).position === 'absolute') {
+    // level 6 side view: ▲ ▼ stand behind the truck and FRENA inside the bottom sidewalk (rush/driver.css), so the
+    // scene frames the road over the full height and the bottom inset stays 0
+    if (getComputedStyle(controls).position === 'absolute' && !('side' in controls.dataset)) {
       for (const n of controls.querySelectorAll<HTMLElement>(CONTROL_PARTS)) {
         const r = n.getBoundingClientRect();
         // level 8 landscape: the controls stand in columns beside the host, so they cover none of it

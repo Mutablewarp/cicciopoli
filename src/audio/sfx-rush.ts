@@ -1,14 +1,42 @@
 /**
  * Level 6 "CICCIO'S RUSH" sound effects: lane whoosh, brake squeal, cartoon crash, delivery
- * cha-ching, combo blip, power expiring, Fiat horn, rocket booster, new record fanfare.
+ * cha-ching, combo blip, power expiring, Fiat horn, rocket booster, new record fanfare;
+ * v9: SFIORATO! whoosh, fries-trail blips climbing a scale, CATENA! arpeggio, CICCIO FEVER riser + hit.
  * Same recipe contract as sfx.ts, which spreads this table into SFX. Played over the busiest
  * track, so they stay short, mid-band (phone speakers) and soft on the ones repeated every second.
  */
-import { hiss, tone } from './synth';
+import { hiss, tone, type Voice } from './synth';
 import { hz } from './theory';
 import type { Recipe } from './sfx';
 
-export type RushSfx = 'lane' | 'brake' | 'crash' | 'deliver' | 'combo' | 'expire' | 'horn' | 'jet' | 'record';
+/** Stereo sweep for a sound passing by (plain mono where StereoPanner is missing, e.g. older iOS). */
+function panned(v: Voice, t: number, from: number, to: number, dur: number): Voice {
+  if (typeof v.ctx.createStereoPanner !== 'function') return v;
+  const pan = v.ctx.createStereoPanner();
+  pan.pan.setValueAtTime(from, t);
+  pan.pan.linearRampToValueAtTime(to, t + dur);
+  pan.connect(v.out);
+  return { ctx: v.ctx, out: pan };
+}
+
+/** One fry of a trail: a bright blip; calls less than TRAIL_GAP s apart climb the G major scale (it sits on the E minor tune). */
+const TRAIL_GAP = 1.2;
+const TRAIL_SCALE = ['G5', 'A5', 'B5', 'C6', 'D6', 'E6', 'F#6', 'G6', 'A6', 'B6'].map(hz);
+const trail: Recipe = (() => {
+  let step = 0;
+  let last = -Infinity;
+  // no pitch variation: a random ±3% between fries would put the scale out of tune
+  return (v, t) => {
+    step = t > last && t - last < TRAIL_GAP ? Math.min(step + 1, TRAIL_SCALE.length - 1) : 0;
+    last = t;
+    const f = TRAIL_SCALE[step];
+    tone(v, { wave: 0.25, t, f, a: 0.002, hold: 0.025, d: 0.08, peak: 0.18 });
+    tone(v, { wave: 'sine', t, f: f * 2, a: 0.002, d: 0.12, peak: 0.08 });
+    tone(v, { wave: 'triangle', t, f: f / 2, a: 0.002, hold: 0.02, d: 0.05, peak: 0.08 });
+  };
+})();
+
+export type RushSfx = 'lane' | 'brake' | 'crash' | 'deliver' | 'combo' | 'expire' | 'horn' | 'jet' | 'record' | 'nearMiss' | 'trail' | 'chain' | 'fever';
 
 export const RUSH_SFX: Readonly<Record<RushSfx, Recipe>> = {
   lane: (v, t, p) => {
@@ -99,5 +127,51 @@ export const RUSH_SFX: Readonly<Record<RushSfx, Recipe>> = {
     });
     tone(v, { wave: 'triangle', t: t + 0.3, f: hz('C4') * p, a: 0.004, hold: 0.1, d: 0.35, peak: 0.22 });
     [2637, 3136, 4186].forEach((f, i) => tone(v, { wave: 'triangle', t: t + 0.32 + i * 0.05, f: f * p, a: 0.002, d: 0.15, peak: 0.06 }));
+  },
+
+  nearMiss: (v, t, p) => {
+    // SFIORATO!: the car rips past the ear (right to left in the side view) with a Doppler drop...
+    const by = panned(v, t, 0.7, -0.7, 0.24);
+    hiss(by, { t, a: 0.07, d: 0.17, peak: 1.2, type: 'bandpass', f: 3400 * p, to: 650 * p, slide: 0.2, q: 1.4 });
+    tone(by, { wave: 'sawtooth', t, f: 330 * p, to: 230 * p, slide: 0.16, a: 0.07, d: 0.13, peak: 0.11, lp: 1500, lpTo: 600 });
+    // ...and the people on the sidewalk go "uuuh!": a few voices sliding down, a breath under them
+    [196, 247, 294, 233].forEach((f, i) => {
+      const at = t + 0.11 + i * 0.012;
+      tone(v, { wave: 'sawtooth', t: at, f: f * p, to: f * 0.88 * p, a: 0.05, hold: 0.07, d: 0.2, peak: 0.045, lp: 820, vib: [22, 5 + i] });
+    });
+    hiss(v, { t: t + 0.11, a: 0.05, hold: 0.06, d: 0.18, peak: 0.07, type: 'bandpass', f: 520, q: 1.2 });
+  },
+
+  trail,
+
+  chain: (v, t, p) => {
+    // CATENA!: a bright run up the G major chord landing on a held, singing top with a sparkle
+    ['G5', 'B5', 'D6'].forEach((n, i) => {
+      const at = t + i * 0.055;
+      tone(v, { wave: 0.25, t: at, f: hz(n) * p, a: 0.002, hold: 0.03, d: 0.06, peak: 0.15 });
+      tone(v, { wave: 'triangle', t: at, f: (hz(n) / 2) * p, a: 0.002, hold: 0.03, d: 0.06, peak: 0.1 });
+    });
+    const top = t + 0.165;
+    tone(v, { wave: 0.25, t: top, f: hz('G6') * p, a: 0.003, hold: 0.12, d: 0.3, peak: 0.15, vib: [16, 7] });
+    tone(v, { wave: 'triangle', t: top, f: hz('B5') * p, a: 0.003, hold: 0.12, d: 0.3, peak: 0.12 });
+    tone(v, { wave: 'triangle', t: top, f: hz('G4') * p, a: 0.003, hold: 0.1, d: 0.28, peak: 0.2 });
+    [3136, 3951, 4699].forEach((f, i) => tone(v, { wave: 'triangle', t: top + 0.03 + i * 0.04, f: f * p, a: 0.002, d: 0.12, peak: 0.05 }));
+  },
+
+  fever: (v, t, p) => {
+    // CICCIO FEVER!: a fizzing two-octave riser with a trembling reed on top...
+    hiss(v, { t, a: 0.38, d: 0.05, peak: 0.42, type: 'lowpass', f: 500, to: 6500, slide: 0.42, q: 2 });
+    tone(v, { wave: 'sawtooth', t, f: hz('E3') * p, to: hz('E5') * p, slide: 0.42, a: 0.36, d: 0.05, peak: 0.1, lp: 900, lpTo: 3500, vib: [30, 14] });
+    tone(v, { wave: 0.25, t, f: hz('B3') * p, to: hz('B5') * p, slide: 0.42, a: 0.36, d: 0.05, peak: 0.05 });
+    // ...then the hit: a thump, a power-chord stab on the tonic (no third, so it never fights the tune) and a jingle wash
+    const hit = t + 0.42;
+    tone(v, { wave: 'sine', t: hit, f: 160, to: 45, slide: 0.12, a: 0.001, d: 0.24, peak: 0.36 });
+    hiss(v, { t: hit, d: 0.08, peak: 0.5, type: 'lowpass', f: 2200 });
+    ['E4', 'B4', 'E5'].forEach((n) => {
+      tone(v, { wave: 0.3, t: hit, f: hz(n) * p, a: 0.003, hold: 0.1, d: 0.3, peak: 0.09 });
+      tone(v, { wave: 'sawtooth', t: hit, f: hz(n) * 1.004 * p, a: 0.003, hold: 0.1, d: 0.26, peak: 0.05, lp: 3200 });
+    });
+    hiss(v, { t: hit, a: 0.002, d: 0.42, peak: 0.16, type: 'highpass', f: 5200 });
+    hiss(v, { t: hit + 0.02, d: 0.16, peak: 0.12, type: 'bandpass', f: 9000, q: 3 });
   },
 };

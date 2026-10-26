@@ -10,13 +10,16 @@ const summary = (o: Partial<RushRunSummary>): RushRunSummary => ({
   completed: false,
   reachedEnd: true,
   score: 0,
-  points: { deliveries: 0, fresh: 0, sky: 0, passes: 0, zones: 0, pickups: 0 },
+  points: { deliveries: 0, fresh: 0, sky: 0, passes: 0, zones: 0, pickups: 0, nearMiss: 0, chains: 0, fever: 0 },
   delivered: 0,
   perfect: 0,
   fresh: [],
   collisions: 0,
   bestCombo: 1,
   flew: false,
+  nearMisses: 0,
+  chains: 0,
+  fevers: 0,
   ...o,
 });
 
@@ -42,16 +45,16 @@ describe('score', () => {
   it('stars follow the brief', () => {
     expect(starsFor(summary({ delivered: 0 }))).toBe(0);
     expect(starsFor(summary({ delivered: 1, score: 9000 }))).toBe(1);
-    expect(starsFor(summary({ delivered: 2, score: 2499 }))).toBe(1);
-    expect(starsFor(summary({ delivered: 2, score: 2500 }))).toBe(2);
-    expect(starsFor(summary({ delivered: 3, score: 5000, fresh: [90, 80, 70], collisions: 0 }))).toBe(3);
-    expect(starsFor(summary({ delivered: 3, score: 5000, fresh: [90, 80, 60], collisions: 0 }))).toBe(2);
-    expect(starsFor(summary({ delivered: 3, score: 5000, fresh: [100, 100, 100], collisions: 1 }))).toBe(2);
+    expect(starsFor(summary({ delivered: 2, score: 5999 }))).toBe(1);
+    expect(starsFor(summary({ delivered: 2, score: 6000 }))).toBe(2);
+    expect(starsFor(summary({ delivered: 3, score: 9000, fresh: [90, 80, 70], collisions: 0 }))).toBe(3);
+    expect(starsFor(summary({ delivered: 3, score: 9000, fresh: [90, 80, 60], collisions: 0 }))).toBe(2);
+    expect(starsFor(summary({ delivered: 3, score: 9000, fresh: [100, 100, 100], collisions: 1 }))).toBe(2);
     expect(avgFresh(summary({ fresh: [] }))).toBe(0);
   });
 
   it('breakdown rows add up to the score (sky row only when earned)', () => {
-    const p = { deliveries: 3000, fresh: 1300, sky: 0, passes: 2150, zones: 600, pickups: 75 };
+    const p = { deliveries: 3000, fresh: 1300, sky: 0, passes: 2150, zones: 600, pickups: 75, nearMiss: 0, chains: 0, fever: 0 };
     const rows = breakdown(p);
     expect(rows.map((r) => r.label)).not.toContain(strings.BREAKDOWN_TEXT.sky);
     expect(rows.reduce((a, r) => a + r.points, 0)).toBe(7125);
@@ -64,8 +67,9 @@ describe('score', () => {
     expect(tipFor(summary({ score: 4850, delivered: 1, reachedEnd: false }), 5000)).toBe(strings.TIP_TEXT.brake);
     expect(tipFor(summary({ score: 800 }), 1000)).toBe(strings.TIP_TEXT.deliver);
     expect(tipFor(summary({ score: 5200, delivered: 2, reachedEnd: false }), 5000)).toBe(strings.TIP_TEXT.recordRule);
-    const perfect = summary({ delivered: 3, completed: true, fresh: [95, 92, 90], bestCombo: 3, score: 12000 });
+    const perfect = summary({ delivered: 3, completed: true, fresh: [95, 92, 90], bestCombo: 3, chains: 1, score: 12000 });
     expect(tipFor(perfect, 0)).toBe(strings.TIP_TEXT.perfect);
+    expect(tipFor({ ...perfect, chains: 0 }, 0)).toBe('Prendi tutta la scia di patatine: la CATENA vale +150!');
     expect(tipFor({ ...perfect, daily: true }, 0)).toBe('Corsa perfetta! Torna domani per la nuova SFIDA DEL GIORNO.');
     expect(tipFor(summary({ delivered: 3, completed: true, collisions: 1, fresh: [90, 90, 90] }), 0)).toBe(
       'Evita un urto per la terza stella!',
@@ -81,6 +85,15 @@ describe('score', () => {
     expect(strings.shareText(5250)).toBe("Ho fatto 5.250 punti su Ciccio's Rush! Riesci a battermi?");
     expect(strings.comboText(1.25)).toBe('COMBO x1,25');
     expect(strings.dailyLabel(new Date(2026, 9, 20))).toBe('SFIDA DEL 20 OTTOBRE');
+  });
+
+  it('first-run hints name the lane buttons of the view and drop the swipe with SWIPE OFF', () => {
+    expect(strings.hintFor(0, false, true)).toBe(strings.RUSH_TEXT.hints[0]);
+    expect(strings.hintFor(0, false, false)).toBe(strings.RUSH_TEXT.hintNoSwipe);
+    expect(strings.hintFor(0, true, true)).toBe('SCORRI O USA ▲ ▼ PER CAMBIARE CORSIA');
+    expect(strings.hintFor(0, true, false)).toBe('USA ▲ ▼ PER CAMBIARE CORSIA');
+    expect(strings.hintFor(2, true, false)).toBe(strings.RUSH_TEXT.hints[2]);
+    expect(strings.RUSH_TEXT.hintsSide.join()).not.toMatch(/[◀▶]/);
   });
 
   it('accented capitals the pixel font cannot draw', () => {

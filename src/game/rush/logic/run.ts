@@ -5,14 +5,15 @@
  */
 import { RUSH_ZONES } from '../../../art/rush/keys';
 import type { HudState } from '../../../contracts';
-import { RUSH_BOOSTER, RUSH_DELIVERY, RUSH_FAIR, RUSH_POWERS, RUSH_ROAD, RUSH_RUN, RUSH_SCORE, RUSH_TRUCK } from '../../../config/rush';
-import { collide } from './collide';
+import { RUSH_BOOSTER, RUSH_DELIVERY, RUSH_FAIR, RUSH_POWERS, RUSH_ROAD, RUSH_RUN, RUSH_SCORE, RUSH_TRAILS, RUSH_TRUCK } from '../../../config/rush';
+import { collide, markNearMisses } from './collide';
 import { isTraffic } from './entity';
 import { POWER_PICKUP } from './powerups';
 import { RunState, zoneIndexAt } from './state';
 import { RUSH_TEXT, ZONE_TEXT } from './strings';
 import type { TrafficManager } from './traffic';
 import type { RadarMark, RushEvent, RushInput, RushOptions, RushRunSummary, RushSnapshot } from './types';
+import { CHANGE_CELLS, cellOf } from './validator';
 
 type Emit = (e: RushEvent) => void;
 
@@ -42,6 +43,7 @@ export class RushRun {
     if (input.laneDir !== 0) {
       const result = s.lanes.press(input.laneDir);
       if (result !== 'ignored') emit({ type: 'lane', dir: input.laneDir, result });
+      if (result === 'start') markNearMisses(s);
     }
     s.braking = input.brake;
     s.updateSpeed(dt);
@@ -50,7 +52,10 @@ export class RushRun {
     s.updateRecovery(dt);
     s.slipMs = Math.max(0, s.slipMs - dt);
     s.cleanMs += dt;
-    if (s.lanes.update(dt) && s.lanes.changing) emit({ type: 'lane', dir: s.lanes.lean, result: 'start' });
+    if (s.lanes.update(dt) && s.lanes.changing) {
+      emit({ type: 'lane', dir: s.lanes.lean, result: 'start' });
+      markNearMisses(s);
+    }
     s.powers.update(dt, emit);
     if (s.booster.update(dt, s.deliveries.zoneOpen)) this.land(emit);
     s.traffic.plan(s.d, { zoneAt: (d) => s.zoneAt(d), sprint: s.powers.sprint });
@@ -68,6 +73,7 @@ export class RushRun {
       emit,
     });
     collide(s, emit);
+    s.score.fever.update(dt, s.score.streak, emit);
     if (s.hearts <= 0) this.end('crash', emit);
     else if (s.timeMs >= RUSH_RUN.durationMs) this.end('time', emit);
     return events;
@@ -97,7 +103,7 @@ export class RushRun {
     s.hintIndex++;
   }
 
-  /** Power crates, fries trays and the PROPULSORE crate, just above the view in safe lanes. */
+  /** Power crates, fries trays and trails, the PROPULSORE crate: just above the view on safe ground. */
   private pickups(): void {
     const s = this.s;
     const t = s.timeMs;
@@ -108,7 +114,10 @@ export class RushRun {
       if (lane !== null) s.traffic.addPickup(POWER_PICKUP[power], lane, meetD);
       s.schedule.powerDone(t, lane !== null);
     }
-    if (s.schedule.friesDue(t)) {
+    const quiet = !s.booster.flying && !s.deliveries.zoneSoon(t, RUSH_TRAILS.zoneQuietMs);
+    const truck = { lane: s.lanes.target, cell: cellOf(s.d) + (s.lanes.changing ? CHANGE_CELLS : 0) };
+    s.trails.update(t, s.d, meetD, truck, s.traffic, quiet);
+    if (s.schedule.friesDue(t) && !s.trails.busy(s.d)) {
       const span = (RUSH_POWERS.friesLine - 1) * RUSH_POWERS.friesGapPx;
       const lane = s.traffic.pickupLane(s.d, meetD, span, s.pickRng);
       if (lane !== null) for (let i = 0; i < RUSH_POWERS.friesLine; i++) s.traffic.addPickup('fries', lane, meetD + i * RUSH_POWERS.friesGapPx);
@@ -178,6 +187,7 @@ export class RushRun {
       powerLeft: s.powers.left,
       shield: s.powers.shield,
       radar: s.powers.radar ? this.radar() : null,
+      fever: s.score.fever.left,
       order,
       delivered: s.deliveries.delivered,
       shopD: s.deliveries.shopD,
@@ -219,6 +229,7 @@ export class RushRun {
       deliveries: { done: s.deliveries.delivered, total: RUSH_DELIVERY.count },
       powerLeft: s.powers.timed || s.powers.shield ? s.powers.left : 0,
       combo: s.score.combo,
+      fever: s.score.fever.left,
     };
   }
 
@@ -240,6 +251,9 @@ export class RushRun {
       collisions: s.collisions,
       bestCombo: s.score.bestCombo,
       flew: s.booster.flew,
+      nearMisses: s.score.nearMisses,
+      chains: s.trails.chains,
+      fevers: s.score.fever.count,
     };
   }
 }

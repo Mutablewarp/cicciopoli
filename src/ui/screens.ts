@@ -56,7 +56,12 @@ export function keyLegend(level?: LevelId): string {
     );
   }
   if (level === 7) return keys([['INVIO', 'SPAZIO'], "prendi l'ordine / servi"], [['MOUSE'], 'cucina'], PAUSE_KEYS);
-  if (level === 6) return keys([['←', '→', 'A', 'D'], 'corsia'], [['↓', 'S', 'SPAZIO'], 'frena'], PAUSE_KEYS);
+  // level 6: a wide screen drives in the side view (↑ ↓ lanes, ← brakes); rush/panels.css shows the legend of the screen shape
+  if (level === 6) {
+    const upright = keys([['←', '→', 'A', 'D'], 'corsia'], [['↓', 'S', 'SPAZIO'], 'frena'], PAUSE_KEYS);
+    const side = keys([['↑', '↓', 'W', 'S'], 'corsia'], [['←', 'A', 'SPAZIO'], 'frena'], PAUSE_KEYS);
+    return upright.replace('cc-keys', 'cc-keys cc-only-upright') + side.replace('cc-keys', 'cc-keys cc-only-side');
+  }
   if (level === 5) return keys([['←', '→', 'A', 'D'], 'muovi'], [['↑', 'W', 'SPAZIO'], 'salta'], [['K', 'C'], 'pugno'], [['J', 'X'], 'spacca'], PAUSE_KEYS);
   if (level === 3) return keys([['←', '→', 'A', 'D'], 'muovi'], [['SPAZIO', 'J', 'X'], 'fuoco'], [['K', 'C'], 'fulmine'], PAUSE_KEYS);
   if (level === 4) return keys([['←', '↑', '→', '↓'], 'muovi'], [['W', 'A', 'S', 'D'], 'muovi'], PAUSE_KEYS);

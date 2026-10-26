@@ -1,8 +1,8 @@
 /**
  * Touch controls per mode: platform (◀▶ + SALTA/VOLA, GOAT, THAI, SCENDI), shooter
  * (◀▶ + FUOCO, FULMINE with charges), maze (4-way cross pad; swipes live in input), driver
- * (◀ ▶ lane taps + a held FRENA; swipes live in input), kitchen (no pads: one big action button,
- * mounted in the kitchen HUD and shown with a mouse too) and cartoon (level 8: the ◀▶ + ▲ aim pad and the
+ * (◀ ▶ lane taps + a held FRENA, or ▲ ▼ + FRENA in the side view (`data-side`, rush/driver.css); swipes live in
+ * input), kitchen (no pads: one big action button, mounted in the kitchen HUD and shown with a mouse too) and cartoon (level 8: the ◀▶ + ▲ aim pad and the
  * SALTA / SPARA (with its AUTO switch) / SCATTO / ARMA / EX buttons and the first-fight coach, cartoon/*). Every pointer is captured by the control
  * it started on and tracked by pointerId.
  */
@@ -59,8 +59,14 @@ export interface Controls {
   set(layout: ControlsLayout | null): void;
 }
 
-/** `fire` = the mode's fire action is enabled (kitchen: Enter / Space press the action button only then). */
-export function createControls(input: InputState, onMode: (m: ControlsMode, swipe: SwipeSetting | undefined, fire: boolean) => void): Controls {
+/**
+ * `fire` = the mode's fire action is enabled (kitchen: Enter / Space press the action button only then);
+ * `side` = the driver's side view (ControlsLayout.side: ▲ ▼ keys and vertical swipes).
+ */
+export function createControls(
+  input: InputState,
+  onMode: (m: ControlsMode, swipe: SwipeSetting | undefined, fire: boolean, side: boolean) => void,
+): Controls {
   const root = el('div', 'cc-controls is-off');
   root.addEventListener('contextmenu', (e) => e.preventDefault());
   const isOff = (): boolean => root.classList.contains('is-off');
@@ -224,11 +230,15 @@ export function createControls(input: InputState, onMode: (m: ControlsMode, swip
       // tolerate callers that predate `mode`
       const mode: ControlsMode = layout.mode ?? 'platform';
       const wasOff = isOff();
-      if (root.dataset.mode !== mode) {
+      // the side view only exists while driving: a rotation swaps ◀ ▶ for ▲ ▼ and drops the lane fingers
+      const side = mode === 'driver' && layout.side === true;
+      if (root.dataset.mode !== mode || ('side' in root.dataset) !== side) {
         for (const p of pads) p.release();
         root.dataset.mode = mode;
+        root.toggleAttribute('data-side', side);
+        lanes.side(side);
       }
-      onMode(mode, layout.swipe, layout.fire === 'enabled');
+      onMode(mode, layout.swipe, layout.fire === 'enabled', side);
       root.classList.remove('is-off');
       root.dataset.level = String(layout.level);
       setWeaponSkins(mode === 'platform' ? layout.level : 1);

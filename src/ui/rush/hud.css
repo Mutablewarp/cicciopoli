@@ -146,13 +146,61 @@
 
 /* combo multiplier */
 .cc-combo {
+  position: relative;
   flex: none;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 1.5);
   padding: 5px 6px 4px;
   font-size: calc(var(--u) * 5);
   line-height: 1;
   color: var(--ink);
   background: var(--orange);
   box-shadow: 0 0 0 2px var(--ink), inset 0 -2px 0 var(--orange-lo), inset 0 2px 0 var(--orange-hi);
+}
+.cc-combo[hidden] {
+  display: none;
+}
+.cc-combo__x {
+  font-weight: inherit;
+}
+/* CICCIO FEVER (points x2): the badge turns gold and glows, a flame flickers in it and a red meter drains under
+   the number (6 s) */
+.cc-combo .cc-flame,
+.cc-combo__fever {
+  display: none;
+}
+.cc-combo.is-fever {
+  padding: 4px 6px 6px 5px;
+  background: linear-gradient(180deg, #fff3a0 0 22%, #ffc21a 22% 78%, #e89a10 78%);
+  box-shadow: 0 0 0 2px var(--ink), 0 0 10px 3px rgba(255, 194, 26, 0.7);
+}
+.cc-combo.is-fever .cc-flame {
+  display: block;
+  width: calc(var(--u) * 4.8);
+  height: calc(var(--u) * 6);
+  margin-top: -1px;
+  animation: cc-flame 0.48s steps(1) infinite;
+}
+.cc-combo.is-fever .cc-combo__fever {
+  display: block;
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 2px;
+  height: 2px;
+  background: #e8301c;
+  transform-origin: 0 50%;
+}
+@keyframes cc-flame {
+  50% {
+    transform: scaleX(-1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-combo.is-fever .cc-flame {
+    animation: none;
+  }
 }
 
 @media (orientation: landscape) {

@@ -4,7 +4,7 @@
  * Owns the RushRun, progress / settings, input mapping, HUD sync and the event reactor.
  */
 import type Phaser from 'phaser';
-import type { RushDriverId, RushResultInfo, RushSettings, Services } from '../../contracts';
+import type { ControlsLayout, RushDriverId, RushResultInfo, RushSettings, Services } from '../../contracts';
 import { FINALE, FLOW, FX } from './config';
 import { Finale } from './finale';
 import { OracleBot } from './logic/oracleBot';
@@ -47,6 +47,10 @@ export class RushSession {
   private attractD = 0;
   private braking = false;
   private lastTick = -1;
+  /** v9 SFIORATO! slow-down pulse left (ms of real time) */
+  private slowMs = 0;
+  /** the side view the controls were last laid out for */
+  private sideControls: boolean | null = null;
   private readonly idle: RushRun;
   private readonly cleanups: Array<() => void> = [];
 
@@ -65,6 +69,10 @@ export class RushSession {
       overlay: view.overlay,
       settings: () => this.progress.data.settings,
       later: (ms, fn) => void scene.time.delayedCall(ms, fn),
+      pulse: (ms) => {
+        if (!view.reducedMotion) this.slowMs = ms;
+      },
+      side: () => view.framing.side,
     });
     // a parked run that is never stepped: the truck idling on the road behind the setup panel
     this.idle = new RushRun({ seed: 1, driver: 'riflessi', daily: false, hints: false });
@@ -122,12 +130,21 @@ export class RushSession {
     this.state = 'run';
     this.lastTick = -1;
     this.braking = false;
+    this.slowMs = 0;
     ui.hideOverlays();
     ui.showHud(true);
-    ui.setControls({ level: 6, mode: 'driver', fire: 'hidden', club: 'hidden', down: 'enabled', jumpLabel: 'SALTA', swipe: this.progress.data.settings.swipe });
+    this.controls();
     ui.updateHud(this.run.hud());
     audio.music('rush');
     input.reset();
+  }
+
+  /** The driver controls for the current view: ▲ ▼ + FRENA in the side view, ◀ ▶ + FRENA upright. */
+  private controls(): void {
+    const side = this.view.framing.side;
+    this.sideControls = side;
+    const layout: ControlsLayout = { level: 6, mode: 'driver', fire: 'hidden', club: 'hidden', down: 'enabled', jumpLabel: 'SALTA', swipe: this.progress.data.settings.swipe, side };
+    this.svc.ui.setControls(layout);
   }
 
   /** RIPROVA: same kind of run (daily or not), new traffic unless daily, no tutorial. */
@@ -144,19 +161,25 @@ export class RushSession {
   update(dtMs: number): void {
     this.timeMs += dtMs;
     const run = this.run;
-    if (this.state === 'setup' || !run) {
-      this.attractD += (FLOW.attractSpeed * dtMs) / 1000;
-      const snap = this.idle.snapshot;
-      this.view.scenery.update(this.attractD, 0, 0);
-      this.view.truck.update(snap, this.timeMs, dtMs);
-      return;
-    }
     if (this.state === 'finale') {
       this.finale?.update(dtMs);
       return;
     }
-    if (this.state === 'run') this.drive(run, dtMs);
+    this.view.tick(dtMs);
+    if (this.state === 'setup' || !run) {
+      this.attractD += (FLOW.attractSpeed * dtMs) / 1000;
+      this.view.attract(this.attractD, this.idle.snapshot, this.timeMs, dtMs);
+      return;
+    }
+    if (this.state === 'run') this.drive(run, this.slow(dtMs));
     else this.view.draw(run.snapshot, this.timeMs, dtMs);
+  }
+
+  /** Game time of this frame: a SFIORATO! pulse runs it a little slower for a moment. */
+  private slow(dtMs: number): number {
+    if (this.slowMs <= 0) return dtMs;
+    this.slowMs -= dtMs;
+    return dtMs * FX.nearSlowScale;
   }
 
   private drive(run: RushRun, dtMs: number): void {
@@ -255,12 +278,18 @@ export class RushSession {
 
   layout(): void {
     this.view.layout();
+    // a turn of the phone mid-run flips the view: the controls follow
+    if (this.state === 'run' && this.sideControls !== this.view.framing.side) {
+      this.controls();
+      this.reactor.turned();
+    }
     this.finale?.layout(this.scene.scale.width, this.scene.scale.height, this.view.overlay.unit);
   }
 
   /** Scene shutdown: its cameras are already gone, so the finale is dropped without re-framing the world. */
   destroy(): void {
     this.svc.audio.setMusicMuted(false);
+    this.svc.audio.intensity?.(0);
     this.cleanups.forEach((fn) => fn());
     this.cleanups.length = 0;
     this.finale?.destroy();

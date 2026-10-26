@@ -14,9 +14,10 @@ export interface InputHub {
   /**
    * Current controls mode: keyboard mapping (Space = fire in the shooter, brake in the driver, Enter / Space =
    * the action button in the kitchen while `fire` is true, the level 8 keys in the cartoon mode, where ↑ aims and
-   * never jumps) and game-area swipes (maze, driver) at the given sensitivity (false = off).
+   * never jumps) and game-area swipes (maze, driver) at the given sensitivity (false = off). `side`: the driver's
+   * side view (↑ W / ↓ S and vertical swipes change lane, ← A Space brake; ControlsLayout.side).
    */
-  setMode(mode: ControlsMode, swipe?: SwipeSetting, fire?: boolean): void;
+  setMode(mode: ControlsMode, swipe?: SwipeSetting, fire?: boolean, side?: boolean): void;
   /** Swipes on this element steer in maze mode and change lane in driver mode (one finger at a time). */
   bindSwipe(area: HTMLElement): void;
 }
@@ -27,7 +28,8 @@ export function createInput(): InputHub {
   let mode: ControlsMode = 'platform';
   let swipe: SwipeSetting = 'mid';
   let fireOk = true;
-  bindKeyboard(state, () => interceptor, () => mode, () => fireOk);
+  let side = false;
+  bindKeyboard(state, () => interceptor, () => mode, () => fireOk, () => side);
   window.addEventListener('blur', () => state.reset());
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) state.reset();
@@ -37,8 +39,9 @@ export function createInput(): InputHub {
     setInterceptor(fn) {
       interceptor = fn;
     },
-    setMode(m, s = 'mid', fire = true) {
+    setMode(m, s = 'mid', fire = true, sideView = false) {
       mode = m;
+      side = sideView;
       state.upJumps = m !== 'cartoon';
       swipe = s;
       fireOk = fire;
@@ -50,7 +53,7 @@ export function createInput(): InputHub {
         const min = swipeMin(swipe);
         if ((mode !== 'maze' && mode !== 'driver') || min === null || finger !== null || (e.pointerType === 'mouse' && e.button !== 0)) return;
         finger = e.pointerId;
-        tracker = mode === 'maze' ? new SwipeTracker(min) : new LaneSwipe(min);
+        tracker = mode === 'maze' ? new SwipeTracker(min) : new LaneSwipe(min, side);
         tracker.start(e.clientX, e.clientY);
         try {
           area.setPointerCapture(e.pointerId);

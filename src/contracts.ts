@@ -168,6 +168,8 @@ export interface HudState {
   powerLeft?: number;
   /** level 6: clean-driving combo multiplier; 1 or less hides it */
   combo?: number;
+  /** level 6 (v9): CICCIO FEVER time left 0..1 (points x2, gold trail); 0 / omitted hides it */
+  fever?: number;
   /** level 7: order ticket, customer bubble, patience, served pins, hint line */
   kitchen?: KitchenHud;
   /** level 8: super cards, weapon, boss name, boss pins */
@@ -215,6 +217,12 @@ export interface ControlsLayout {
   weapon?: CartoonWeapon;
   /** cartoon: super cards 0..5 on the SUPER button (1 = EX shot ready, 5 = PIOGGIA DI PATATINE) */
   superCards?: number;
+  /**
+   * driver (v9): the side view of a landscape screen (the camera is turned, the truck drives to the RIGHT):
+   * ▲ ▼ change lane (▲ = world lane - 1, sent as consumeDir 'left'), swipes up / down, keys ↑ W / ↓ S;
+   * FRENA is held on ← A Space. Omitted / false = the upright view (◀ ▶, ← → A D, ↓ S Space brake).
+   */
+  side?: boolean;
 }
 
 export interface TitleInfo {
@@ -313,6 +321,9 @@ export type SfxName =
   // level 6 truck: lane change whoosh, brake squeal, cartoon crash, delivery cha-ching, combo up,
   // power expiring, traffic horn, rocket booster, new personal record
   | 'lane' | 'brake' | 'crash' | 'deliver' | 'combo' | 'expire' | 'horn' | 'jet' | 'record'
+  // level 6 v9: SFIORATO! near-miss whoosh, one fry of a trail (pitch climbs along the trail), the whole
+  // trail collected (CATENA!), CICCIO FEVER starts
+  | 'nearMiss' | 'trail' | 'chain' | 'fever'
   // level 7 kitchen: meat on the griddle, flip with the spatula, basket into hot oil, PERFETTO ding,
   // burning warning, topping on the stack, sauce squeeze, paper wrap, tray served, till cha-ching,
   // happy customer, unhappy customer, shop doorbell, item into the bin, YOU ARE SO GOLDEN fanfare
@@ -339,6 +350,8 @@ export interface GameAudio {
   unlock(): void;
   sfx(name: SfxName): void;
   music(name: MusicName | null): void;
+  /** Level 6 v9 CICCIO FEVER: 1 lifts the current music (extra layer / brighter, same tempo grid), 0 back to normal. */
+  intensity?(level: 0 | 1): void;
   /** Stops music and plays a one-shot jingle. */
   jingle(name: 'win' | 'gameover'): void;
   readonly muted: boolean;

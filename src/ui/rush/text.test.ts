@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { keyLegend, LEVEL_NAMES, LEVEL_TAGS } from '../screens';
+import { keyGlyphs } from './icons';
 import { MENU_URL } from './results';
 import { LEGEND, POWER_NAMES, RULES, SWIPE_OPTIONS, comboLabel, countdownLabel, freshTone, isSecret, pinAt, points, timedPower } from './text';
 
@@ -79,7 +80,7 @@ describe('level 6 copy', () => {
       keyLegend(6).replace(/<[^>]+>/g, ' '),
       ...Object.values(POWER_NAMES),
       ...LEGEND.flatMap((l) => [l.name, l.text]),
-      ...RULES.flatMap((r) => [r.title, r.text]),
+      ...RULES.flatMap((r) => [r.title, r.text, r.side ?? '']),
       ...SWIPE_OPTIONS.map((o) => o.label),
     ];
     for (const t of text) expect(t).not.toMatch(BANNED);
@@ -96,6 +97,19 @@ describe('level 6 copy', () => {
   it('the legend lists the four menu powers and keeps the booster a secret', () => {
     expect(LEGEND.map((l) => l.icon)).toEqual(['shield', 'radar', 'sprint', 'grip', 'fries', 'secret']);
     expect(LEGEND.some((l) => l.name === POWER_NAMES.jet)).toBe(false);
+  });
+
+  it('the CORSIE rule draws its ▲ ▼ / ◀ ▶ as pixel glyphs a capital tall, named for screen readers', () => {
+    const corsie = RULES.find((r) => r.title === 'CORSIE');
+    const up = keyGlyphs(corsie?.text ?? '');
+    const side = keyGlyphs(corsie?.side ?? '');
+    expect(up).not.toMatch(/[▲▼◀▶]/);
+    expect(side).not.toMatch(/[▲▼◀▶]/);
+    expect(up.match(/aria-label="(\w+)"/g)).toEqual(['aria-label="sinistra"', 'aria-label="destra"']);
+    expect(side).toContain('aria-label="su"');
+    expect(side).toContain('aria-label="giù"');
+    expect(side).toContain('viewBox="0 0 7 7"');
+    expect(keyGlyphs('niente frecce')).toBe('niente frecce');
   });
 
   it('the swipe setting offers Alta / Media / Bassa / Off', () => {

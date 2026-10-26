@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compileSong, type SongEvent } from './sequencer';
 import { SONGS } from './tracks';
+import { rushFever } from './tracks/rushFever';
 
 describe('rush track', () => {
   const src = SONGS.rush;
@@ -61,5 +62,57 @@ describe('rush track', () => {
     expect(drums(0)).toContain('k');
     const roll = [6, 5, 4, 3, 2, 1].filter((i) => drums(song.total - i).includes('s'));
     expect(roll).toHaveLength(6);
+  });
+});
+
+describe('rush FEVER arrangement (intensity 1)', () => {
+  const base = compileSong(SONGS.rush);
+  const fever = compileSong(rushFever);
+  const BAR = rushFever.stepsPerBar;
+  const events = (song: typeof base, step: number, ch: SongEvent['ch']): SongEvent[] => song.steps[step].filter((e) => e.ch === ch);
+  const midis = (evs: SongEvent[]): number[] => evs.flatMap((e) => (e.ch === 'drums' ? [] : [e.midi]));
+  const drums = (step: number): string => fever.steps[step].flatMap((e) => (e.ch === 'drums' ? [(e.accent ? e.drum.toUpperCase() : e.drum)] : [])).join('');
+
+  it('runs on the same grid as the base track, so it can be swapped in on any step', () => {
+    for (const k of ['bpm', 'stepsPerBeat', 'stepsPerBar', 'loop', 'order'] as const) expect(rushFever[k]).toEqual(SONGS.rush[k]);
+    expect(fever.total).toBe(base.total);
+    expect(fever.stepDur).toBe(base.stepDur);
+  });
+
+  it('keeps the tune on top and adds a second accordion a chord tone a third or a fourth below', () => {
+    let harmonised = 0;
+    for (let step = 0; step < base.total; step++) {
+      const tune = midis(events(base, step, 'lead'));
+      const both = midis(events(fever, step, 'lead'));
+      expect(Math.max(...both, -1), `step ${step}`).toBe(Math.max(...tune, -1));
+      const bar = Math.floor(step / BAR) * BAR;
+      const chord = new Set(Array.from({ length: BAR }, (_, i) => midis(events(base, bar + i, 'harm'))).flat().map((m) => m % 12));
+      for (const low of both.filter((m) => !tune.includes(m))) {
+        harmonised++;
+        expect(tune[0] - low, `step ${step}`).toBeGreaterThanOrEqual(3);
+        expect(tune[0] - low, `step ${step}`).toBeLessThanOrEqual(5);
+        expect(chord.has(low % 12), `step ${step}`).toBe(true);
+      }
+    }
+    expect(harmonised).toBeGreaterThan(100);
+  });
+
+  it('the tamburello jingles on every eighth, accented on both dotted beats; castanets lead into each beat', () => {
+    for (let step = 0; step < fever.total; step++) expect(drums(step), `step ${step}`).toContain(step % 3 === 0 ? 'O' : 'o');
+    const clacks = Array.from({ length: fever.total }, (_, s) => s).filter((s) => drums(s).includes('w'));
+    expect(clacks.length).toBeGreaterThan(50);
+    for (const s of clacks) expect(s % 3).toBe(2);
+  });
+
+  it('the engine keeps its beats and pumps octaves in between; everything stays in E minor', () => {
+    for (let step = 0; step < base.total; step += 3) expect(midis(events(fever, step, 'bass'))).toEqual(midis(events(base, step, 'bass')));
+    const pumped = Array.from({ length: fever.total }, (_, s) => s).filter((s) => {
+      const [f] = midis(events(fever, s, 'bass'));
+      const [b] = midis(events(base, s, 'bass'));
+      return f !== undefined && f === b + 12;
+    });
+    expect(pumped.length).toBeGreaterThanOrEqual(2 * 26);
+    const pcs = new Set(fever.steps.flatMap((evs) => midis(evs)).map((m) => m % 12));
+    for (const pc of pcs) expect([4, 6, 7, 9, 11, 0, 1, 2, 3]).toContain(pc);
   });
 });

@@ -1,7 +1,11 @@
-/** Score of a run: clean passes x combo, deliveries + freshness, clean zones, stars, tips. */
-import { RUSH_SCORE, RUSH_STARS } from '../../../config/rush';
+/** Score of a run: clean passes and near misses x combo, CICCIO FEVER, deliveries + freshness, clean zones, stars, tips. */
+import { RUSH_FEVER, RUSH_SCORE, RUSH_STARS } from '../../../config/rush';
+import { Fever } from './fever';
 import { BREAKDOWN_TEXT, TIP_TEXT } from './strings';
-import type { RushPoints, RushRunSummary } from './types';
+import type { RushEvent, RushPoints, RushRunSummary } from './types';
+
+/** Sources CICCIO FEVER doubles (the driving; deliveries, freshness and zone bonuses stay as they are). */
+const FEVER_SOURCES: readonly (keyof RushPoints)[] = ['passes', 'nearMiss', 'pickups', 'chains'];
 
 /** Multiplier after `streak` clean passes in a row: x1, +0.25 every 4, capped at x3. */
 export function comboFor(streak: number): number {
@@ -19,13 +23,14 @@ export function deliveryPoints(fresh: number, sky: boolean): { base: number; fre
 }
 
 export class ScoreBook {
-  readonly points: RushPoints = { deliveries: 0, fresh: 0, sky: 0, passes: 0, zones: 0, pickups: 0 };
+  readonly points: RushPoints = { deliveries: 0, fresh: 0, sky: 0, passes: 0, zones: 0, pickups: 0, nearMiss: 0, chains: 0, fever: 0 };
   streak = 0;
   bestCombo = 1;
+  nearMisses = 0;
+  readonly fever = new Fever();
 
   get total(): number {
-    const p = this.points;
-    return p.deliveries + p.fresh + p.sky + p.passes + p.zones + p.pickups;
+    return Object.values(this.points).reduce((a, b) => a + b, 0);
   }
 
   get combo(): number {
@@ -34,16 +39,36 @@ export class ScoreBook {
 
   /** A clean pass: points at the current combo; `up` = the combo just grew. */
   pass(): { points: number; up: boolean } {
-    const points = Math.round(RUSH_SCORE.pass * this.combo);
-    this.points.passes += points;
+    const points = this.add('passes', Math.round(RUSH_SCORE.pass * this.combo));
+    return { points, up: this.grow() };
+  }
+
+  /** SFIORATO!: points at the current combo, and it feeds the combo like a clean pass. */
+  nearMiss(): { points: number; up: boolean } {
+    this.nearMisses++;
+    const points = this.add('nearMiss', Math.round(RUSH_SCORE.nearMiss * this.combo));
+    return { points, up: this.grow() };
+  }
+
+  /** Books n points (doubled during CICCIO FEVER where it applies); returns what was scored. */
+  add(source: keyof RushPoints, n: number): number {
+    this.points[source] += n;
+    if (!this.fever.on || !FEVER_SOURCES.includes(source)) return n;
+    this.points.fever += n * (RUSH_FEVER.mul - 1);
+    return n * RUSH_FEVER.mul;
+  }
+
+  /** A real hit: the combo and the FEVER are gone. */
+  hit(emit: (e: RushEvent) => void): void {
+    this.streak = 0;
+    this.fever.hit(emit);
+  }
+
+  private grow(): boolean {
     const before = this.combo;
     this.streak++;
     this.bestCombo = Math.max(this.bestCombo, this.combo);
-    return { points, up: this.combo > before };
-  }
-
-  add(source: keyof RushPoints, n: number): void {
-    this.points[source] += n;
+    return this.combo > before;
   }
 }
 
@@ -51,17 +76,18 @@ export function avgFresh(s: Pick<RushRunSummary, 'fresh'>): number {
   return s.fresh.length === 0 ? 0 : Math.round(s.fresh.reduce((a, b) => a + b, 0) / s.fresh.length);
 }
 
-/** 1 = a delivery · 2 = two deliveries and 2500 points · 3 = all three, fresh avg >= 80, no hits. */
+/** 1 = a delivery · 2 = two deliveries and RUSH_STARS.twoScore points · 3 = all three, fresh avg >= 80, no hits. */
 export function starsFor(s: RushRunSummary): 0 | 1 | 2 | 3 {
   if (s.delivered >= 3 && s.collisions === 0 && avgFresh(s) >= RUSH_STARS.threeFresh) return 3;
   if (s.delivered >= RUSH_STARS.twoDeliveries && s.score >= RUSH_STARS.twoScore) return 2;
   return s.delivered >= 1 ? 1 : 0;
 }
 
-/** Results rows (their sum is the score); the sky row only when earned. */
+/** Results rows (their sum is the score); the sky, near-miss, chain and FEVER rows only when earned. */
 export function breakdown(p: Readonly<RushPoints>): { label: string; points: number }[] {
-  const keys: (keyof RushPoints)[] = ['deliveries', 'fresh', 'sky', 'passes', 'zones', 'pickups'];
-  return keys.filter((k) => k !== 'sky' || p.sky > 0).map((k) => ({ label: BREAKDOWN_TEXT[k], points: p[k] }));
+  const keys: (keyof RushPoints)[] = ['deliveries', 'fresh', 'sky', 'passes', 'nearMiss', 'zones', 'pickups', 'chains', 'fever'];
+  const earned: readonly (keyof RushPoints)[] = ['sky', 'nearMiss', 'chains', 'fever'];
+  return keys.filter((k) => !earned.includes(k) || p[k] > 0).map((k) => ({ label: BREAKDOWN_TEXT[k], points: p[k] }));
 }
 
 /** A run counts for the record and the day's best only when it reached 0 s with a delivery (BRIEF §8). */
@@ -82,5 +108,6 @@ export function tipFor(s: RushRunSummary, prevBest: number): string {
   if (s.collisions > 1) return TIP_TEXT.brake;
   if (avgFresh(s) < RUSH_STARS.threeFresh) return TIP_TEXT.fresh;
   if (s.bestCombo < RUSH_SCORE.comboMax) return TIP_TEXT.combo;
+  if (s.chains === 0) return TIP_TEXT.chain;
   return s.daily ? TIP_TEXT.perfectDaily : TIP_TEXT.perfect;
 }

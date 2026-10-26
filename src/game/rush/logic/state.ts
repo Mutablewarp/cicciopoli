@@ -8,6 +8,7 @@ import { PickupSchedule, Powers } from './powerups';
 import { streamRng, type Rng } from './rng';
 import { ScoreBook } from './score';
 import { TrafficManager } from './traffic';
+import { Trails } from './trails';
 import type { RushOptions } from './types';
 
 /** Zone index at a run time. */
@@ -54,6 +55,8 @@ export class RunState {
   readonly score = new ScoreBook();
   /** pickup lanes / nugget lines */
   readonly pickRng: Rng;
+  /** v9 FRIES TRAILS (own stream: the other pickups stay where they were) */
+  readonly trails: Trails;
 
   constructor(readonly options: RushOptions) {
     this.driver = RUSH_DRIVERS[options.driver];
@@ -61,6 +64,7 @@ export class RunState {
     this.traffic = new TrafficManager(streamRng(options.seed, RUSH_SEED.traffic), RUSH_FAIR.warnMs + this.driver.warnBonusMs);
     this.pickRng = streamRng(options.seed, RUSH_SEED.pickups);
     this.schedule = new PickupSchedule(this.pickRng);
+    this.trails = new Trails(streamRng(options.seed, RUSH_SEED.trails));
     this.deliveries = new Deliveries(streamRng(options.seed, RUSH_SEED.orders), this.driver.hitFreshMul);
     if (options.hints) this.traffic.keepClear(this.lanes.lane, 0, (RUSH_RUN.firstRunClearMs / 1000) * RUSH_SPEED.base.centro);
   }

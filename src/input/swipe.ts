@@ -47,16 +47,24 @@ export class SwipeTracker {
   }
 }
 
+/** Side view: the lane change of a vertical swipe (horizontal ones mean nothing). */
+const SIDE_LANE: Readonly<Record<Dir4, 'left' | 'right' | null>> = { up: 'left', down: 'right', left: null, right: null };
+
 /**
- * Driver lanes: one gesture = at most one left / right, however long it gets. Vertical travel
- * never steers; a swipe that starts vertical can still turn into a lane change.
+ * Driver lanes: one gesture = at most one lane change, however long it gets. Upright view: left / right, vertical
+ * travel never steers. Side view (`side`, the truck drives to the right): up = 'left' (the lane drawn above,
+ * world lane - 1), down = 'right', horizontal travel never steers. A swipe that starts along the dead axis can
+ * still turn into a lane change.
  */
 export class LaneSwipe {
   private x = 0;
   private y = 0;
   private spent = false;
 
-  constructor(private readonly min = SWIPE_MIN_PX) {}
+  constructor(
+    private readonly min = SWIPE_MIN_PX,
+    private readonly side = false,
+  ) {}
 
   start(x: number, y: number): void {
     this.x = x;
@@ -64,12 +72,14 @@ export class LaneSwipe {
     this.spent = false;
   }
 
-  move(x: number, y: number): Dir4 | null {
+  move(x: number, y: number): 'left' | 'right' | null {
     if (this.spent) return null;
     const d = swipeDir(x - this.x, y - this.y, this.min);
-    if (d !== 'left' && d !== 'right') return null;
+    if (!d) return null;
+    const lane = this.side ? SIDE_LANE[d] : d === 'left' || d === 'right' ? d : null;
+    if (!lane) return null;
     this.spent = true;
-    return d;
+    return lane;
   }
 }
 

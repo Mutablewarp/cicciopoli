@@ -71,12 +71,16 @@ export function isSecret(a: RushAchievementCard): boolean {
   return !a.unlocked && (flagged || SECRET_NAMES.has(a.name));
 }
 
-/** COME SI GIOCA: the four rules. */
-export const RULES: ReadonlyArray<{ title: string; text: string }> = [
-  { title: 'CORSIE', text: 'Tocca ◀ ▶ o scorri: una corsia alla volta.' },
+/**
+ * COME SI GIOCA: the five rules. `side` = the wording of the side view (a wide screen: the truck drives to the right
+ * and ▲ ▼ change lane); panels.ts shows the one of the current screen shape.
+ */
+export const RULES: ReadonlyArray<{ title: string; text: string; side?: string }> = [
+  { title: 'CORSIE', text: 'Tocca ◀ ▶ o scorri: una corsia alla volta.', side: 'Tocca ▲ ▼ o scorri in su e in giù: una corsia alla volta.' },
   { title: 'FRENA', text: 'Tieni premuto FRENA per rallentare nel traffico.' },
   { title: 'CONSEGNA', text: 'Entra nella corsia verde: il cliente ritira al volo.' },
   { title: 'FRESCHEZZA', text: 'Urti e frenate raffreddano il panino. Tre urti e la corsa finisce.' },
+  { title: 'BONUS', text: "Schiva un'auto all'ultimo: SFIORATO! Con la combo x3 parte la CICCIO FEVER: punti doppi." },
 ];
 
 export type LegendIcon = RushPower | 'fries' | 'secret';
@@ -86,6 +90,6 @@ export const LEGEND: ReadonlyArray<{ icon: LegendIcon; name: string; text: strin
   { icon: 'radar', name: POWER_NAMES.radar, text: 'Ti mostra le corsie sicure.' },
   { icon: 'sprint', name: POWER_NAMES.sprint, text: 'Turbo per 4 secondi.' },
   { icon: 'grip', name: POWER_NAMES.grip, text: 'Sterzate rapide, niente salsa che scivola.' },
-  { icon: 'fries', name: 'PATATINE', text: '+25 punti.' },
+  { icon: 'fries', name: 'PATATINE', text: '+25 punti. Prendi tutta la fila: CATENA!' },
   { icon: 'secret', name: '???', text: 'Un segreto ti aspetta sul lungomare di Terrasini…' },
 ];

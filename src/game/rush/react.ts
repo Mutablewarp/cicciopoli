@@ -1,13 +1,15 @@
 /**
  * Turns the run's events into feedback: sfx, DOM banners, vibration, world effects and overlay text.
- * Returns the end-of-run events so the session can move on (finale / results).
+ * v9: SFIORATO! (streak, popup, horn now and then, a tiny slow-down pulse), FRIES TRAIL fries and the
+ * "CATENA xN!" bonus, CICCIO FEVER (banner, music lift). Returns the end-of-run events so the session can
+ * move on (finale / results).
  */
 import type { BannerTone, GameAudio, GameUI, RushSettings } from '../../contracts';
 import { FLOW, FX } from './config';
 import type { EntityView } from './entityView';
 import type { Fx } from './fx';
-import { RUSH_TEXT, formatPoints } from './logic/strings';
-import type { PowerId, RushEvent } from './logic/types';
+import { RUSH_TEXT, feverSub, formatPoints, hintFor } from './logic/strings';
+import type { EntityKind, PowerId, RushEvent } from './logic/types';
 import type { Overlay } from './overlay';
 import type { TruckView } from './truckView';
 
@@ -21,6 +23,10 @@ export interface ReactCtx {
   readonly settings: () => RushSettings;
   /** scene timer (paused with the scene) */
   readonly later: (ms: number, fn: () => void) => void;
+  /** v9: slows the game a moment (SFIORATO!); the session skips it with reduced motion */
+  readonly pulse: (ms: number) => void;
+  /** v9: the side view is on (the lane buttons are ▲ ▼) */
+  readonly side: () => boolean;
 }
 
 export type EndEvent = Extract<RushEvent, { type: 'end' }>;
@@ -33,6 +39,10 @@ interface BannerOpts {
 }
 
 const LANE_NAMES = ['Corsia di sinistra', 'Corsia centrale', 'Corsia di destra'];
+/** side view: world lane 0 is drawn on top */
+const LANE_NAMES_SIDE = ['Corsia in alto', 'Corsia centrale', 'Corsia in basso'];
+/** traffic with a driver: only these honk back at a SFIORATO! (cones, barriers and roadworks do not) */
+const HONKS: ReadonlySet<EntityKind> = new Set<EntityKind>(['car', 'suv', 'van', 'bus', 'scooter', 'ape']);
 const CONFETTI = [0x3ad06a, 0xffd23a, 0xff5a4a, 0xffffff];
 const GOLD = [0xffd040, 0xfff0a0];
 const SAUCE = [0xc8501c, 0xf0a040];
@@ -53,6 +63,13 @@ export class Reactor {
   private gen = 0;
   /** index of the hint on screen (-1 = none) */
   hint = -1;
+  /** SFIORATI past traffic this run: every FX.nearHornEvery-th one honks back */
+  private nearMisses = 0;
+  /** points picked in a row at the truck (fries trail, a row of trays): one popup counts them up in place */
+  private gainSum = 0;
+  private gainAt = -1e9;
+  /** CICCIO FEVER burning (a queued banner shows only while it does) */
+  private feverOn = false;
 
   constructor(private readonly c: ReactCtx) {}
 
@@ -62,19 +79,33 @@ export class Reactor {
     this.keyUntil = 0;
     this.gen++;
     this.hint = -1;
+    this.nearMisses = 0;
+    this.gainSum = 0;
+    this.gainAt = -1e9;
+    this.feverOn = false;
+    this.c.audio.intensity?.(0);
   }
 
   /** Key banners never cut each other short: a new one waits until the one on screen has been read. */
   private key(now: number, text: string, o: BannerOpts): void {
+    this.queue(now, () => [text, o], o.ms);
+  }
+
+  /** Banner `make()` (null = no longer due) after the key banner on screen, holding the next one for `ms`. */
+  private queue(now: number, make: () => [string, BannerOpts] | null, ms: number): void {
     const wait = Math.max(0, this.keyUntil - now);
-    this.keyUntil = now + wait + o.ms;
+    this.keyUntil = now + wait + ms;
+    const show = (): void => {
+      const b = make();
+      if (b) this.c.ui.banner(...b);
+    };
     if (wait === 0) {
-      this.c.ui.banner(text, o);
+      show();
       return;
     }
     const gen = this.gen;
     this.c.later(wait, () => {
-      if (gen === this.gen) this.c.ui.banner(text, o);
+      if (gen === this.gen) show();
     });
   }
 
@@ -126,7 +157,7 @@ export class Reactor {
           audio.sfx('shieldBreak');
           fx.burst(t.x, t.y - 20, GOLD, 18);
           overlay.flash(0xffd040, 0.22, 180);
-          overlay.label(t.x, t.y - 36, 'SCUDO!', '#ffd23a');
+          overlay.label(36, 'SCUDO!', '#ffd23a');
         } else {
           audio.sfx('crash');
           truck.hit();
@@ -151,24 +182,25 @@ export class Reactor {
       case 'slip':
         audio.sfx('melt');
         fx.burst(t.x, t.y + 24, SAUCE, 14);
-        overlay.label(t.x, t.y - 34, 'SALSA!', '#ffb050', 9);
+        overlay.label(34, 'SALSA!', '#ffb050', 9);
         break;
       case 'pass': {
         if (timeMs - this.lastPass < FX.passGapMs) break;
         this.lastPass = timeMs;
         const w = ents.where(e.id);
-        fx.popup(w ? w.x : t.x, w ? w.y - 16 : t.y + 40, e.points);
+        fx.popup(w ? w.x : t.x, this.behind(w ? w.y - 16 : t.y + 40), e.points);
         audio.sfx('coin');
         break;
       }
       case 'combo':
         audio.sfx('combo');
-        overlay.label(t.x, t.y - 96, e.text, '#ffd23a', 12);
+        overlay.label(96, e.text, '#ffd23a', 12);
         break;
       case 'pickup':
+        if (e.kind === 'fry') break; // its 'trail' event tells it
         if (e.kind === 'fries' || e.kind === 'airNugget') {
           audio.sfx(e.kind === 'fries' ? 'fries' : 'coin');
-          fx.popup(t.x, t.y - 34, e.points);
+          this.gain(e.points, timeMs);
         }
         fx.once(t.x, t.y - 24, 'sparkle', 1.5);
         break;
@@ -176,7 +208,7 @@ export class Reactor {
         audio.sfx('powerup');
         // the banner only when it is free; else a toast over the truck (the HUD chip names it too)
         if (timeMs >= this.keyUntil) ui.banner(e.title, { tone: 'power', sub: e.sub, ms: 1500 });
-        else overlay.label(t.x, t.y - 48, e.title, '#ffd23a', 10);
+        else overlay.label(48, e.title, '#ffd23a', 10);
         fx.burst(t.x, t.y, POWER_TINT[e.power], 22);
         break;
       case 'powerWarn':
@@ -194,8 +226,8 @@ export class Reactor {
         ents.pointAt({ id: e.id, lane: e.lane });
         audio.sfx('checkpoint');
         // the miss that opened a recovery zone comes in the same step: one banner tells both
-        if (e.recovery) this.key(timeMs, RUSH_TEXT.missed, { tone: 'danger', sub: `${RUSH_TEXT.lastChance}: ${LANE_NAMES[e.lane]}`, ms: 2200 });
-        else this.key(timeMs, e.title, { tone: 'goal', sub: LANE_NAMES[e.lane], ms: 1700 });
+        if (e.recovery) this.key(timeMs, RUSH_TEXT.missed, { tone: 'danger', sub: `${RUSH_TEXT.lastChance}: ${this.laneName(e.lane)}`, ms: 2200 });
+        else this.key(timeMs, e.title, { tone: 'goal', sub: this.laneName(e.lane), ms: 1700 });
         break;
       case 'delivered':
         this.delivered(e, timeMs);
@@ -213,7 +245,7 @@ export class Reactor {
         break;
       case 'zoneClean':
         audio.sfx('heal');
-        overlay.label(t.x, t.y - 56, `${e.title} +${e.points}`, '#7dff8a', 10);
+        overlay.label(56, `${e.title} +${e.points}`, '#7dff8a', 10);
         break;
       case 'flightStart':
         audio.sfx('jet');
@@ -230,12 +262,93 @@ export class Reactor {
         break;
       case 'hint':
         this.hint = e.index;
-        overlay.hint(e.index === 0 && this.c.settings().swipe === false ? RUSH_TEXT.hintNoSwipe : e.text);
+        this.showHint();
         this.c.later(FLOW.hintMs, () => this.done(e.index));
+        break;
+      case 'nearMiss':
+        this.nearMiss(e, timeMs);
+        break;
+      case 'trail':
+        audio.sfx('trail');
+        this.gain(e.points, timeMs);
+        fx.once(t.x, t.y - 26, 'sparkle');
+        break;
+      case 'chain':
+        audio.sfx('chain');
+        overlay.label(70, `${e.title} +${e.points}`, '#ffd23a', 12);
+        fx.burst(t.x, t.y - 20, GOLD, 26);
+        break;
+      case 'feverStart':
+        audio.sfx('fever');
+        audio.intensity?.(1);
+        this.feverBanner(e, timeMs);
+        overlay.flash(0xffd040, 0.25, 260);
+        fx.burst(t.x, t.y, [...GOLD, 0xff8a2a], 30);
+        break;
+      case 'feverEnd':
+        this.feverOn = false;
+        audio.intensity?.(0);
+        if (e.reason === 'expired') fx.once(t.x, t.y + 30, 'poof', 1.5);
         break;
       case 'spawn':
         break;
     }
+  }
+
+  /**
+   * CICCIO FEVER!: its banner, after the order / zone banner on screen when that one is about to go (the seconds
+   * left counted then; none if a hit put it out meanwhile), else a label by the truck.
+   */
+  private feverBanner(e: Extract<RushEvent, { type: 'feverStart' }>, timeMs: number): void {
+    this.feverOn = true;
+    const wait = Math.max(0, this.keyUntil - timeMs);
+    if (wait > FX.feverBannerWaitMs) {
+      this.c.overlay.label(60, e.title, '#ffd23a', 12);
+      return;
+    }
+    const sub = wait === 0 ? e.sub : feverSub(e.ms - wait);
+    this.queue(timeMs, () => (this.feverOn ? [e.title, { tone: 'power', sub, ms: FX.feverBannerMs }] : null), FX.feverBannerMs);
+  }
+
+  /** Points picked at the truck: while the last popup still shows, the new one takes its place with the sum. */
+  private gain(points: number, timeMs: number): void {
+    const t = this.c.truck.pos;
+    this.gainSum = timeMs - this.gainAt < FX.popupMs ? this.gainSum + points : points;
+    this.gainAt = timeMs;
+    this.c.fx.popup(t.x, t.y - (this.c.side() ? FX.gainSideDy : FX.gainDy), this.gainSum, false, 'gain');
+  }
+
+  /** The view turned mid-run (phone rotated): the hint on screen names the lane buttons now shown. */
+  turned(): void {
+    if (this.hint >= 0) this.showHint();
+  }
+
+  private showHint(): void {
+    this.c.overlay.hint(hintFor(this.hint, this.c.side(), this.c.settings().swipe !== false));
+  }
+
+  /** World y of points popping by a passed car: in the side view never further behind the truck than the column of ▲ ▼ lets them show. */
+  private behind(y: number): number {
+    return this.c.side() ? Math.min(y, this.c.truck.pos.y + FX.popupBackSidePx) : y;
+  }
+
+  private laneName(lane: number): string {
+    return (this.c.side() ? LANE_NAMES_SIDE : LANE_NAMES)[lane];
+  }
+
+  /** SFIORATO!: the streak on the side it passed, the points over the car, a horn every few, a tiny slow-down. */
+  private nearMiss(e: Extract<RushEvent, { type: 'nearMiss' }>, timeMs: number): void {
+    const { audio, truck, ents, fx, overlay } = this.c;
+    const t = truck.pos;
+    audio.sfx('nearMiss');
+    const kind = ents.kindOf(e.id);
+    if (kind && HONKS.has(kind) && ++this.nearMisses % FX.nearHornEvery === 0) audio.sfx('horn'); // the driver honks back
+    fx.streak(t.x, t.y, e.side);
+    const w = ents.where(e.id);
+    fx.popup(w ? w.x : t.x + e.side * 24, this.behind(w ? w.y - 20 : t.y - 30), e.points);
+    overlay.label(44, e.title, '#ffffff', 10);
+    this.lastPass = timeMs; // the pass blip of the same car would sit on top of it
+    this.c.pulse(FX.nearSlowMs);
   }
 
   private delivered(e: Extract<RushEvent, { type: 'delivered' }>, timeMs: number): void {

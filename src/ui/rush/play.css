@@ -1,6 +1,7 @@
 /* Level 6 over the play area. The road ahead must stay clear (every hazard gets >= 1.2 s in view), so
    the banners never sit above the truck: top of the controls band (portrait touch), bottom of the play
-   area under the truck (portrait without touch), beside the road under the HUD (landscape). Subtitles
+   area under the truck (portrait without touch), beside the road under the HUD (landscape), on the sidewalk strip
+   between the HUD band and the road (side view). Subtitles
    use the pixel font too: Pixelify Sans reads 8/S, Z/2 and C/O alike at phone sizes.
    The finale (.is-cinematic, index.ts) collapses the HUD and controls bands: the space shot fills the screen. */
 .cc-stage.is-cinematic > .cc-hud,
@@ -107,6 +108,37 @@
   .cc-hud.is-rush ~ .cc-play .cc-banner__text,
   .cc-hud.is-rush ~ .cc-play .cc-banner__sub {
     text-align: left;
+  }
+}
+/* side view (v9, the truck drives to the RIGHT): the free strip is the sidewalk between the HUD band and the road
+   (framing.ts keeps >= 20 world px of it), so a banner lies there as one low, wide strip: the title, then the sub in
+   at most two short lines beside it. The HUD stays readable and the road clear. Solid: the first-run hint
+   (game/rush/overlay.ts) shares that strip and waits under it */
+@media (orientation: landscape) {
+  .cc-stage[data-side]:not(.is-cinematic) > .cc-hud.is-rush ~ .cc-play .cc-banner-layer {
+    place-items: start center;
+    padding: calc(var(--play-inset-t, 0px) + 3px) 0 0;
+  }
+  .cc-stage[data-side] > .cc-hud.is-rush ~ .cc-play .cc-banner {
+    flex-wrap: nowrap;
+    align-items: center;
+    max-width: min(calc(100% - 2 * max(var(--safe-l), var(--safe-r)) - 24px), 860px);
+    padding: 4px 12px 3px;
+    background-color: #18181a;
+    opacity: 1;
+  }
+  .cc-stage[data-side] > .cc-hud.is-rush ~ .cc-play .cc-banner__text {
+    flex: none;
+    white-space: nowrap;
+  }
+  .cc-stage[data-side] > .cc-hud.is-rush ~ .cc-play .cc-banner__sub {
+    min-width: 0;
+    line-height: 1.4;
+  }
+}
+@media (orientation: landscape) and (max-height: 599px) {
+  .cc-stage[data-side] > .cc-hud.is-rush ~ .cc-play .cc-banner__text {
+    font-size: 14px;
   }
 }
 @media (orientation: landscape) and (min-height: 600px) {

@@ -33,13 +33,16 @@ const run = (o: Partial<RushRunSummary>): RushRunSummary => ({
   completed: false,
   reachedEnd: true,
   score: 3000,
-  points: { deliveries: 1000, fresh: 450, sky: 0, passes: 1250, zones: 300, pickups: 0 },
+  points: { deliveries: 1000, fresh: 450, sky: 0, passes: 1250, zones: 300, pickups: 0, nearMiss: 0, chains: 0, fever: 0 },
   delivered: 1,
   perfect: 1,
   fresh: [90],
   collisions: 0,
   bestCombo: 2,
   flew: false,
+  nearMisses: 0,
+  chains: 0,
+  fevers: 0,
   ...o,
 });
 
@@ -81,6 +84,17 @@ describe('RushProgress', () => {
     expect(again.data.bestStars).toBe(3);
     expect(again.optionsFor(true, DAY, 42)).toEqual({ seed: dailySeed(DAY), driver: 'riflessi', daily: true, hints: false });
     expect(again.recordRun(run({}), DAY).newAchievements).toEqual([]);
+  });
+
+  it('v9 achievements: MAESTRO DEL PELO, CATENA D\'ORO, FEBBRE DA CICCIO (per run)', () => {
+    const p = new RushProgress(memory());
+    expect(p.recordRun(run({ nearMisses: 9, chains: 2, fevers: 1 }), DAY).newAchievements.map((a) => a.name)).toEqual(['PRIMA CONSEGNA', 'ZERO URTI']);
+    expect(p.recordRun(run({ nearMisses: 10, chains: 3, fevers: 2 }), DAY).newAchievements.map((a) => a.name)).toEqual([
+      'MAESTRO DEL PELO',
+      "CATENA D'ORO",
+      'FEBBRE DA CICCIO',
+    ]);
+    expect(p.setupInfo(0, DAY).achievements.filter((a) => a.unlocked).map((a) => a.id)).toEqual(['prima', 'zero', 'pelo', 'catena', 'febbre']);
   });
 
   it('survives corrupted or hostile data and a throwing storage', () => {

@@ -197,10 +197,66 @@ export const RUSH_SCORE = {
   fries: 25,
   /** nuggets floating in the air during the flight */
   airNugget: 50,
+  /** v9 SFIORATO! near miss: nearMiss x combo (it also grows the combo like a clean pass) */
+  nearMiss: 50,
+  /** v9 FRIES TRAILS: each fry, and the CATENA bonus for the whole line */
+  fry: 25,
+  chain: 150,
 } as const;
 
-/** Stars: 1 = a delivery; 2 = two deliveries and twoScore points; 3 = all, threeFresh avg, no hits. */
-export const RUSH_STARS = { twoDeliveries: 2, twoScore: 2500, threeFresh: 80 } as const;
+/**
+ * v9 SFIORATO!: the truck starts to leave its lane while an obstacle in that lane is at most windowMs
+ * from touching it (RushEntityView.ttcMs), and the obstacle then goes by without a hit (a late dodge).
+ */
+export const RUSH_NEAR_MISS = { windowMs: 450 } as const;
+
+/** v9 CICCIO FEVER: reaching combo x3 lights it. */
+export const RUSH_FEVER = {
+  ms: 6000,
+  /**
+   * points x mul while it burns: clean passes, near misses, fries, trays, air nuggets, chains (the
+   * extra goes to its own results row); deliveries, freshness and the zone bonus stay the same
+   */
+  mul: 2,
+  /** a hit ends it (the next one needs x3 again); after it ran out, this many more clean passes / near misses at x3 */
+  againPasses: 16,
+} as const;
+
+/**
+ * v9 FRIES TRAILS (src/game/rush/logic/trails.ts): lines of fries along a route the validator
+ * vouches for, a few per zone. Runs of >= 2 fries in one lane, joined by one-lane shifts with one fry
+ * halfway between the lanes; laid just above the view like the other pickups.
+ */
+export const RUSH_TRAILS = {
+  /** fries per trail [min, max] */
+  count: [5, 8],
+  /** road between two fries, px of d */
+  gapPx: 30,
+  maxShifts: 2,
+  /** pick weight of a route = 1 + shiftWeight x its shifts (lines that weave through the traffic) */
+  shiftWeight: 4,
+  /** both lanes of a shift stay free this far past the fry after it: following the line is never a last-moment dodge */
+  slackPx: 40,
+  /** first trail, then one every [min, max] ms; when no route is safe or a delivery is near, retry after retryMs */
+  firstMs: 5000,
+  everyMs: [7000, 10_000],
+  retryMs: 600,
+  /** no trail while a delivery zone is on the road or one is due within this long (never in its way) */
+  zoneQuietMs: 1500,
+  /** a fry keeps this far (px of d) from any other pickup within the lane spacing x 0.75 */
+  clearPx: 40,
+} as const;
+
+/** v9 achievements: per run. */
+export const RUSH_FEATS = { nearMisses: 10, chains: 3, fevers: 2 } as const;
+
+/**
+ * Stars: 1 = a delivery; 2 = two deliveries and twoScore points; 3 = all, threeFresh avg, no hits.
+ * twoScore = two hand-offs (~2.700 with freshness) plus ~3.000 of driving (passes, fries, SFIORATI,
+ * FEVER): with the v9 points the old 2.500 came with any two deliveries; casual bots with two miss it
+ * about 1 run in 7, every run with three deliveries scored >= 9.000 (2026-10-26, 60 seeds x 3 skills).
+ */
+export const RUSH_STARS = { twoDeliveries: 2, twoScore: 6000, threeFresh: 80 } as const;
 
 /** Power-ups from the menu. One timed power at a time; the shield may stack. */
 export const RUSH_POWERS = {
@@ -275,4 +331,4 @@ export const RUSH_DEFAULT_DRIVER: RushDriverId = 'riflessi';
 export const RUSH_STORE = { key: 'cicciopoli.rush.v1', dailyKeep: 14 } as const;
 
 /** Salts of the independent random streams of one seed. */
-export const RUSH_SEED = { traffic: 0x9e3779b9, pickups: 0x85ebca6b, orders: 0xc2b2ae35 } as const;
+export const RUSH_SEED = { traffic: 0x9e3779b9, pickups: 0x85ebca6b, orders: 0xc2b2ae35, trails: 0x27d4eb2f } as const;

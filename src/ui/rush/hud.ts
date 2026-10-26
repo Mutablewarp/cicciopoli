@@ -1,11 +1,11 @@
 /**
  * Level 6 HUD parts: the FRESCHEZZA meter, the power chips with the time left of the timed power and the
- * combo badge (one row: full width under the band in portrait, inline in the landscape bar), plus the
- * delivery pins laid on the progress rail. hud.ts owns the rest (hearts, score, countdown, pause).
+ * combo badge, which turns gold with a flame and a draining meter during CICCIO FEVER (one row: full width under
+ * the band in portrait, inline in the landscape bar), plus the delivery pins laid on the progress rail. hud.ts owns the rest (hearts, score, countdown, pause).
  */
 import type { HudState, PowerState } from '../../contracts';
 import { el, setText } from '../dom';
-import { burgerSvg, cheddarSvg, pinSvg, popcornSvg, rocketSvg, shieldSvg, waffleSvg } from './icons';
+import { burgerSvg, cheddarSvg, flameSvg, pinSvg, popcornSvg, rocketSvg, shieldSvg, waffleSvg } from './icons';
 import { POWER_NAMES, RUSH_POWERS, type RushPower, comboLabel, freshTone, pinAt, timedPower } from './text';
 
 const SEGMENTS = 10;
@@ -14,6 +14,9 @@ const EXPIRING = 0.25;
 /** A freshness drop this big (a hit) shakes the meter. */
 const HIT_DROP = 10;
 const POP: Keyframe[] = [{ transform: 'scale(1)' }, { transform: 'scale(1.35)' }, { transform: 'scale(1)' }];
+/** CICCIO FEVER lights up: a bigger pop than a combo step. */
+const FEVER_POP: Keyframe[] = [{ transform: 'scale(1)' }, { transform: 'scale(1.6) rotate(-6deg)' }, { transform: 'scale(1)' }];
+const FEVER_LABEL = 'Ciccio Fever: punti doppi';
 const IDLE_LABEL = 'Freschezza: nessun ordine a bordo';
 const SHAKE: Keyframe[] = [{ transform: 'none' }, { transform: 'translateX(-3px)' }, { transform: 'translateX(3px)' }, { transform: 'none' }];
 const ICONS: Readonly<Record<RushPower, () => string>> = {
@@ -53,7 +56,10 @@ export function createRushHud(): RushHud {
     chips.set(k, { chip, left });
     chipRow.append(chip);
   }
-  const combo = el('span', 'cc-combo');
+  const combo = el('span', 'cc-combo', flameSvg());
+  const comboText = el('b', 'cc-combo__x');
+  const feverLeft = el('i', 'cc-combo__fever');
+  combo.append(comboText, feverLeft);
   combo.hidden = true;
   row.append(fresh, chipRow, combo);
   const pins = el('div', 'cc-pins');
@@ -64,6 +70,7 @@ export function createRushHud(): RushHud {
   let left = 1;
   let shownLeft = -1;
   let comboValue = 1;
+  let fever = 0;
 
   function renderFresh(v: number | null): void {
     const q = v === null ? null : Math.round(Math.max(0, Math.min(100, v)));
@@ -134,10 +141,23 @@ export function createRushHud(): RushHud {
     const text = comboLabel(c);
     const up = text !== null && c > comboValue;
     comboValue = c;
-    combo.hidden = text === null;
-    if (!text) return;
-    setText(combo, text);
-    if (up) combo.animate(POP, { duration: 300, easing: 'ease-out' });
+    combo.hidden = text === null && fever === 0;
+    setText(comboText, text ?? '');
+    if (up && fever === 0) combo.animate(POP, { duration: 300, easing: 'ease-out' });
+  }
+
+  /** 0..1 FEVER left, in 1/40 steps (the meter is a few px wide). */
+  function renderFever(f: number): void {
+    const q = Math.round(Math.max(0, Math.min(1, f)) * 40) / 40;
+    if (q === fever) return;
+    const lit = fever === 0 && q > 0;
+    fever = q;
+    combo.classList.toggle('is-fever', q > 0);
+    feverLeft.style.transform = `scaleX(${q})`;
+    combo.hidden = comboLabel(comboValue) === null && q === 0;
+    if (q > 0) combo.setAttribute('aria-label', FEVER_LABEL);
+    else combo.removeAttribute('aria-label');
+    if (lit) combo.animate(FEVER_POP, { duration: 420, easing: 'ease-out' });
   }
 
   return {
@@ -150,6 +170,7 @@ export function createRushHud(): RushHud {
       if (s.powerLeft !== undefined) left = s.powerLeft;
       if (s.powers || s.powerLeft !== undefined) renderLeft();
       if (s.combo !== undefined && s.combo !== comboValue) renderCombo(s.combo);
+      if (s.fever !== undefined) renderFever(s.fever);
     },
   };
 }

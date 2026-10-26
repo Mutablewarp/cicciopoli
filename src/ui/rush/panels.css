@@ -100,6 +100,18 @@
   background: var(--orange);
   box-shadow: 0 0 0 2px var(--ink);
 }
+/* ▲ ▼ ◀ ▶ (icons.ts keyGlyphs): a Press Start capital is 7/8 em tall and sits on the baseline */
+.cc-key svg {
+  display: inline-block;
+  height: 0.875em;
+  vertical-align: baseline;
+}
+.cc-key__v {
+  width: 0.875em;
+}
+.cc-key__h {
+  width: 0.5em;
+}
 .cc-help strong {
   font-family: var(--f-pixel);
   font-weight: 400;
@@ -319,5 +331,19 @@
   }
   .cc-setting--swipe {
     grid-column: 1 / -1;
+  }
+}
+
+/* Copy with a side-view wording (COME SI GIOCA, the level 6 key legend): the side view starts where the game turns
+   its camera, a screen more than 1.15 times wider than tall (BRIEF §8 v9). Only hiding rules, so each block keeps
+   its own display (and .is-touch still hides the key legend). */
+@media (min-aspect-ratio: 23/20) {
+  .cc-only-upright {
+    display: none;
+  }
+}
+@media not all and (min-aspect-ratio: 23/20) {
+  .cc-only-side {
+    display: none;
   }
 }

@@ -67,7 +67,7 @@ export function createUI(root: HTMLElement): { ui: GameUI; input: GameInput } {
   const bannerLayer = el('div', 'cc-banner-layer');
   // level 7: ticket, bubble and hint over the game, its action button docked with them (insets measure them all)
   play.append(gameHost, hud.kitchen.root, bannerLayer);
-  const controls = createControls(input, (m, swipe, fire) => hub.setMode(m, swipe, fire));
+  const controls = createControls(input, (m, swipe, fire, side) => hub.setMode(m, swipe, fire, side));
   hud.kitchen.zone.append(controls.kitchen);
   stage.append(hud.root, play, controls.root);
   hub.bindSwipe(gameHost);
@@ -154,6 +154,8 @@ export function createUI(root: HTMLElement): { ui: GameUI; input: GameInput } {
       if (layout) level8(layout.level === 8);
       cinematic(!layout && driving && !modal.open && !title.open);
       driving = layout?.mode === 'driver' || layout?.mode === 'cartoon';
+      // level 6 side view: the banners move over the HUD band (rush/play.css), the road ahead runs to the right edge
+      stage.toggleAttribute('data-side', layout?.mode === 'driver' && layout.side === true);
       controls.set(layout);
       insets.update();
     },

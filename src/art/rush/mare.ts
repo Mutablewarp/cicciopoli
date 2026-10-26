@@ -10,17 +10,24 @@
 import { Raster, hash2 } from '../hills/raster';
 import { RU, ZONE_PAL } from './colors';
 import { textWidth } from './font';
+import { streetLife } from './life';
 import { FACADE_D, SIDE_L_H, STOREFRONT, STRIP_H, STRIP_W, Strip, ciccios, facade, lamp, palm, paving, sidewalk, signText } from './street';
 
 const SEA = '#2a3466';
 const SEA_DEEP = '#222a58';
 const GLINT = '#f0905a';
 const GLINT_HOT = '#ffd0a0';
-const ROCK = '#a8744e';
-const ROCK_LIGHT = '#c8925e';
-const ROCK_SHADE = '#7a5038';
-const SAND = '#d8b080';
+export const ROCK = '#a8744e';
+export const ROCK_LIGHT = '#c8925e';
+export const ROCK_SHADE = '#7a5038';
+export const SAND = '#d8b080';
 const SEA_FILL = 256;
+/**
+ * Distance of the coves' cliff edge from the road edge: just past the promenade parapet (d 12-14), so the
+ * sea shows in the ~25 px of strip the v9 side view keeps clear of the HUD on a landscape phone; rocky
+ * points reach out to ~d 31 between them.
+ */
+export const COAST_D = 17;
 /**
  * Strip row of the last hand-off (RUSH_DELIVERY.shop.doorRow in src/config/rush.ts): the game puts
  * the waving customer 6 px above it, 24 px tall, so the door is centred there and the sign below.
@@ -31,11 +38,19 @@ const CUSTOMER_ROW = TERRASINI_DOOR_ROW - 6;
 const SIGN_H = 28;
 
 /** Sea pixel with sunset glints: short wave dashes on an 8-row rhythm, so it wraps at any multiple of 64. */
-function seaAt(d: number, y: number, deep: boolean): string {
+export function seaAt(d: number, y: number, deep: boolean): string {
   const h = hash2(d, y, 37);
   const wave = (y + Math.floor(d / 8) * 3) % 8 === 0 && hash2(Math.floor(d / 4), Math.floor(y / 8), 2) < 0.3;
   if (wave) return h < 0.4 ? GLINT_HOT : GLINT;
   return h < 0.05 ? '#4a4a7a' : deep ? SEA_DEEP : SEA;
+}
+
+/**
+ * The sea deepens some 50 px out from the cliffs: the line follows the coast and a slow swell, and
+ * dithers over ~20 px, so no straight line runs down the water.
+ */
+export function deepAt(d: number, y: number, edge = COAST_D): boolean {
+  return d - edge - 50 - 8 * Math.sin(y * 0.05) > (hash2(d, y, 39) - 0.5) * 20;
 }
 
 /** Sandy coves of the left strip: [first row, length]. */
@@ -47,11 +62,16 @@ const SCOGLI: readonly (readonly [number, number, number])[] = [[70, 300, 3], [9
 const ANCHORED = { d: 62, y: 676 } as const;
 const LAMP_STEP_L = 64;
 
-/** The cliff edge distance at row y of an h-row strip: wavy, periodic over it, with a headland for the tower. */
+/**
+ * The cliff edge distance at row y of an h-row strip, periodic over it: wiggly coves close to the parapet,
+ * rounded rocky points out between them (~1/5 of the rows), a headland for the tower.
+ */
 function cliffEdge(y: number, h: number): number {
   const t = (y / h) * Math.PI * 2;
-  const base = 30 + Math.round(4 * Math.sin(t * 12) + 3 * Math.sin(t * 20) + 5 * Math.sin(t * 2 + 1));
-  const head = y >= 14 && y < 66 ? Math.round(24 * Math.sin(((y - 14) / 52) * Math.PI)) : 0;
+  const swell = 4 * Math.sin(t * 12) + 3 * Math.sin(t * 20);
+  const base = COAST_D + Math.round(2 * Math.sin(t * 37) + Math.sin(t * 61 + 2) + 2.4 * Math.max(0, swell - 1.5));
+  // flat-topped, so the tower and its shadow (rows 28-53, out to d 56) stand on rock
+  const head = y >= 14 && y < 66 ? Math.round(42 * Math.min(1, 1.6 * Math.sin(((y - 14) / 52) * Math.PI))) : 0;
   return base + head;
 }
 
@@ -63,14 +83,14 @@ function coast(s: Strip): void {
       let c: string;
       if (d < edge) c = d > edge - 3 ? ROCK_SHADE : hash2(d, y, 43) < 0.18 ? ROCK_LIGHT : hash2(d, y, 44) < 0.12 ? ROCK_SHADE : ROCK;
       else if (d < edge + 2) c = RU.white; // surf on the rocks
-      else c = seaAt(d, y, d > 90);
+      else c = seaAt(d, y, deepAt(d, y, edge));
       s.px(d, y, c);
     }
   }
   for (const [y0, len] of COVES) {
     for (let y = y0; y < y0 + len; y++) {
       const edge = cliffEdge(y, s.h);
-      const w = Math.round(14 * Math.sin(((y - y0) / len) * Math.PI));
+      const w = Math.round(7 * Math.sin(((y - y0) / len) * Math.PI));
       for (let d = edge - 2; d < edge + w; d++) s.px(d, y, hash2(d, y, 9) < 0.1 ? '#c09868' : SAND);
       s.px(edge + w, y, RU.white);
     }
@@ -104,7 +124,7 @@ function tower(s: Strip): void {
   s.rect(d0 + 9, y0 + 9, 4, 4, '#8a7656'); // the stair hatch
 }
 
-function gozzo(s: Strip, d: number, y: number, trim: string): void {
+export function gozzo(s: Strip, d: number, y: number, trim: string): void {
   for (let i = 0; i < 14; i++) {
     const half = i < 3 ? i : i > 10 ? 13 - i : 3;
     for (let j = -half; j <= half; j++) {
@@ -158,6 +178,7 @@ export function mareSide(side: 'L' | 'R', shop = true): Raster {
     tower(s);
     port(s, 96);
     gozzo(s, ANCHORED.d, ANCHORED.y, '#d8342e');
+    streetLife(s, 51); // the evening passeggiata on the promenade
     for (let y = 8; y < s.h; y += LAMP_STEP_L) lamp(s, y, true);
     return s.r;
   }
@@ -174,6 +195,7 @@ export function mareSide(side: 'L' | 'R', shop = true): Raster {
   }
   facade(s, { y: 160, len: 48, colour: '#e8a8c0', floors: 2, shutter: '#3a7a8a', balcony: true, awning: '#d8642e', roof: 'tiles' });
   facade(s, { y: 208, len: 48, colour: '#f0c890', floors: 2, shutter: '#6a4a2e', balcony: false, awning: null, roof: 'terrace' });
+  streetLife(s, 52, [[shopY, shopLen]]);
   for (const y of [20, 60, 176, 228]) palm(s, 17, y);
   // the blade sign hangs where a lamp would stand
   for (let y = 8; y < STRIP_H; y += 48) if (!shop || y < signY - 1 || y > signY + SIGN_H) lamp(s, y, true);

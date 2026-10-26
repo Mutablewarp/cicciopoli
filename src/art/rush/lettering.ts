@@ -125,3 +125,13 @@ export function vinyl(r: Raster, rows: readonly string[], x: number, y: number, 
 export function face(r: Raster, rows: readonly string[], x: number, y: number, hairline?: string): void {
   gridR(r, rows, faceColours(hairline), x, y);
 }
+
+/**
+ * ASCII art turned a quarter turn counter-clockwise: art drawn this way into a sprite that faces UP
+ * reads upright once the camera turns the world -90° (the sprite then faces RIGHT on screen, the
+ * frame's bottom on the left). Row j of the result is column (w - 1 - j) of the art, read downwards.
+ */
+export function turnRows(rows: readonly string[]): string[] {
+  const w = rows[0].length;
+  return Array.from({ length: w }, (_, j) => rows.map((row) => row[w - 1 - j]).join(''));
+}

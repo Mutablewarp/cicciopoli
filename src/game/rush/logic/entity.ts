@@ -9,6 +9,15 @@ import type { EntityKind, Lane, LaneDir, PickupKind, RushEntityView } from './ty
 
 const smooth = (u: number): number => u * u * (3 - 2 * u);
 
+/** A pickup is taken while d is within this of its meetD (and the truck overlaps it sideways). */
+export const PICK_REACH = (RUSH_ITEMS.pickupSize - 2 * RUSH_ITEMS.pickupInset + RUSH_TRUCK.hitH) / 2;
+
+export interface TrailSlot {
+  readonly id: number;
+  readonly index: number;
+  readonly of: number;
+}
+
 export function isTraffic(kind: EntityKind): kind is TrafficKind {
   return kind in RUSH_KINDS;
 }
@@ -26,6 +35,9 @@ export interface EntitySpec {
   to?: Lane | null;
   swerveD?: number;
   blinkD?: number;
+  /** v9 'fry': off the lane centre (halfway between two lanes on a shift of its trail), its trail */
+  x?: number;
+  trail?: TrailSlot;
 }
 
 export class RushEntity implements RushEntityView {
@@ -51,6 +63,9 @@ export class RushEntity implements RushEntityView {
   spawned = false;
   touched = false;
   passed = false;
+  /** v9: the truck began to leave this obstacle's lane within the near-miss window (SFIORATO! once it goes by clean) */
+  close = false;
+  readonly trail?: TrailSlot;
   blocks: Block[] = [];
 
   constructor(
@@ -65,7 +80,8 @@ export class RushEntity implements RushEntityView {
     this.to = s.to ?? null;
     this.swerveD = s.swerveD ?? NaN;
     this.blinkD = s.blinkD ?? NaN;
-    this.x = laneX(s.lane);
+    this.x = s.x ?? laneX(s.lane);
+    this.trail = s.trail;
     if (isTraffic(s.kind)) {
       const k = RUSH_KINDS[s.kind];
       this.w = k.w;
@@ -104,17 +120,19 @@ export class RushEntity implements RushEntityView {
   }
 
   /**
-   * A swerving scooter shows up inside the delivery zone of `lane` (hand-off at zoneD) while that
-   * zone is on screen: it never hits there (no block), but it reads as a trap in the lane to take.
+   * A vehicle shows up inside the delivery zone of `lane` (hand-off at zoneD) while that zone is on
+   * screen: the zone, standing on the road, catches up with one that meets the truck a little after
+   * it, or a scooter swerves in. It never hits there (no block), but the lane to take reads occupied.
+   * Standing objects move with the zone: the clear window keeps them out.
    */
-  swervesThrough(lane: Lane, zoneD: number): boolean {
-    if (this.to === null || (this.from !== lane && this.to !== lane)) return false;
+  showsInZone(lane: Lane, zoneD: number): boolean {
+    if (this.rate === 0 || (this.from !== lane && this.to !== lane)) return false;
     // lengthwise overlap: |(1 - rate)(meetD - d) - (zoneD - d)| < reachH, i.e. |d - mid| < reachH / rate
     const reachH = (this.h + RUSH_ITEMS.zoneH) / 2 / this.rate;
     const mid = (zoneD - (1 - this.rate) * this.meetD) / this.rate;
-    // in the zone lane: before the swerve ends (from) or once it starts (to)
+    // in the zone lane: always (no swerve), before the swerve ends (from) or once it starts (to)
     const inLo = this.from === lane ? -Infinity : this.swerveD;
-    const inHi = this.from === lane ? this.swerveD + RUSH_SCOOTER.swervePx : Infinity;
+    const inHi = this.from === lane && this.to !== null ? this.swerveD + RUSH_SCOOTER.swervePx : Infinity;
     // the zone is on screen ahead, until its clear window is behind the truck
     const lo = Math.max(mid - reachH, inLo, zoneD - RUSH_ROAD.viewAheadPx.max - RUSH_ITEMS.zoneH / 2);
     const hi = Math.min(mid + reachH, inHi, zoneD + RUSH_DELIVERY.clearPx);

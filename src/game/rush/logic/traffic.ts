@@ -4,8 +4,8 @@
  * lanes the validator approves, so nothing the game asks for is ever impossible.
  */
 import type { RushZone } from '../../../art/rush/keys';
-import { RUSH_DELIVERY, RUSH_DENSITY, RUSH_FAIR, RUSH_POWERS, RUSH_ROAD, RUSH_SPEED } from '../../../config/rush';
-import { RushEntity, isTraffic, type EntitySpec } from './entity';
+import { RUSH_DELIVERY, RUSH_DENSITY, RUSH_FAIR, RUSH_KINDS, RUSH_POWERS, RUSH_ROAD, RUSH_SPEED, RUSH_TRUCK } from '../../../config/rush';
+import { RushEntity, isPickup, isTraffic, type EntitySpec } from './entity';
 import { patternLength, pickPattern, placePattern } from './patterns';
 import { pick, randRange, shuffled, type Rng } from './rng';
 import type { DespawnReason, Lane, PickupKind, RushEvent } from './types';
@@ -31,6 +31,10 @@ export function doorAlign(r: number): number {
   const { periodPx, doorRow } = RUSH_DELIVERY.shop;
   return r + (((-doorRow - r) % periodPx) + periodPx) % periodPx;
 }
+
+/** The most road before its meeting point where a vehicle can touch the truck (RushEntity.reach). */
+const MAX_REACH = Math.max(...Object.values(RUSH_KINDS).map((k) => (k.h - 2 * k.inset + RUSH_TRUCK.hitH) / 2 / (1 - k.rate)));
+const MIN_GAP = Math.min(...Object.values(RUSH_DENSITY.gapPx).map((g) => g[0]));
 
 interface ClearWindow {
   readonly lane: Lane;
@@ -67,6 +71,11 @@ export class TrafficManager {
     return this.hand.length > 0 ? this.blocks.concat(this.hand) : this.blocks;
   }
 
+  /** Traffic planned from now on starts past the frontier: it cannot touch the truck before this d (FRIES TRAILS end inside it). */
+  get horizon(): number {
+    return this.frontier + MIN_GAP - MAX_REACH;
+  }
+
   /** Keeps the road planned planAheadPx ahead of d. */
   plan(d: number, ctx: PlanContext): void {
     this.blocks = this.blocks.filter((b) => b.to >= d - CELL);
@@ -99,7 +108,7 @@ export class TrafficManager {
       if (ents.some((e, i) => road.some((o) => e.overlapsOnRoad(o)) || ents.slice(0, i).some((o) => e.overlapsOnRoad(o)))) continue;
       const added = ents.flatMap((e) => (e.blocks = e.makeBlocks(lead)));
       if (added.some((b) => this.clear.some((c) => c.lane === b.lane && b.to >= c.from && b.from <= c.to))) continue;
-      if (ents.some((e) => this.clear.some((c) => c.zoneD !== undefined && e.swervesThrough(c.lane, c.zoneD)))) continue;
+      if (ents.some((e) => this.clear.some((c) => c.zoneD !== undefined && e.showsInZone(c.lane, c.zoneD)))) continue;
       // fair for a player who ignores the delivery, and for one who goes for it
       if (!staysFair(this.blocks, added) || (this.hand.length > 0 && !staysFair(this.allBlocks, added))) continue;
       this.planned.push(...ents);
@@ -187,6 +196,11 @@ export class TrafficManager {
     return ok.length > 0 ? pick(rng, ok) : null;
   }
 
+  /** A pickup (spawned or planned) closer than px of d to meetD and dx sideways to x (FRIES TRAILS keep off the others). */
+  pickupNear(x: number, meetD: number, px: number, dx: number): boolean {
+    return [...this.live, ...this.planned].some((e) => isPickup(e.kind) && Math.abs(e.meetD - meetD) < px && Math.abs(e.x - x) < dx);
+  }
+
   add(spec: EntitySpec): RushEntity {
     const e = new RushEntity(this.nextId++, spec);
     this.planned.push(e);
@@ -211,7 +225,7 @@ export class TrafficManager {
       const meetD = door(d + aheadPx + t * (at.door ? R.shop.periodPx : R.placeStepPx));
       for (const lane of at.lane === undefined ? shuffled(rng, LANE_IDS) : [at.lane]) {
         const inWay = (e: RushEntity): boolean =>
-          e.blocks.some((b) => b.lane === lane && b.to >= meetD - R.clearPx && b.from <= meetD + R.clearPx) || e.swervesThrough(lane, meetD);
+          e.blocks.some((b) => b.lane === lane && b.to >= meetD - R.clearPx && b.from <= meetD + R.clearPx) || e.showsInZone(lane, meetD);
         if (this.live.some(inWay)) continue;
         const doomed = new Set(this.planned.filter(inWay).map((e) => e.id));
         const kept = this.blocks.filter((b) => !doomed.has(b.owner));

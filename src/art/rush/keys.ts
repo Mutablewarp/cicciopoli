@@ -91,6 +91,23 @@ export const RUSH = {
    *          new Ciccio's Terrasini storefront with a PROSSIMA APERTURA banner: the last delivery is here).
    */
   driverPortraits: 'rush-drivers', // sheet 32x32 frames 0-2: the three drivers (RIFLESSI, OCCHIO, CONSEGNE)
+
+  /* ---- v9 (BRIEF §8 "### v9") ---- */
+  /**
+   * The truck for the SIDE view of a landscape screen (the camera turns -90°, the truck drives to the right):
+   * sheet 40x64 with exactly the 'rush-truck' frames (TRUCK_FRAME), the same truck, but the roof lettering
+   * ("Ciccio's" script + burger icon) runs ALONG the body, bottom to top in the frame, so it reads left to
+   * right on screen once the camera turns it. The rear-door face logo turned the same way.
+   */
+  truckX: 'rush-truck-x',
+  /** sheet 12x12 frames 0-3: one golden fry stick of a FRIES TRAIL, glint sweeping across it (spin loop) */
+  fry: 'rush-fry',
+  /** sheet 40x24 frames 0-3: CICCIO FEVER gold sparkle trail behind the truck (like 'rush-grip') */
+  fever: 'rush-fever',
+  /** image 4x40: white air streak beside the truck on a SFIORATO! near miss */
+  streak: 'rush-streak',
+  /** sheet 6x6 frames 0-11: zone particles, 0-3 plane-tree leaves (centro), 4-7 dust (stadio), 8-11 sea spray (mare) */
+  bits: 'rush-bits',
 } as const;
 
 /** Frame index inside RUSH.pickups. */
@@ -111,8 +128,26 @@ export const TRUCK_FRAME = { driveA: 0, driveB: 1, leanL: 2, leanR: 3, brake: 4,
  * once as a landmark), 'fillR' = filler beyond the right strip (mare: Terrasini rooftops 128x128,
  * centro / stadio: same as 'fill' 64x64; 'fill' of mare is the open sea).
  */
-export function zoneKey(zone: RushZone, part: 'road' | 'sideL' | 'sideR' | 'sideRPlain' | 'fill' | 'fillR'): string {
+export function zoneKey(zone: RushZone, part: 'road' | 'sideL' | 'sideR' | 'sideRPlain' | 'fill' | 'fillR' | ZoneSeamPart): string {
   return `rush-${part}-${zone}`;
+}
+
+/**
+ * v9 seams (no straight cut between two textures, BRIEF v9 point 2), per zone:
+ * 'capL' / 'capR' image 16x256, seamless vertically: the edge drawn where the left / right side strip meets its
+ *   filler (hedge, wall, railing, low shadow), facing the filler side;
+ * 'blendL' / 'blendR' image 128x256: the left / right side strip easing from this zone into the NEXT one (mixed
+ *   buildings of both), drawn once in the transition band before the cross street (not for 'mare').
+ */
+export type ZoneSeamPart = 'capL' | 'capR' | 'blendL' | 'blendR';
+
+/**
+ * v9: an upright sign plate of each Ciccio's storefront for the SIDE view (the storefront art turns with the
+ * camera; this plate stays readable): image 96x28, "Ciccio's La Lumia" / "Ciccio's Stadio" /
+ * "Ciccio's Terrasini" + PROSSIMA APERTURA, the brand script, bold outline.
+ */
+export function shopSignKey(zone: RushZone): string {
+  return `rush-shopsign-${zone}`;
 }
 
 export const RUSH_ANIMS = {
@@ -130,4 +165,9 @@ export const RUSH_ANIMS = {
   zone: 'rush-zone-pulse', //     6 fps loop
   customerA: 'rush-customer-a', // frames 0-3, 6 fps loop
   customerB: 'rush-customer-b', // frames 4-7, 6 fps loop
+  /* v9 */
+  driveX: 'rush-truck-x-drive', // truckX frames 0-1, 10 fps loop
+  flyX: 'rush-truck-x-flight', //  truckX frames 6-8, 14 fps loop
+  fry: 'rush-fry-spin', //         8 fps loop
+  fever: 'rush-fever-loop', //     12 fps loop
 } as const;

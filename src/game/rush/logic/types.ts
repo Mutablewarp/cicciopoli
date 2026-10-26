@@ -10,7 +10,8 @@ import type { TrafficKind } from '../../../config/rush';
 export type Lane = 0 | 1 | 2;
 export type LaneDir = -1 | 0 | 1;
 
-export type PickupKind = 'nuggets' | 'waffle' | 'popcorn' | 'cheddar' | 'booster' | 'fries' | 'airNugget';
+/** v9: 'fry' = one fry stick of a FRIES TRAIL (RushEntityView.trail says which trail and where in it) */
+export type PickupKind = 'nuggets' | 'waffle' | 'popcorn' | 'cheddar' | 'booster' | 'fries' | 'airNugget' | 'fry';
 export type EntityKind = TrafficKind | PickupKind | 'zone';
 export type TimedPower = 'radar' | 'sprint' | 'grip';
 export type PowerId = 'shield' | TimedPower;
@@ -48,6 +49,8 @@ export interface RushEntityView {
   /** zone: the customer waits on this sidewalk (-1 left, 1 right); hand-off done / missed */
   readonly side: -1 | 1;
   readonly done: boolean;
+  /** v9 'fry': its FRIES TRAIL (id), its place in it (0-based) and the trail length */
+  readonly trail?: { readonly id: number; readonly index: number; readonly of: number };
 }
 
 export interface RushTruckView {
@@ -113,6 +116,8 @@ export interface RushSnapshot {
   /** obstacles ahead: show a warning when ttcMs <= warnMs (driver OCCHIO: earlier) */
   readonly warnMs: number;
   readonly entities: readonly RushEntityView[];
+  /** v9 CICCIO FEVER: 0..1 time left (points x2), 0 = off */
+  readonly fever: number;
 }
 
 export type DespawnReason = 'passed' | 'hit' | 'picked' | 'cleared';
@@ -139,6 +144,15 @@ export type RushEvent =
   | { type: 'flightStart'; title: string; sub: string }
   | { type: 'flightEnd'; cleared: number }
   | { type: 'hint'; index: number; text: string }
+  /** v9: SFIORATO! a vehicle passed in the next lane within RUSH near-miss px at speed (side: where it passed) */
+  | { type: 'nearMiss'; id: number; side: -1 | 1; points: number; combo: number; title: string }
+  /** v9: one fry of a FRIES TRAIL picked (index 0-based, of = trail length); the run also emits 'despawn' picked */
+  | { type: 'trail'; id: number; trail: number; index: number; of: number; points: number }
+  /** v9: a whole FRIES TRAIL picked: "CATENA x8!" */
+  | { type: 'chain'; trail: number; count: number; points: number; title: string }
+  /** v9: CICCIO FEVER on (ms long) / off */
+  | { type: 'feverStart'; ms: number; title: string; sub: string }
+  | { type: 'feverEnd'; reason: 'expired' | 'hit' }
   | { type: 'finale'; title: string; lines: readonly string[] }
   | { type: 'end'; reason: 'time' | 'crash'; completed: boolean; title: string };
 
@@ -150,6 +164,11 @@ export interface RushPoints {
   passes: number;
   zones: number;
   pickups: number;
+  /** v9: SFIORATO! near misses, FRIES TRAIL chain bonuses (single fries count as pickups) */
+  nearMiss: number;
+  chains: number;
+  /** v9: the extra half of everything scored during CICCIO FEVER (the x2 part) */
+  fever: number;
 }
 
 /** Everything the results screen, achievements and records need from a finished run. */
@@ -172,4 +191,8 @@ export interface RushRunSummary {
   readonly bestCombo: number;
   /** the PROPULSORE was used */
   readonly flew: boolean;
+  /** v9 */
+  readonly nearMisses: number;
+  readonly chains: number;
+  readonly fevers: number;
 }

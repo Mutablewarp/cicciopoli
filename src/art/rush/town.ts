@@ -22,7 +22,8 @@ const GRID = 4;
 /** share of blocks merged with the next one across their right / bottom street (no regular grid) */
 const MERGE = 0.3;
 const P = ZONE_PAL.mare;
-const T: RoofLook = {
+/** The Terrasini old town (./seams reuses it for the back alley behind the seafront houses). */
+export const TERRASINI_LOOK: RoofLook = {
   ...CENTRO_LOOK,
   roof: P.roof,
   roofLight: P.roofLight,
@@ -252,5 +253,5 @@ export function centroFill(side: 'L' | 'R'): Raster {
 
 export function terrasiniFill(): Raster {
   // sits back like the other fillers, warmed by the sunset
-  return recolour(oldTown(T, MARE.seed, MARE.cells), (c) => tint(tint(c, DUSK, HAZE_MARE), P.tint, GLOW));
+  return recolour(oldTown(TERRASINI_LOOK, MARE.seed, MARE.cells), (c) => tint(tint(c, DUSK, HAZE_MARE), P.tint, GLOW));
 }

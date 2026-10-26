@@ -1,7 +1,8 @@
 /**
  * Small textures the level 6 scene builds itself (the 'rush' pack covers everything else): the cross
- * street that marks a zone boundary, its zebra crossings, the portal signs over the road, the
- * finish line, the finale sky column and a 2x2 particle pixel. Same pixel rules as the art packs.
+ * street that marks a zone boundary, its zebra crossings, the portal signs over the road (and, for the
+ * v9 side view, the same names on an upright plate on a short pole at the kerb), the finish line, the
+ * finale sky column and a 2x2 particle pixel. Same pixel rules as the art packs.
  */
 import type Phaser from 'phaser';
 import { ROAD_W } from '../../art/rush/keys';
@@ -16,7 +17,11 @@ export const SCENE_TEX = {
   finish: 'rush-scene-finish',
   sky: 'rush-scene-sky',
   sign: (i: number): string => `rush-scene-sign-${i}`,
+  plate: (i: number): string => `rush-scene-plate-${i}`,
 } as const;
+
+/** Pole under a side-view plate (world px). */
+const PLATE_POLE = 4;
 
 /** Cross street band height (world px) and the portal sign size. */
 export const XING_H = 40;
@@ -87,6 +92,20 @@ function sign(text: string, board: string, edge: string): Raster {
   return r;
 }
 
+/** Side view: the board alone on a short pole (drawn upright, the scene turns it against the camera). */
+function plate(text: string, board: string, edge: string): Raster {
+  const w = textWidth(text) + 12;
+  const h = FONT_H + 10;
+  const r = new Raster(w + 2, h + PLATE_POLE + 2);
+  rectR(r, Math.floor(w / 2), h + 1, 2, PLATE_POLE, POST);
+  rectR(r, 2, 2, w - 1, h, '#16161a'); // drop shadow
+  rectR(r, 1, 1, w - 2, h, edge);
+  rectR(r, 2, 2, w - 4, h - 2, board);
+  drawText(r, text, 6, 6, edge);
+  outlineRaster(r, '#101014');
+  return r;
+}
+
 function sky(): Raster {
   const h = SKY.length * SKY_BAND;
   const r = new Raster(4, h);
@@ -118,7 +137,10 @@ export function ensureSceneArt(scene: Phaser.Scene): void {
   add(SCENE_TEX.zebra, zebra());
   add(SCENE_TEX.finish, finish());
   add(SCENE_TEX.sky, sky());
-  BOUND_SIGNS.forEach((s, i) => add(SCENE_TEX.sign(i + 1), sign(s.text, s.board, s.edge)));
+  BOUND_SIGNS.forEach((s, i) => {
+    add(SCENE_TEX.sign(i + 1), sign(s.text, s.board, s.edge));
+    add(SCENE_TEX.plate(i + 1), plate(s.text, s.board, s.edge));
+  });
 }
 
 /** Height of the finale sky texture (world px). */

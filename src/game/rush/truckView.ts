@@ -2,13 +2,19 @@
  * The Ciccio's truck on screen: shadow, suspension bob, lean on lane changes, brake lights, hit
  * flash + invulnerability blink, sauce wobble, power visuals (nugget shield bubble, cheddar trail,
  * popcorn spray) and the PROPULSORE flight (lifts and grows, the shadow drops away, booster flames).
+ * v9: blinkers on a lane change, the CICCIO FEVER gold trail + sparks, and in the side view the
+ * 'rush-truck-x' sheet (roof lettering along the body, so it reads left to right once the camera turns).
  * World: road x 0..120, truck centre at y 0.
  */
 import type Phaser from 'phaser';
 import { RUSH, RUSH_ANIMS, TRUCK_FRAME } from '../../art/rush/keys';
 import { RUSH_POWERS } from '../../config/rush';
 import type { RushSnapshot } from './logic/types';
-import { DEPTH, TRUCK_LOOK } from './config';
+import { DEPTH, FX, TRUCK_LOOK } from './config';
+import { SCENE_TEX } from './sceneArt';
+
+const AMBER = 0xffb020;
+const FEVER_GOLD = [0xffd040, 0xfff0a0, 0xffffff];
 
 const smooth = (u: number): number => u * u * (3 - 2 * u);
 
@@ -30,6 +36,15 @@ export class TruckView {
   private readonly popcorn: Phaser.GameObjects.Particles.ParticleEmitter;
   /** red halos round the rear lights while FRENA is held */
   private readonly brakeGlow: Phaser.GameObjects.Rectangle[];
+  /** v9 amber blinkers: front + rear corner of the side the truck turns to */
+  private readonly blinkers: Phaser.GameObjects.Rectangle[];
+  private readonly fever: Phaser.GameObjects.Sprite;
+  private readonly sparks: Phaser.GameObjects.Particles.ParticleEmitter;
+  private blinkSide = 0;
+  private blinkMs = 0;
+  private sparkMs = 0;
+  /** side view: the sheet with the lettering along the body */
+  private side = false;
   private tilt = 0;
   private hitMs = 0;
   private kick = 0;
@@ -43,6 +58,15 @@ export class TruckView {
   ) {
     this.shadow = scene.add.image(0, 0, RUSH.truckShadow).setAlpha(TRUCK_LOOK.shadowAlpha).setDepth(DEPTH.truckShadow);
     this.trail = scene.add.sprite(0, 0, RUSH.grip, 0).setDepth(DEPTH.trail).setVisible(false);
+    this.fever = scene.add.sprite(0, 0, RUSH.fever, 0).setDepth(DEPTH.trail - 0.5).setVisible(false);
+    this.sparks = scene.add.particles(0, 0, SCENE_TEX.px, {
+      lifespan: { min: 260, max: 520 },
+      speedX: { min: -30, max: 30 },
+      speedY: { min: 60, max: 150 },
+      alpha: { start: 1, end: 0 },
+      tint: FEVER_GOLD,
+      emitting: false,
+    }).setDepth(DEPTH.trail);
     this.body = scene.add.sprite(0, 0, RUSH.truck, 0).setDepth(DEPTH.truck);
     this.flames = [-1, 1].map((s) => scene.add.sprite(0, 0, RUSH.flame, s > 0 ? 2 : 0).setOrigin(0.5, 0).setDepth(DEPTH.truck - 1).setVisible(false));
     this.shield = scene.add.sprite(0, 0, RUSH.shield, 0).setDepth(DEPTH.truck + 1).setVisible(false);
@@ -56,9 +80,11 @@ export class TruckView {
       emitting: false,
     }).setDepth(DEPTH.trail);
     this.brakeGlow = [-1, 1].map(() => scene.add.rectangle(0, 0, 9, 12, 0xff2a1a, 0.5).setBlendMode('ADD').setDepth(DEPTH.truck + 1).setVisible(false));
-    layer.add([this.shadow, this.trail, ...this.flames, this.body, ...this.brakeGlow, this.shield, this.popcorn]);
+    this.blinkers = [-1, 1].map(() => scene.add.rectangle(0, 0, 3, 4, AMBER).setStrokeStyle(1, 0x3a1a00).setDepth(DEPTH.truck + 1).setVisible(false));
+    layer.add([this.shadow, this.fever, this.sparks, this.trail, ...this.flames, this.body, ...this.brakeGlow, ...this.blinkers, this.shield, this.popcorn]);
     for (const f of this.flames) this.loop(f, RUSH_ANIMS.flame);
     this.loop(this.trail, RUSH_ANIMS.grip);
+    this.loop(this.fever, RUSH_ANIMS.fever);
     this.loop(this.shield, RUSH_ANIMS.shield);
   }
 
@@ -69,7 +95,23 @@ export class TruckView {
 
   private still(frame: number): void {
     this.body.anims.stop();
-    if (this.body.frame.name !== String(frame)) this.body.setFrame(frame);
+    const key = this.sheet;
+    if (this.body.texture.key !== key) this.body.setTexture(key, frame);
+    else if (this.body.frame.name !== String(frame)) this.body.setFrame(frame);
+  }
+
+  /** The truck sheet for the current view (the side-view one when the art has it). */
+  private get sheet(): string {
+    return this.side && this.scene.textures.exists(RUSH.truckX) ? RUSH.truckX : RUSH.truck;
+  }
+
+  private anim(upright: string, sideView: string): string {
+    return this.sheet === RUSH.truckX && this.scene.anims.exists(sideView) ? sideView : upright;
+  }
+
+  /** Side view on / off (the camera turned): swaps to the sheet whose roof lettering reads along the body. */
+  setSide(on: boolean): void {
+    this.side = on;
   }
 
   /** Crash: a white flash frame. */
@@ -86,7 +128,9 @@ export class TruckView {
     this.tilt = 0;
     this.hitMs = 0;
     this.kick = 0;
+    this.blinkMs = 0;
     this.popcorn.killAll();
+    this.sparks.killAll();
   }
 
   update(snap: RushSnapshot, timeMs: number, dtMs: number): void {
@@ -110,10 +154,10 @@ export class TruckView {
 
     this.body.setPosition(x, y).setScale(scale).setRotation(this.tilt).setDepth(lift > 0 ? DEPTH.flight : DEPTH.truck);
     if (this.hitMs > 0) this.still(TRUCK_FRAME.hit);
-    else if (t.flying) this.loop(this.body, RUSH_ANIMS.fly);
+    else if (t.flying) this.loop(this.body, this.anim(RUSH_ANIMS.fly, RUSH_ANIMS.flyX));
     else if (t.lean !== 0) this.still(t.lean < 0 ? TRUCK_FRAME.leanL : TRUCK_FRAME.leanR);
     else if (t.braking) this.still(TRUCK_FRAME.brake);
-    else if (moving) this.loop(this.body, RUSH_ANIMS.drive);
+    else if (moving) this.loop(this.body, this.anim(RUSH_ANIMS.drive, RUSH_ANIMS.driveX));
     else this.still(TRUCK_FRAME.driveA);
     const blink = t.invulnMs > 0 && !t.flying && Math.floor(timeMs / L.blinkMs) % 2 === 0;
     this.body.setAlpha(blink ? 0.35 : 1);
@@ -152,6 +196,8 @@ export class TruckView {
     const grip = snap.power === 'grip' && !t.flying;
     this.trail.setVisible(grip);
     if (grip) this.trail.setPosition(x, L.rearDy + 6).setRotation(this.tilt * 0.5);
+    this.blink(t.target - t.lane, x, y, timeMs, dtMs, lift > 0);
+    this.feverTrail(snap.fever > 0 && moving, x, y + L.feverDy * scale, dtMs);
 
     if (snap.power === 'sprint' && moving) {
       this.popMs -= dtMs;
@@ -160,5 +206,30 @@ export class TruckView {
         this.popcorn.emitParticleAt(x + (Math.random() - 0.5) * 20, y + L.rearDy * scale, 1);
       }
     }
+  }
+
+  /** Blinkers: the corner lights on the side of the lane change flash during it and a moment after. */
+  private blink(dir: number, x: number, y: number, timeMs: number, dtMs: number, flying: boolean): void {
+    const L = TRUCK_LOOK;
+    if (dir !== 0) {
+      this.blinkSide = Math.sign(dir);
+      this.blinkMs = L.blinkerHoldMs;
+    } else this.blinkMs = Math.max(0, this.blinkMs - dtMs);
+    const on = !flying && this.blinkMs > 0 && Math.floor(timeMs / L.blinkerMs) % 2 === 0;
+    this.blinkers.forEach((b, i) => {
+      b.setVisible(on);
+      if (on) b.setPosition(x + this.blinkSide * L.blinkDx, y + (i === 0 ? -L.blinkDy : L.blinkDy));
+    });
+  }
+
+  /** CICCIO FEVER: the gold sparkle trail and a stream of gold sparks behind the truck. */
+  private feverTrail(on: boolean, x: number, rearY: number, dtMs: number): void {
+    this.fever.setVisible(on);
+    if (!on) return;
+    this.fever.setPosition(x, rearY).setRotation(this.tilt * 0.5);
+    this.sparkMs -= dtMs;
+    if (this.sparkMs > 0) return;
+    this.sparkMs = FX.feverSparkMs;
+    this.sparks.emitParticleAt(x + (Math.random() - 0.5) * 24, rearY, 2);
   }
 }

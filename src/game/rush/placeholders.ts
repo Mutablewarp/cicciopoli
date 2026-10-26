@@ -1,6 +1,8 @@
 /**
  * Stand-ins for every texture / animation of the 'rush' pack (sizes from src/art/rush/keys.ts), so
- * level 6 always runs with simple coloured shapes when the pack failed to load or lacks a key.
+ * level 6 always runs with simple coloured shapes when the pack failed to load or lacks a key. The v9
+ * side-view truck, seam caps / blends and shop sign plates have none: the scene falls back to the upright
+ * truck and skips the others while the pack lacks them.
  */
 import type Phaser from 'phaser';
 import { PICKUP, RUSH, RUSH_ANIMS, RUSH_ZONES, TRUCK_FRAME, zoneKey } from '../../art/rush/keys';
@@ -27,7 +29,7 @@ const TEXTURES: readonly TexSpec[] = [
   sheet(RUSH.blinker, 24, 40, 2, 'transparent'),
   image(RUSH.cone, 12, 12, '#ff7a20'),
   image(RUSH.barrier, 40, 16, '#e83030'),
-  image(RUSH.works, 40, 40, '#a07040'),
+  sheet(RUSH.works, 40, 40, 2, '#a07040'), // frame 1: the side-view pit
   sheet(RUSH.puddle, 32, 24, 2, '#b8401c'),
   sheet(RUSH.pickups, 20, 20, PICKUP.frames, '#ffd040'),
   sheet(RUSH.shield, 48, 72, 4, 'transparent'),
@@ -40,6 +42,10 @@ const TEXTURES: readonly TexSpec[] = [
   image(RUSH.bag, 12, 14, '#c8a070'),
   sheet(RUSH.zone, 40, 64, 4, '#3ad06a'),
   image(RUSH.parachute, 16, 14, '#e83030'),
+  sheet(RUSH.fry, 16, 16, 4, '#ffd040'),
+  sheet(RUSH.fever, 40, 24, 4, '#ffd040'),
+  image(RUSH.streak, 4, 40, '#ffffff'),
+  sheet(RUSH.bits, 6, 6, 12, '#8ab060'),
   ...RUSH_ZONES.flatMap((z) => [
     image(zoneKey(z, 'road'), 120, 128, ZONE_COLORS[z][0]),
     image(zoneKey(z, 'sideL'), 128, 256, ZONE_COLORS[z][1]),
@@ -65,6 +71,8 @@ const ANIMS: readonly AnimSpec[] = [
   loop(RUSH_ANIMS.zone, RUSH.zone, seq(4), 6),
   loop(RUSH_ANIMS.customerA, RUSH.customer, [0, 1, 2, 3], 6),
   loop(RUSH_ANIMS.customerB, RUSH.customer, [4, 5, 6, 7], 6),
+  loop(RUSH_ANIMS.fry, RUSH.fry, seq(4), 8),
+  loop(RUSH_ANIMS.fever, RUSH.fever, seq(4), 12),
 ];
 
 /** Registers stand-ins for whatever the pack did not provide; returns the missing keys. */

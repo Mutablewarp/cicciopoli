@@ -75,3 +75,31 @@ describe('LaneSwipe', () => {
     expect(t.move(-70, -60)).toBe('left');
   });
 });
+
+describe('LaneSwipe in the side view', () => {
+  it('up = the lane above (left), down = the lane below (right): one lane per gesture', () => {
+    const t = new LaneSwipe(24, true);
+    t.start(200, 200);
+    expect(t.move(202, 180)).toBe(null);
+    expect(t.move(203, 170)).toBe('left');
+    expect(t.move(203, 400)).toBe(null);
+    t.start(0, 0);
+    expect(t.move(-3, 30)).toBe('right');
+  });
+
+  it('horizontal travel never steers, but the gesture can still turn vertical', () => {
+    const t = new LaneSwipe(24, true);
+    t.start(0, 0);
+    expect(t.move(60, 4)).toBe(null);
+    expect(t.move(-60, 4)).toBe(null);
+    expect(t.move(-60, 80)).toBe('right');
+  });
+
+  it('vertical swipes use the same sensitivity setting', () => {
+    for (const [s, lane] of [['high', 'left'], ['mid', null], ['low', null]] as const) {
+      const t = new LaneSwipe(SWIPE_PX[s], true);
+      t.start(0, 0);
+      expect(t.move(2, -20)).toBe(lane);
+    }
+  });
+});

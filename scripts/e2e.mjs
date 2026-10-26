@@ -3,7 +3,8 @@
  * Smoke test in a real browser (Playwright + in-process Vite dev server):
  * title renders 8 level cards; every level boots, accepts input and has debug hooks;
  * every level can be entered twice in a row (restart / re-entry regressions);
- * no uncaught page errors. Desktop and phone (portrait + landscape).
+ * level 6 side view on landscape screens (road size, ▲ touch); no uncaught page errors. Desktop and phone
+ * (portrait + landscape).
  *
  *   node scripts/e2e.mjs            exit code 0 = pass
  *   node scripts/e2e.mjs --dist     the same on the production build in dist/ (npm run build first): the
@@ -65,6 +66,25 @@ for (const view of VIEWS) {
       await page.evaluate(() => window.__app.app.toMenu());
       await waitFor(page, () => !window.__game, 4000);
     }
+  }
+  {
+    // level 6 v9: a landscape screen plays the side view (camera turned, the road fills the height), portrait stays upright
+    const wantSide = view.name !== 'phone-portrait';
+    await page.evaluate(() => window.__app.app.startLevel(6));
+    await waitFor(page, () => window.__game?.state?.().session === 'setup', 15000);
+    await page.evaluate(() => window.__game.seed(11));
+    await waitFor(page, () => window.__game?.state?.().session === 'run', 15000);
+    await page.waitForTimeout(dist ? 1200 : 600);
+    const st = await page.evaluate(() => { const s = window.__game.state(); return { side: s.side, road: s.roadCss, lane: s.truck.target }; });
+    check(st.side === wantSide, `level 6 ${wantSide ? 'side' : 'upright'} view`);
+    if (view.name === 'phone-landscape') {
+      check(st.road >= 230, `level 6 side view road + kerbs ${Math.round(st.road)} CSS px (>= 230)`);
+      const want = st.lane > 0 ? st.lane - 1 : st.lane;
+      await page.tap('.cc-lane.is-l');
+      check(await waitFor(page, (l) => window.__game.state().truck.target === l, 3000, want), 'level 6 ▲ (touch) changes lane');
+    }
+    await page.evaluate(() => window.__app.app.toMenu());
+    await waitFor(page, () => !window.__game, 4000);
   }
   if (view.name === 'phone-portrait') {
     // level 6 end paths: menu during the finale, finale -> results -> RIPROVA -> menu

@@ -6,7 +6,7 @@
 import type { RushAchievementCard, RushSettings } from '../../contracts';
 import { button, el, pixelHtml, scrollPane } from '../dom';
 import type { Menu } from '../menu';
-import { legendSvg, trophySvg } from './icons';
+import { keyGlyphs, legendSvg, trophySvg } from './icons';
 import { LEGEND, RULES, SWIPE_OPTIONS, isSecret } from './text';
 
 export type PanelKind = 'help' | 'settings' | 'trophies';
@@ -30,7 +30,10 @@ const TOGGLES: ReadonlyArray<{ key: Toggle; label: string }> = [
 function help(): HTMLElement {
   const wrap = el('div', 'cc-help');
   const rules = el('ol', 'cc-help__rules');
-  RULES.forEach((r, i) => rules.append(el('li', '', `<b>${i + 1}</b><span><strong>${r.title}</strong> ${r.text}</span>`)));
+  // a rule with a side-view wording carries both; panels.css shows the one of the screen shape
+  const ruleText = (r: (typeof RULES)[number]): string =>
+    keyGlyphs(r.side ? `<span class="cc-only-upright">${r.text}</span><span class="cc-only-side">${r.side}</span>` : r.text);
+  RULES.forEach((r, i) => rules.append(el('li', '', `<b>${i + 1}</b><span><strong>${r.title}</strong> ${ruleText(r)}</span>`)));
   const legend = el('ul', 'cc-help__legend');
   for (const p of LEGEND) {
     legend.append(el('li', `cc-help__power${p.icon === 'secret' ? ' is-secret' : ''}`, `${legendSvg(p.icon)}<span><strong>${p.name}</strong> ${p.text}</span>`));

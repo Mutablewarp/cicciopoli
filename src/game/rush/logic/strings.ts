@@ -4,6 +4,7 @@
  * rocket company, the space mannequin or the seaside town without a Ciccio's any more.
  */
 import type { RushZone } from '../../../art/rush/keys';
+import { RUSH_SCORE } from '../../../config/rush';
 import type { RushDriverId } from '../../../contracts';
 import type { PowerId } from './types';
 
@@ -35,8 +36,30 @@ export const RUSH_TEXT = {
   hints: ['SCORRI O USA ◀ ▶ PER CAMBIARE CORSIA', 'TIENI PREMUTO FRENA PER RALLENTARE', 'PASSA SULLA ZONA VERDE PER CONSEGNARE'],
   /** the first hint with SWIPE set to OFF */
   hintNoSwipe: 'USA ◀ ▶ PER CAMBIARE CORSIA',
+  /** v9 side view: the same hints with its ▲ ▼ lane buttons */
+  hintsSide: ['SCORRI O USA ▲ ▼ PER CAMBIARE CORSIA', 'TIENI PREMUTO FRENA PER RALLENTARE', 'PASSA SULLA ZONA VERDE PER CONSEGNARE'],
+  hintNoSwipeSide: 'USA ▲ ▼ PER CAMBIARE CORSIA',
   customerLines: ['MIZZICA!', 'TALÌA CHE VELOCITÀ!', 'GRAZIE CICCIO!', 'AMUNÌ, CHE FAME!', 'ANCORA CAUDU!'],
+  /** v9 */
+  nearMiss: 'SFIORATO!',
+  fever: 'CICCIO FEVER!',
 } as const;
+
+/** First-run hint `index` as shown: the lane buttons on screen (▲ ▼ in the side view), no swipe with SWIPE OFF. */
+export function hintFor(index: number, side: boolean, swipe: boolean): string {
+  if (index === 0 && !swipe) return side ? RUSH_TEXT.hintNoSwipeSide : RUSH_TEXT.hintNoSwipe;
+  return (side ? RUSH_TEXT.hintsSide : RUSH_TEXT.hints)[index];
+}
+
+/** v9 CICCIO FEVER banner sub line. */
+export function feverSub(ms: number): string {
+  return `Punti doppi per ${Math.round(ms / 1000)} secondi!`;
+}
+
+/** v9 a whole FRIES TRAIL picked: "CATENA x8!" */
+export function chainText(count: number): string {
+  return `CATENA x${count}!`;
+}
 
 export const ZONE_TEXT: Readonly<Record<RushZone, { name: string; sub: string }>> = {
   centro: { name: 'PALERMO CENTRO', sub: "Partenza dal Ciccio's La Lumia" },
@@ -99,7 +122,7 @@ export const DRIVER_TEXT: Readonly<Record<RushDriverId, { name: string; ability:
   },
 };
 
-export type AchievementId = 'prima' | 'zero' | 're' | 'tris' | 'maestro' | 'vola';
+export type AchievementId = 'prima' | 'zero' | 're' | 'tris' | 'maestro' | 'pelo' | 'catena' | 'febbre' | 'vola';
 
 export const ACHIEVEMENT_TEXT: Readonly<Record<AchievementId, { name: string; desc: string; secret?: true }>> = {
   prima: { name: 'PRIMA CONSEGNA', desc: 'Consegna il tuo primo ordine.' },
@@ -107,6 +130,9 @@ export const ACHIEVEMENT_TEXT: Readonly<Record<AchievementId, { name: string; de
   re: { name: 'RE DI PALERMO', desc: 'Completa tutte e 3 le consegne.' },
   tris: { name: 'TRIS PERFETTO', desc: 'Tre consegne perfette in una corsa.' },
   maestro: { name: 'MAESTRO DEL TRAFFICO', desc: 'Raggiungi la combo x3.' },
+  pelo: { name: 'MAESTRO DEL PELO', desc: "Schiva 10 ostacoli all'ultimo momento in una corsa." },
+  catena: { name: "CATENA D'ORO", desc: 'Prendi 3 scie di patatine complete in una corsa.' },
+  febbre: { name: 'FEBBRE DA CICCIO', desc: 'Accendi la CICCIO FEVER 2 volte in una corsa.' },
   vola: { name: 'IL TRUCK VOLA!', desc: 'Hai trovato il PROPULSORE segreto.', secret: true },
 };
 
@@ -144,6 +170,9 @@ export const BREAKDOWN_TEXT = {
   passes: 'Sorpassi puliti',
   zones: 'Zone senza urti',
   pickups: 'Bonus raccolti',
+  nearMiss: 'Sfiorati',
+  chains: 'Catene di patatine',
+  fever: 'Bonus CICCIO FEVER',
 } as const;
 
 export const TIP_TEXT = {
@@ -152,7 +181,8 @@ export const TIP_TEXT = {
   brake: 'Tieni premuto FRENA per passare tra le auto!',
   deliver: 'Passa sulla zona verde: la consegna è automatica!',
   fresh: 'Niente urti e poca frenata: la freschezza vale fino a 500 punti!',
-  combo: 'Sorpassi puliti di fila = combo fino a x3!',
+  combo: "Sorpassi puliti e schivate all'ultimo di fila = combo fino a x3!",
+  chain: `Prendi tutta la scia di patatine: la CATENA vale +${RUSH_SCORE.chain}!`,
   perfect: 'Corsa perfetta! Prova la SFIDA DEL GIORNO.',
   perfectDaily: 'Corsa perfetta! Torna domani per la nuova SFIDA DEL GIORNO.',
   /** a run that crashed out or delivered nothing scored more than the record */

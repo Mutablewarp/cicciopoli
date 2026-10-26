@@ -1,7 +1,7 @@
 /**
  * Deliveries: two customers waving from the sidewalk (16x24, 0-3 A, 4-7 B), the Ciccio's kraft
- * delivery bag with the face (12x14), the pulsing green delivery lane (40x64 x 4) and the little
- * red-white parachute for bags dropped from the flying truck (16x14).
+ * delivery bag with the face (12x14), the pulsing green delivery lane (40x64 x 4, a burger seen from
+ * above on its badge) and the little red-white parachute for bags dropped from the flying truck (16x14).
  */
 import { Mask, paintMask } from '../hills/mask';
 import { Raster, gridR, outlineRaster } from '../hills/raster';
@@ -96,12 +96,41 @@ function chevron(r: Raster, y: number): void {
   }
 }
 
+const ICON = 14;
+/** toasted sesame bun */
+const BUN = { light: '#f4be6a', base: '#dc8e3c', shade: '#a85e24' } as const;
+
+/**
+ * The zone's badge icon, 14x14: a burger seen from straight above (sesame bun, lettuce frill, the four
+ * corners of the cheddar slice). Its outline is the same after a quarter turn, so it reads in portrait and in
+ * the v9 side view, where the zone turns with the camera (a front-view bag lay on its side there).
+ */
+export function buildBurgerTop(): Raster {
+  const r = new Raster(ICON, ICON);
+  const c = (ICON - 1) / 2;
+  for (let y = 0; y < ICON; y++) {
+    for (let x = 0; x < ICON; x++) {
+      const dx = x - c;
+      const dy = y - c;
+      const d = Math.hypot(dx, dy);
+      const frill = 6.1 + 0.6 * Math.cos(8 * Math.atan2(dy, dx)); // 8 waves: unchanged by a quarter turn
+      const corner = Math.abs(dx) + Math.abs(dy); // the cheddar square's corners poke out on the diagonals
+      if (d <= 4.8) r.set(x, y, d > 4 ? BUN.shade : dx + dy < -3 ? BUN.light : BUN.base);
+      else if (d <= frill) r.set(x, y, (x * 3 + y) % 4 === 0 ? RU.greenShade : RU.green);
+      else if (Math.max(Math.abs(dx), Math.abs(dy)) <= 6 && corner >= 8) r.set(x, y, corner > 10 ? RU.cheddarShade : RU.cheddar);
+    }
+  }
+  for (const [x, y] of [[5, 4], [8, 4], [4, 7], [7, 7], [9, 8], [6, 9]] as const) r.set(x, y, RU.vinyl); // sesame
+  return r;
+}
+
 /**
  * Glowing green delivery lane: a bright double rim, a dithered glow that thickens towards the rim,
- * up-scrolling chevrons, and the bag on a dark badge. Frames pulse (2 = brightest). The gaps stay
+ * up-scrolling chevrons, and a burger on a dark badge. Frames pulse (2 = brightest). The gaps stay
  * transparent so the in-game glow and the asphalt read through.
  */
 export function buildZone(): Raster[] {
+  const burger = buildBurgerTop();
   return [0, 1, 2, 3].map((f) => {
     const r = new Raster(ZONE_W, ZONE_H);
     const pulse = [0, 1, 2, 1][f];
@@ -123,13 +152,10 @@ export function buildZone(): Raster[] {
     rectR(r, 2, ZONE_H - 3, ZONE_W - 4, 1, RU.green);
     rectR(r, 2, 2, 1, ZONE_H - 4, RU.green);
     rectR(r, ZONE_W - 3, 2, 1, ZONE_H - 4, RU.green);
-    // dark badge so the bag reads over the chevrons
+    // dark badge so the burger reads over the chevrons
     rectR(r, 11, 23, 18, 18, RU.greenShade);
     rectR(r, 12, 24, 16, 16, RU.ink);
-    const badge = new Raster(12, 14);
-    bag(badge, 0, 0);
-    outlineRaster(badge, RU.ink);
-    r.blit(badge, 14, 25);
+    r.blit(burger, 13, 25);
     return r;
   });
 }

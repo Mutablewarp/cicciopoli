@@ -1,14 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { RUSH_DELIVERY } from '../../config/rush';
-import { computeFraming } from '../../game/rush/framing';
+import { computeFraming, project } from '../../game/rush/framing';
 import { Raster, packColor } from '../hills/raster';
-import { RUSH_ANIM_LIST, RUSH_IMAGES, RUSH_SHEETS } from './assets';
+import { BLEND_ZONES, RUSH_ANIM_LIST, RUSH_IMAGES, RUSH_SHEETS } from './assets';
 import { RU } from './colors';
-import { PICKUP, RUSH, RUSH_ANIMS, RUSH_ZONES, TRUCK_FRAME, zoneKey } from './keys';
+import { buildBurgerTop } from './deliveries';
+import { PICKUP, RUSH, RUSH_ANIMS, RUSH_ZONES, TRUCK_FRAME, shopSignKey, zoneKey } from './keys';
+import { ROOF_SCRIPT } from './lettering';
 import { TERRASINI_DOOR_ROW } from './mare';
 import { extraKey } from './scenery';
 import { SIDE_L_H, STOREFRONT } from './street';
 import { CLIMB_PITCH, climbLevel, pitchPoint, pitchRaster } from './truckFly';
+import { TURNED, turnedOrigin } from './truckTop';
 
 /** [frame width, frame height, frame count] required by RUSH in keys.ts. */
 const SHEET_SPEC: Readonly<Record<string, readonly [number, number, number]>> = {
@@ -30,6 +33,11 @@ const SHEET_SPEC: Readonly<Record<string, readonly [number, number, number]>> = 
   [RUSH.customer]: [16, 24, 8],
   [RUSH.zone]: [40, 64, 4],
   [RUSH.driverPortraits]: [32, 32, 3],
+  [RUSH.truckX]: [40, 64, TRUCK_FRAME.count],
+  [RUSH.fry]: [16, 16, 4], // v9 fix: 12 px read too small in portrait (keys.ts still says 12x12)
+  [RUSH.fever]: [40, 24, 4],
+  [RUSH.works]: [40, 40, 2], // v9 fix: frame 1 = the side-view pit (keys.ts still says image 40x40)
+  [RUSH.bits]: [6, 6, 12],
 };
 
 const IMAGE_SPEC: Readonly<Record<string, readonly [number, number]>> = {
@@ -40,10 +48,10 @@ const IMAGE_SPEC: Readonly<Record<string, readonly [number, number]>> = {
   [RUSH.bus]: [32, 96],
   [RUSH.cone]: [12, 12],
   [RUSH.barrier]: [40, 16],
-  [RUSH.works]: [40, 40],
   [RUSH.bag]: [12, 14],
   [RUSH.parachute]: [16, 14],
   [RUSH.speedLine]: [2, 24],
+  [RUSH.streak]: [4, 40],
   ...Object.fromEntries(
     RUSH_ZONES.flatMap((z) => [
       [zoneKey(z, 'road'), [120, 128]],
@@ -52,8 +60,12 @@ const IMAGE_SPEC: Readonly<Record<string, readonly [number, number]>> = {
       [zoneKey(z, 'fill'), [256, 256]],
       [extraKey(z, 'sideRPlain'), [128, 256]],
       [extraKey(z, 'fillR'), [256, 256]],
+      [zoneKey(z, 'capL'), [16, 256]],
+      [zoneKey(z, 'capR'), [16, 256]],
+      [shopSignKey(z), [96, 28]],
     ]),
   ),
+  ...Object.fromEntries(BLEND_ZONES.flatMap((z) => [[zoneKey(z, 'blendL'), [128, 256]], [zoneKey(z, 'blendR'), [128, 256]]])),
 };
 
 /** keys.ts frame rates of RUSH_ANIMS. */
@@ -62,6 +74,7 @@ const FPS: Readonly<Record<string, number>> = {
   [RUSH_ANIMS.ape]: 6, [RUSH_ANIMS.blink]: 3, [RUSH_ANIMS.puddle]: 3, [RUSH_ANIMS.shield]: 10,
   [RUSH_ANIMS.grip]: 12, [RUSH_ANIMS.radar]: 4, [RUSH_ANIMS.flame]: 16, [RUSH_ANIMS.zone]: 6,
   [RUSH_ANIMS.customerA]: 6, [RUSH_ANIMS.customerB]: 6,
+  [RUSH_ANIMS.driveX]: 10, [RUSH_ANIMS.flyX]: 14, [RUSH_ANIMS.fry]: 8, [RUSH_ANIMS.fever]: 12,
 };
 
 const sheets = new Map(RUSH_SHEETS.map(([key, build]) => [key, build()]));
@@ -91,6 +104,8 @@ describe('rush art pack (manifest in src/art/rush/keys.ts)', () => {
       ...Object.values(RUSH),
       ...RUSH_ZONES.flatMap((z) => (['road', 'sideL', 'sideR', 'fill'] as const).map((p) => zoneKey(z, p))),
       ...RUSH_ZONES.flatMap((z) => (['sideRPlain', 'fillR'] as const).map((p) => extraKey(z, p))),
+      ...RUSH_ZONES.flatMap((z) => [zoneKey(z, 'capL'), zoneKey(z, 'capR'), shopSignKey(z)]),
+      ...BLEND_ZONES.flatMap((z) => [zoneKey(z, 'blendL'), zoneKey(z, 'blendR')]),
     ];
     const made = [...RUSH_SHEETS.map(([k]) => k), ...RUSH_IMAGES.map(([k]) => k)];
     expect(made.sort()).toEqual([...wanted].sort());
@@ -231,6 +246,55 @@ describe('rush art pack (manifest in src/art/rush/keys.ts)', () => {
     expect(opaqueCount(truck[TRUCK_FRAME.driveA])).toBeGreaterThan(1800);
   });
 
+  it('the side-view truck is the same truck, its roof script turned to read left to right', () => {
+    const top = sheets.get(RUSH.truck) ?? [];
+    const side = sheets.get(RUSH.truckX) ?? [];
+    const vinyl = packColor(RU.vinyl);
+    side.forEach((f, i) => {
+      // cab, bonnet, mirrors and the underside are pixel for pixel the top-down truck's
+      for (const y of [...Array(16).keys(), 61, 62, 63]) expect(rowDiff2(f, top[i], y), `frame ${i} row ${y}`).toBe(0);
+    });
+    // the script's pixel at (column i, row j) lies at screen (sx + i, sy + j) once the camera turns the truck right
+    ROOF_SCRIPT.forEach((row, j) => {
+      for (let i = 0; i < row.length; i++) {
+        const [x, y] = turnedOrigin(TURNED.script.sx + i, TURNED.script.sy + j, 1);
+        expect(side[TRUCK_FRAME.driveA].get(x, y) === vinyl, `script ${i},${j}`).toBe(row[i] === '#');
+      }
+    });
+  });
+
+  it('caps are seamless with an opaque strip side; blends are opaque and end in the vicolo', () => {
+    for (const z of RUSH_ZONES) {
+      for (const [part, x] of [['capL', 15], ['capR', 0]] as const) {
+        const r = images.get(zoneKey(z, part)) as Raster;
+        for (let y = 0; y < r.h; y++) expect(r.get(x, y), `${z} ${part} row ${y}`).not.toBe(0);
+        let worst = 0;
+        for (let y = 0; y + 1 < r.h; y++) worst = Math.max(worst, rowDiff(r, y, y + 1));
+        expect(rowDiff(r, r.h - 1, 0), `${z} ${part}`).toBeLessThanOrEqual(worst);
+      }
+    }
+    for (const z of BLEND_ZONES) {
+      for (const part of ['blendL', 'blendR'] as const) {
+        const r = images.get(zoneKey(z, part)) as Raster;
+        expect(opaqueCount(r), `${z} ${part}`).toBe(r.w * r.h);
+        const x = part === 'blendL' ? 0 : r.w - 1; // the far edge of the strip, in the vicolo's rows
+        expect(r.get(x, 249), `${z} ${part}`).toBe(packColor('#323238'));
+      }
+    }
+  });
+
+  it('the fry glints along its stick and the sign plates carry their names', () => {
+    const white = packColor(RU.white);
+    const glint = (sheets.get(RUSH.fry) ?? []).map((f) => f.px.findIndex((c) => c === white));
+    expect(new Set(glint).size).toBe(4);
+    const yellow = packColor(RU.flameYellow);
+    for (const z of RUSH_ZONES) {
+      const r = images.get(shopSignKey(z)) as Raster;
+      expect(opaqueCount(r), z).toBe(r.w * r.h);
+      expect(r.px.some((c) => c === yellow), z).toBe(z === 'mare'); // PROSSIMA APERTURA
+    }
+  });
+
   it('the climbing truck is pitched on the pixel grid: no pixel lost or doubled, pitchPoint agrees', () => {
     for (let i = 0; i < 4; i++) {
       const level = climbLevel(i);
@@ -249,6 +313,36 @@ describe('rush art pack (manifest in src/art/rush/keys.ts)', () => {
     for (const f of sheets.get(RUSH.zone) ?? []) {
       expect(f.px.reduce((n, c) => n + (greens.has(c) ? 1 : 0), 0)).toBeGreaterThan((f.w * f.h) / 4);
     }
+  });
+
+  it('the zone badge icon keeps its outline after a quarter turn (it turns with the camera in the side view)', () => {
+    const icon = buildBurgerTop();
+    const n = icon.w;
+    let filled = 0;
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        const on = icon.get(x, y) !== 0;
+        if (on) filled++;
+        expect(icon.get(n - 1 - y, x) !== 0, `${x},${y}`).toBe(on);
+      }
+    }
+    expect(filled).toBeGreaterThan((n * n) / 2);
+  });
+
+  it('the side-view roadworks frame shows on the turned camera exactly as the upright pit (LAVORI reads)', () => {
+    const [pit, side] = sheets.get(RUSH.works) ?? [];
+    const pose = { zoom: 1, centerX: pit.w / 2, centerY: pit.h / 2, rotation: computeFraming({ cssW: 844, cssH: 390, dpr: 2, insetTop: 0, insetBottom: 0 }).rotation };
+    for (let y = 0; y < side.h; y++) {
+      for (let x = 0; x < side.w; x++) {
+        const s = project(pose, pit.w, pit.h, x + 0.5, y + 0.5);
+        expect(side.get(x, y), `${x},${y}`).toBe(pit.get(Math.floor(s.x), Math.floor(s.y)));
+      }
+    }
+  });
+
+  it('a trail fry is a fat stick: at least 40 gold pixels per frame', () => {
+    const gold = new Set([RU.goldLight, RU.gold, RU.goldShade].map(packColor));
+    for (const f of sheets.get(RUSH.fry) ?? []) expect(f.px.reduce((n, c) => n + (gold.has(c) ? 1 : 0), 0)).toBeGreaterThanOrEqual(40);
   });
 
   it('Sicily sits just under the limb, inside the rows a wide screen keeps (y < 180)', () => {

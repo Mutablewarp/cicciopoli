@@ -35,6 +35,9 @@ export function rushSetup(daily: boolean, calm = false): RushSetupInfo {
       { id: 'tris', name: 'TRIS PERFETTO', desc: 'Prendi 3 stelle in una corsa.', unlocked: false },
       { id: 'maestro', name: 'MAESTRO DEL TRAFFICO', desc: 'Arriva a una combo x3.', unlocked: false },
       { id: 'vola', name: 'IL TRUCK VOLA!', desc: 'Trova il propulsore.', unlocked: false },
+      { id: 'pelo', name: 'MAESTRO DEL PELO', desc: 'Sfiora 10 veicoli in una corsa.', unlocked: daily },
+      { id: 'catena', name: "CATENA D'ORO", desc: 'Prendi 3 file intere di patatine.', unlocked: false },
+      { id: 'febbre', name: 'FEBBRE DA CICCIO', desc: 'Accendi la Ciccio Fever 2 volte.', unlocked: false },
     ],
   };
 }
@@ -43,8 +46,8 @@ export function rushResults(win: boolean, daily: boolean): RushResultInfo {
   return {
     completed: win,
     daily,
-    score: win ? 4870 : 1630,
-    best: 4870,
+    score: win ? 7460 : 1630,
+    best: 7460,
     newBest: win,
     stars: win ? 2 : 1,
     breakdown: win
@@ -53,6 +56,9 @@ export function rushResults(win: boolean, daily: boolean): RushResultInfo {
           { label: 'Freschezza', points: 1120 },
           { label: 'Sorpassi puliti', points: 450 },
           { label: 'Zone senza urti', points: 300 },
+          { label: 'Sfiorati x12', points: 900 },
+          { label: 'Catene x3', points: 450 },
+          { label: 'Ciccio Fever x2', points: 1240 },
         ]
       : [
           { label: 'Consegne', points: 1000 },
@@ -64,8 +70,14 @@ export function rushResults(win: boolean, daily: boolean): RushResultInfo {
     collisions: win ? 1 : 3,
     bestCombo: win ? 2.25 : 1.5,
     tip: win ? 'Evita un urto per la terza stella!' : 'Ti mancavano 150 punti per il tuo record!',
-    newAchievements: win ? [{ name: 'RE DI PALERMO', desc: 'Completa tutte e 3 le consegne.' }] : [],
+    newAchievements: win
+      ? [
+          { name: 'RE DI PALERMO', desc: 'Completa tutte e 3 le consegne.' },
+          { name: 'MAESTRO DEL PELO', desc: 'Sfiora 10 veicoli in una corsa.' },
+          { name: 'FEBBRE DA CICCIO', desc: 'Accendi la Ciccio Fever 2 volte.' },
+        ]
+      : [],
     unlockedDriver: win ? 'RE DELLE CONSEGNE' : undefined,
-    shareText: `Ho fatto ${win ? 4870 : 1630} punti a CICCIO'S RUSH, la missione consegna a Palermo!`,
+    shareText: `Ho fatto ${win ? 7460 : 1630} punti a CICCIO'S RUSH, la missione consegna a Palermo!`,
   };
 }

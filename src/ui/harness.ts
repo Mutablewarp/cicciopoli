@@ -3,6 +3,7 @@
  * ?state=loading|loaddone|title|hud|pause|victory|gameover|banner|icons|logo|rushsetup|rushresults
  * &level=1..6 &fire=&club=&down=enabled|disabled|hidden &bolts=N  &tone=goal|power|danger|info
  * level 6: &low=1 (last 10 s) &win=0 (CORSA TERMINATA) &daily=1 &calm=1 &panel=help|settings|trophies
+ *          &side=1 (side view controls: ▲ ▼ + FRENA) &fever=0..1 (CICCIO FEVER left)
  * level 7: state=kitchensetup (&golden=1 &calm=1 &panel=…) | kitchenresults (&win=0 &golden=1 &calm=1) |
  *          hud&level=7 (&view=counter|kitchen &ticket=long|wide|tale|double|short|none &say=0 &hint=0 &patience=0..1
  *          &mood=neutral|happy|angry &label=SERVI &fire=enabled|disabled|hidden)
@@ -158,7 +159,7 @@ function layoutFor(lv: LevelId): ControlsLayout {
     const label = params.get('label') ?? (view === 'counter' ? "PRENDI L'ORDINE" : 'SERVI');
     return { level: 7, mode: 'kitchen', fire: pick('fire', 'enabled'), club: 'hidden', down: 'hidden', jumpLabel: 'SALTA', actionLabel: label };
   }
-  if (lv === 6) return { level: 6, mode: 'driver', fire: 'hidden', club: 'hidden', down: 'hidden', jumpLabel: 'SALTA', swipe: 'mid' };
+  if (lv === 6) return { level: 6, mode: 'driver', fire: 'hidden', club: 'hidden', down: 'hidden', jumpLabel: 'SALTA', swipe: 'mid', side: params.get('side') === '1' };
   if (lv === 5) return { level: 5, mode: 'platform', fire: pick('fire', 'enabled'), club: pick('club', 'enabled'), down: 'hidden', jumpLabel: 'SALTA' };
   return lv === 1
     ? { level: 1, mode: 'platform', fire: pick('fire', 'enabled'), club: pick('club', 'disabled'), down: pick('down', 'hidden'), jumpLabel: 'SALTA' }
@@ -190,7 +191,7 @@ function mount(): void {
       progress: 0.42,
       powers: { brie: level === 1, goat: level === 1, thai: false, wings: level === 2, bolt: level === 3, pellet: false },
     });
-    if (level === 6) ui.updateHud({ ...RUSH_HUD, timeMs: params.get('low') === '1' ? 8400 : RUSH_HUD.timeMs });
+    if (level === 6) ui.updateHud({ ...RUSH_HUD, timeMs: params.get('low') === '1' ? 8400 : RUSH_HUD.timeMs, fever: Number(params.get('fever') ?? '0'), combo: params.get('fever') ? 3 : RUSH_HUD.combo });
     if (level === 8) ui.updateHud(cartoonHud(toon.cards, toon.weapon, toon.hearts, toon.boss));
     if (level === 7) {
       const k = kitchenHud((params.get('ticket') as SampleTicket | null) ?? 'long', view, {

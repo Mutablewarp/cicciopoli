@@ -8,13 +8,14 @@
 import { hash2, Raster } from '../hills/raster';
 import { shade } from '../pixel';
 import { RU, ZONE_PAL } from './colors';
-import { FACADE_D, type RowLook, SIDE_L_H, STOREFRONT, STRIP_W, Strip, ciccios, facade, lamp, palazzi, paving, roof, sidewalk, tree } from './street';
+import { streetLife } from './life';
+import { FACADE_D, type RowLook, SIDE_L_H, STOREFRONT, STRIP_W, Strip, ciccios, facade, hedges, lamp, palazzi, paving, roof, sidewalk, tree } from './street';
 
-const GREEN_SHUTTER = '#3c7a4a';
+export const GREEN_SHUTTER = '#3c7a4a';
 const STONE = '#c4b284';
 const BRONZE = '#3e5e4e';
 /** Via Libertà palazzi beyond the theatre: liberty ochres, pinks and creams. */
-const LIBERTA: RowLook = {
+export const LIBERTA: RowLook = {
   walls: ['#ead8b0', '#e4b0a0', '#dcb468', '#e6d6b8', '#d8c0a0', '#e0c890', '#f0d8c0', '#c8a888'],
   shutters: [GREEN_SHUTTER, GREEN_SHUTTER, '#6a4a2e', '#4a5a6a'],
   awnings: ['#b8402e', '#2e6a4a', '#3a5aa0', '#a83a6a', '#c46a20', '#5a4a3a'],
@@ -71,6 +72,7 @@ function villa(s: Strip, y0: number, len: number): void {
   for (let y = y0; y < y0 + len; y++) {
     for (let d = 12; d < STRIP_W; d++) s.px(d, y, hash2(d, y, 12) < 0.15 ? '#3e6e34' : '#4a7c3c');
   }
+  hedges(s, y0, len, 14);
   for (let y = y0; y < y0 + len; y += 3) s.px(13, y, RU.bodyDark); // railing
   s.rect(12, y0, 1, len, RU.bodyLight);
   facade(s, { y: y0 + 10, len: len - 20, colour: '#e8c0a8', floors: 2, shutter: GREEN_SHUTTER, balcony: true, awning: null, roof: 'tiles' });
@@ -99,6 +101,7 @@ export function centroSide(side: 'L' | 'R', shop = true): Raster {
     palazzi(s, end, VILLA_L.y, 1, LIBERTA);
     villa(s, VILLA_L.y, VILLA_L.len);
     palazzi(s, VILLA_L.y + VILLA_L.len, s.h, 2, LIBERTA);
+    streetLife(s, 31);
     tree(s, 16, 8, 6, '#3a6e30');
     for (let y = end + 16; y < s.h - 24; y += TREE_STEP) tree(s, 16, y + Math.floor(hash2(y, 1, 7) * 24), 6, '#3a6e30');
   } else {
@@ -109,6 +112,7 @@ export function centroSide(side: 'L' | 'R', shop = true): Raster {
     villa(s, 120, 56);
     facade(s, { y: 176, len: 80, colour: '#e0c890', floors: 3, shutter: GREEN_SHUTTER, balcony: true, awning: '#c46a20', roof: 'tiles' });
     kiosk(s, 196);
+    streetLife(s, 32, [[STOREFRONT.centro.y, STOREFRONT.centro.len], [194, 18]]);
     for (const y of [86, 236]) tree(s, 16, y, 6, '#3a6e30');
   }
   for (let y = 16; y < s.h; y += 64) lamp(s, y, false);

@@ -54,3 +54,59 @@
     --y: 0;
   }
 }
+
+/* v9 side view (ControlsLayout.side: a wide screen turns the camera, the truck drives to the RIGHT): ▲ over ▼ on the
+   left edge, behind the truck, and a compact see-through FRENA in the bottom-right corner whose top stays inside the
+   bottom sidewalk + kerb + 40% of the bottom lane (framing.ts fitSide at 844x390: ~81 CSS px from the bottom edge;
+   FRENA's top stands at safe-b / 2 + 8px + 16vh = 70 there, 64 at 750x342; the disc's 3D lip hangs ~7 px under its
+   box). The ▲ ▼ column ends max(safe-l, 16px) + 88px from the left edge (x 0.9 on screens <= 400 px tall: 93 at
+   844x390), left of the truck's tail. Nothing stands over the road ahead of the truck in the top / middle lanes.
+   insets.ts reports no bottom inset in this view: the scene frames the road over the full height. */
+@media (orientation: landscape) {
+  .cc-controls[data-side] {
+    --brake: clamp(56px, 16vh, 80px);
+  }
+  .cc-controls[data-side] .cc-lane-zone {
+    width: auto;
+    height: auto;
+    padding: 0 0 calc(var(--safe-b) + 14px) max(var(--safe-l), 16px);
+  }
+  /* each half >= 75 CSS px square on a 390 px tall phone (the zone scales 0.9 there, controls.css) */
+  .cc-controls[data-side] .cc-dpad {
+    flex-direction: column;
+    width: 88px;
+    height: 180px;
+  }
+  .cc-controls[data-side] .cc-lane.is-l {
+    border-radius: 30px 30px 6px 6px;
+  }
+  .cc-controls[data-side] .cc-lane.is-r {
+    border-radius: 6px 6px 30px 30px;
+  }
+  .cc-controls[data-side] .cc-lane .cc-glyph {
+    width: 42px;
+    height: 25px;
+    margin: 0 0 4px;
+  }
+  .cc-controls[data-side] .cc-lane.is-l::before {
+    inset: -8px -8px -2px -6px;
+  }
+  .cc-controls[data-side] .cc-lane.is-r::before {
+    inset: -2px -8px -8px -6px;
+  }
+
+  .cc-controls[data-side] .cc-act-zone {
+    right: calc(var(--safe-r) + 12px);
+    bottom: calc(var(--safe-b) * 0.5 + 8px);
+    width: var(--brake);
+    height: var(--brake);
+  }
+  .cc-controls[data-side] .cc-act--brake {
+    --size: var(--brake);
+    --x: 0;
+    --y: 0;
+  }
+  .cc-controls[data-side] .cc-act--brake .cc-act__name {
+    font-size: calc(var(--brake) * 0.13);
+  }
+}

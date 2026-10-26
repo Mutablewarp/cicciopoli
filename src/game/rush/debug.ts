@@ -5,6 +5,8 @@
  */
 import type Phaser from 'phaser';
 import type { SaveStore } from '../../contracts';
+import { TRUCK_LEN } from './config';
+import { roadCss } from './framing';
 import { POWER_PICKUP } from './logic/powerups';
 import { settleRun } from './logic/results';
 import { RUSH_TEXT } from './logic/strings';
@@ -19,6 +21,11 @@ export interface RushDebugState extends Omit<RushSnapshot, 'entities'> {
   zoom: number;
   ahead: number;
   autopilot: boolean;
+  /** v9 side view (camera turned, truck drives right) */
+  side: boolean;
+  /** road + kerbs across, and the truck's length, in CSS px */
+  roadCss: number;
+  truckCss: number;
 }
 
 export interface RushDebugApi {
@@ -63,6 +70,9 @@ export function installRushDebug(scene: Phaser.Scene, session: RushSession, view
         zoom: view.framing.zoom,
         ahead: Math.round(view.framing.ahead),
         autopilot: session.autopilot,
+        side: view.framing.side,
+        roadCss: Math.round(roadCss(view.framing, view.dpr)),
+        truckCss: Math.round((TRUCK_LEN * view.framing.zoom) / view.dpr),
       };
     },
     play: (daily = false) => session.start(session.progress.optionsFor(daily, new Date(), Date.now() >>> 0)),

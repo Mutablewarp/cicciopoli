@@ -4,12 +4,15 @@
  * "Ciccio's" script + burger across the roof (the shot the player sees all run), red checkered
  * bands, the roof A/C unit, the face logo on the rear door, light clusters, tyres peeking out.
  * Frames: 0-1 drive, 2-3 lean L/R, 4 brake, 5 hit, 6-8 rocket-booster flight.
- * Also 'rush-truck-shadow' 40x24.
+ * Also 'rush-truck-shadow' 40x24, and 'rush-truck-x' (v9 side view of a landscape screen): the same
+ * frames, but the roof vinyl and the door face are turned a quarter turn so they read upright once the
+ * camera turns the truck to face right (the burger over the "Ciccio's" script, a checker line along
+ * each long edge, the A/C unit moved to the rear corner out of the script's way).
  */
 import { Raster, outlineRaster } from '../hills/raster';
 import { lineR, rectR, washR } from '../rampage/draw';
 import { RU } from './colors';
-import { BURGER_S, FACE_S, ROOF_SCRIPT, face, vinyl } from './lettering';
+import { BURGER_S, FACE_S, ROOF_SCRIPT, face, turnRows, vinyl } from './lettering';
 
 export const TRUCK_W = 40;
 export const TRUCK_H = 64;
@@ -27,6 +30,22 @@ interface Pose {
   lean: -1 | 0 | 1;
   /** booster flame frame, -1 = no boosters */
   boost: number;
+  /** v9 side view: roof vinyl and door face turned to read upright on a turned camera */
+  turned: boolean;
+}
+
+/**
+ * The turned roof lettering, top-left corners on screen once the truck faces right: screen x runs
+ * from the rear (frame row BOX.y1) to the cab, screen y from the frame's left edge (BOX.x0).
+ */
+export const TURNED = { burger: { sx: 10, sy: 5 }, script: { sx: 2, sy: 17 } } as const;
+const TURNED_SCRIPT = turnRows(ROOF_SCRIPT);
+const TURNED_BURGER = turnRows(BURGER_S);
+const TURNED_FACE = turnRows(FACE_S);
+
+/** Frame x, y of the top-left corner of turned art (w x h on screen) whose screen top-left is (sx, sy). */
+export function turnedOrigin(sx: number, sy: number, w: number): readonly [number, number] {
+  return [BOX.x0 + sy, BOX.y1 - sx - (w - 1)];
 }
 
 /** 2x2 red / black checkers inside the rect; `phase` swaps the colours. */
@@ -73,7 +92,7 @@ function cab(r: Raster, dy: number): void {
   r.set(36, 7 + dy, RU.chromeShade);
 }
 
-function roof(r: Raster): void {
+function roof(r: Raster, turned: boolean): void {
   const { x0, x1, y0, y1 } = BOX;
   rectR(r, x0, y0, x1 - x0 + 1, y1 - y0 + 1, RU.body);
   rectR(r, x0 + 1, y0 + 1, 2, y1 - y0 - 1, RU.bodyLight); // light from the top-left
@@ -83,6 +102,10 @@ function roof(r: Raster): void {
   rectR(r, x0, y0, 1, y1 - y0 + 1, RU.chrome);
   rectR(r, x1, y0, 1, y1 - y0 + 1, RU.chromeShade);
   rectR(r, x0, y1, x1 - x0 + 1, 1, RU.chromeShade);
+  if (turned) {
+    turnedRoof(r);
+    return;
+  }
   // checkered bands along both edges, broken where the script runs across
   for (const [y, h] of [[18, 10], [43, 4]] as const) {
     checker(r, 5, y, 4, h, 0);
@@ -98,14 +121,28 @@ function roof(r: Raster): void {
   r.set(20, 45, RU.chromeShade);
 }
 
-function rear(r: Raster, brake: boolean): void {
+/** v9: checker line along each long edge, the burger over the script (both turned), A/C at the rear corner. */
+function turnedRoof(r: Raster): void {
+  checker(r, 5, 18, 2, 29, 0);
+  checker(r, 33, 18, 2, 29, 1);
+  vinyl(r, TURNED_BURGER, ...turnedOrigin(TURNED.burger.sx, TURNED.burger.sy, BURGER_S[0].length));
+  vinyl(r, TURNED_SCRIPT, ...turnedOrigin(TURNED.script.sx, TURNED.script.sy, ROOF_SCRIPT[0].length));
+  rectR(r, 8, 42, 8, 5, RU.bodyDark);
+  rectR(r, 8, 42, 1, 5, RU.bodyLight);
+  rectR(r, 10, 43, 4, 3, RU.tyreLight);
+  r.set(11, 44, RU.chromeShade);
+  r.set(12, 43, RU.chromeShade);
+}
+
+function rear(r: Raster, brake: boolean, turned: boolean): void {
   const { x0, x1, y1 } = BOX;
   rectR(r, x0, y1 + 1, x1 - x0 + 1, REAR_Y1 - y1, RU.bodyShade);
   rectR(r, x0, y1 + 1, x1 - x0 + 1, 1, RU.body);
   // door frame + face logo
   rectR(r, 12, y1 + 2, 1, 10, RU.chromeShade);
   rectR(r, 27, y1 + 2, 1, 10, RU.chromeShade);
-  face(r, FACE_S, 15, y1 + 1, RU.bodyLight);
+  if (turned) face(r, TURNED_FACE, 14, y1 + 2, RU.bodyLight);
+  else face(r, FACE_S, 15, y1 + 1, RU.bodyLight);
   // light clusters: tall red lamps in the rear corners, a white reverse lamp under each
   for (const x of [x0 + 1, x1 - 3]) {
     rectR(r, x, 52, 3, 5, brake ? RU.brake : RU.check);
@@ -170,8 +207,8 @@ function truckFrame(p: Pose): Raster {
   tyre(r, 4, 2, 2, 6, p.tread); // front wheels beside the hood
   tyre(r, 34, 2, 2, 6, p.tread);
   cab(r, p.cabDy);
-  roof(r);
-  rear(r, p.brake);
+  roof(r, p.turned);
+  rear(r, p.brake, p.turned);
   underside(r, p.tread);
   r = lean(r, p.lean);
   if (p.boost >= 0) {
@@ -182,8 +219,9 @@ function truckFrame(p: Pose): Raster {
   return r;
 }
 
-export function buildTruck(): Raster[] {
-  const base: Pose = { tread: 0, cabDy: 0, brake: false, lean: 0, boost: -1 };
+/** 'rush-truck' (`turned` false) or 'rush-truck-x' (true): the TRUCK_FRAME frames. */
+export function buildTruck(turned = false): Raster[] {
+  const base: Pose = { tread: 0, cabDy: 0, brake: false, lean: 0, boost: -1, turned };
   const hit = truckFrame(base);
   washR(hit, RU.white, 0.6);
   return [
@@ -198,6 +236,8 @@ export function buildTruck(): Raster[] {
     truckFrame({ ...base, boost: 2 }),
   ];
 }
+
+export const buildTruckX = (): Raster[] => buildTruck(true);
 
 /** 40x24 soft shadow: solid core, dithered rim (the scene draws it at low alpha). */
 export function buildTruckShadow(): Raster {

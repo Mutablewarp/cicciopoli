@@ -234,6 +234,48 @@ describe('driver mode', () => {
   });
 });
 
+describe('driver side view (v9: wide screens, the truck drives to the right)', () => {
+  const side = (s: InputState, code: string, repeat = false): boolean => keyDown(s, code, repeat, 'driver', true, true);
+
+  it('↑ / W = the lane above (consumeDir left), ↓ / S = the lane below (right): one press each, no brake, no jump', () => {
+    const s = new InputState();
+    for (const [code, dir] of [['ArrowUp', 'left'], ['KeyW', 'left'], ['ArrowDown', 'right'], ['KeyS', 'right']] as const) {
+      expect(side(s, code)).toBe(true);
+      expect([s.consumeDir(), s.downHeld, s.consume('jump')]).toEqual([dir, false, false]);
+      side(s, code, true); // auto-repeat: still one press
+      expect(s.consumeDir()).toBe(null);
+      s.release(`k:${code}`);
+    }
+  });
+
+  it('← / A / Space hold FRENA (downHeld) and never steer; → / D mean nothing', () => {
+    const s = new InputState();
+    for (const code of ['ArrowLeft', 'KeyA', 'Space']) {
+      side(s, code);
+      expect([s.downHeld, s.consumeDir()]).toEqual([true, null]);
+      s.release(`k:${code}`);
+      expect(s.downHeld).toBe(false);
+    }
+    expect(side(s, 'ArrowRight')).toBe(false);
+    expect(side(s, 'KeyD')).toBe(false);
+  });
+
+  it('braking never replaces a lane press of the same frame; Esc / P still pause', () => {
+    const s = new InputState();
+    side(s, 'ArrowDown');
+    side(s, 'Space');
+    expect([s.consumeDir(), s.downHeld]).toEqual(['right', true]);
+    side(s, 'KeyP');
+    expect(s.consume('pause')).toBe(true);
+  });
+
+  it('the side map is the driver\'s only: other modes keep ↑ = jump', () => {
+    const s = new InputState();
+    keyDown(s, 'ArrowUp', false, 'platform', true, true);
+    expect(s.consume('jump')).toBe(true);
+  });
+});
+
 describe('kitchen mode', () => {
   it('Enter and Space press the action button once (fire), never jump; a held key does not repeat it', () => {
     const s = new InputState();

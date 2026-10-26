@@ -1,9 +1,11 @@
 /**
  * Level 6 pixel icons for the DOM UI: the menu food behind each power (nuggets, waffle fries, chicken pop corn,
- * cheddar, the booster), the fries tray, the freshness burger, the HUD truck, pins, stars and panel glyphs.
+ * cheddar, the booster), the trail fry, the freshness burger, the HUD truck, pins, stars, panel glyphs, the ▲ ▼
+ * lane glyphs of the side view, the CICCIO FEVER flame and the ▲ ▼ ◀ ▶ glyphs of the COME SI GIOCA text.
  * Fills set to currentColor take their colour from CSS (pins, stars, glyphs).
  */
 import { PAL } from '../../art/pixel';
+import { RU } from '../../art/rush/colors';
 import { pixelSvg } from '../dom';
 import type { LegendIcon } from './text';
 
@@ -83,19 +85,8 @@ const ROCKET = [
   '....kyYk....',
   '.....kk.....',
 ];
-/** Score pickup: Ciccio's fries tray. */
-const FRIES = [
-  '.k.kk.k.kk..',
-  'kykyykykyyk.',
-  'kyykykyykyk.',
-  'kykyykykyyk.',
-  'kkkkkkkkkkkk',
-  'kRRRRRRRRRRk',
-  'kRwwRRRRwwRk',
-  '.kRRRRRRRRk.',
-  '.kRRRRRRRRk.',
-  '..kkkkkkkk..',
-];
+/** PATATINE: one fry stick of a FRIES TRAIL, frame 0 of 'rush-fry' (art/rush/feverFx.ts) without its empty rim. */
+const FRY = ['......kkk.', '.....kyyyk', '....kLLyOk', '...kLLyOk.', '..kLLyOk..', '.kcLyOk...', 'kwLyOk....', 'kyyOk.....', 'kyOk......', '.kk.......'];
 /** Freshness meter: a small burger. */
 const BURGER = [
   '...kkkkkk...',
@@ -138,6 +129,11 @@ const STAR = [
 ];
 /** Checkered finish flag at the end of the level 6 progress bar. */
 const FINISH = ['kk.......', 'kwKwKwk..', 'kKwKwKwk.', 'kwKwKwKwk', 'kKwKwKwk.', 'kwKwKk...', 'kyk......', 'kyk......', 'kyk......', 'kyk......', 'kkk......'];
+/** Side view lane buttons: the ◀ ▶ glyphs of the pad (ui/icons.ts) turned to point up / down. */
+const TRI_UP = ['....kk....', '...kcck...', '..kcccck..', '.kcccccck.', 'kcccccccck', 'kkkkkkkkkk'];
+const TRI_DOWN = [...TRI_UP].reverse();
+/** CICCIO FEVER (HUD): a gold flame, white-hot at the core. */
+const FLAME = ['...k....', '..kRk...', '..kRRk.k', '.kRYRkRk', '.kRYYRRk', 'kRYwYYRk', 'kRYwwYRk', 'kRYwwYRk', '.kRYYRk.', '..kkkk..'];
 const GEAR = ['....kk....', '.kk.cc.kk.', '.kcccccck.', '..cckkcc..', 'kcck..kcck', 'kcck..kcck', '..cckkcc..', '.kcccccck.', '.kk.cc.kk.', '....kk....'];
 const HELP = ['.kkkkkk.', 'kcccccck', 'kcckkcck', 'kkk.kcck', '...kcck.', '..kcck..', '..kcck..', '..kkkk..', '..kcck..', '..kkkk..'];
 const TROPHY = ['kkkkkkkkkk', 'kcyyyyyyck', 'kcyyyyyyck', '.kyyyyyyk.', '.kyyyyyyk.', '..kyyyyk..', '...kyyk...', '...kyyk...', '..kkyykk..', '.kccccccK.', '.kkkkkkkk.'];
@@ -147,9 +143,10 @@ const WAFFLE_PAL = { k: BROWN, L: '#fbe3a6', y: '#e9b864', O: '#b97a2c', h: '#7a
 const POPCORN_PAL = { k: K, L: '#fbe3a6', y: '#e9a64a', O: '#a85a14', w: '#f4f0e8', r: '#e8301c' };
 const CHEDDAR_PAL = { k: '#5a2a04', L: '#ffd27a', y: '#f59a1a', O: '#c86a08' };
 const ROCKET_PAL = { k: K, w: '#f4f0e8', R: '#e8301c', b: '#60ccf0', Y: '#ffe25a', y: '#ff8a1c' };
-const FRIES_PAL = { k: K, y: PAL.fry, R: '#e8301c', w: '#f4f0e8' };
+const FRY_PAL = { k: RU.ink, L: RU.goldLight, y: RU.gold, O: RU.goldShade, w: RU.white, c: RU.flameCore };
 const BURGER_PAL = { k: K, B: PAL.bun, b: PAL.bunDark, w: PAL.creamLight, G: PAL.lettuce, g: '#3c9a14', y: PAL.cheese, P: PAL.patty, p: '#3c1c10' };
 const TRUCK_PAL = { k: '#050506', H: '#5c5c68', b: '#34343c', w: '#ffffff', r: '#ff2a34', W: '#f4f0e8', c: '#8ad0f0', y: '#ffe080', g: '#8a8a94', G: '#d0d0d8' };
+const FLAME_PAL = { k: K, R: '#e8301c', Y: '#ffc21a', w: '#fff3a0' };
 const TONED = { k: K, K: K, c: 'currentColor', w: '#ffffff', y: 'currentColor' };
 
 export const shieldSvg = (): string => pixelSvg(NUGGET_SHIELD, FOOD);
@@ -157,12 +154,14 @@ export const waffleSvg = (): string => pixelSvg(WAFFLE, WAFFLE_PAL);
 export const popcornSvg = (): string => pixelSvg(POPCORN, POPCORN_PAL);
 export const cheddarSvg = (): string => pixelSvg(CHEDDAR, CHEDDAR_PAL);
 export const rocketSvg = (): string => pixelSvg(ROCKET, ROCKET_PAL);
-export const friesSvg = (): string => pixelSvg(FRIES, FRIES_PAL);
 export const burgerSvg = (): string => pixelSvg(BURGER, BURGER_PAL, 'cc-fresh__icon');
 export const truckSvg = (): string => pixelSvg(TRUCK, TRUCK_PAL);
 export const pinSvg = (): string => pixelSvg(PIN, TONED, 'cc-pin__svg');
 export const starSvg = (): string => pixelSvg(STAR, TONED, 'cc-star__svg');
 export const finishSvg = (): string => pixelSvg(FINISH, { k: K, w: '#ffffff', K: '#26262c', y: PAL.poleLight }, 'cc-flag');
+export const triUpSvg = (): string => pixelSvg(TRI_UP, { k: K, c: PAL.cream }, 'cc-glyph');
+export const triDownSvg = (): string => pixelSvg(TRI_DOWN, { k: K, c: PAL.cream }, 'cc-glyph');
+export const flameSvg = (): string => pixelSvg(FLAME, FLAME_PAL, 'cc-flame');
 export const gearSvg = (): string => pixelSvg(GEAR, TONED, 'cc-glyph');
 export const helpSvg = (): string => pixelSvg(HELP, TONED, 'cc-glyph');
 export const trophySvg = (): string => pixelSvg(TROPHY, TONED, 'cc-glyph');
@@ -176,7 +175,25 @@ export function legendSvg(icon: LegendIcon): string {
     sprint: popcornSvg,
     grip: cheddarSvg,
     jet: rocketSvg,
-    fries: friesSvg,
+    fries: () => pixelSvg(FRY, FRY_PAL),
   };
   return svgs[icon]();
 }
+
+/** Arrow glyphs of the COME SI GIOCA text, as tall as a Press Start capital (the font has none: a fallback drew them
+ *  half as tall). Up / down 7x7, left / right 4x7, in the text colour. */
+const KEY_UP = ['...c...', '..ccc..', '..ccc..', '.ccccc.', '.ccccc.', 'ccccccc', 'ccccccc'];
+const KEY_LEFT = ['...c', '..cc', '.ccc', 'cccc', '.ccc', '..cc', '...c'];
+const KEYS: Readonly<Record<string, { rows: readonly string[]; cls: string; name: string }>> = {
+  '▲': { rows: KEY_UP, cls: 'cc-key__v', name: 'su' },
+  '▼': { rows: [...KEY_UP].reverse(), cls: 'cc-key__v', name: 'giù' },
+  '◀': { rows: KEY_LEFT, cls: 'cc-key__h', name: 'sinistra' },
+  '▶': { rows: KEY_LEFT.map((r) => [...r].reverse().join('')), cls: 'cc-key__h', name: 'destra' },
+};
+
+/** `html` with each ▲ ▼ ◀ ▶ drawn as a pixel glyph (named for screen readers). */
+export const keyGlyphs = (html: string): string =>
+  html.replace(/[▲▼◀▶]/g, (ch) => {
+    const k = KEYS[ch];
+    return `<span class="cc-key" role="img" aria-label="${k.name}">${pixelSvg(k.rows, { c: 'currentColor' }, k.cls)}</span>`;
+  });

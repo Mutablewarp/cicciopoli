@@ -50,8 +50,24 @@ export function buildBarrier(): Raster {
   return r;
 }
 
+/** `r` turned a quarter turn counter-clockwise: it shows as `r` once the side-view camera turns the world. */
+function quarterTurn(r: Raster): Raster {
+  const out = new Raster(r.h, r.w);
+  for (let y = 0; y < out.h; y++) for (let x = 0; x < out.w; x++) out.set(x, y, r.get(r.w - 1 - y, x));
+  return out;
+}
+
+/**
+ * 'rush-works' sheet 40x40: frame 0 the pit for the upright view, frame 1 the same pit turned a quarter
+ * turn for the v9 side view, so its LAVORI sign reads left to right there (the game shows frame 1 when turned).
+ */
+export function buildWorks(): Raster[] {
+  const pit = buildWorksPit();
+  return [pit, quarterTurn(pit)];
+}
+
 /** 40x40 roadworks pit: torn asphalt, dark hole, dirt, cones at the corners, the LAVORI sign. */
-export function buildWorks(): Raster {
+function buildWorksPit(): Raster {
   const r = new Raster(40, 40);
   const m = new Mask(40, 40);
   m.rect(6, 6, 28, 18, 1);

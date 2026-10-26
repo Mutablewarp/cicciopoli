@@ -97,6 +97,15 @@ export class Deliveries {
     return this.zone !== null;
   }
 
+  /** A delivery zone is on the road or one is due within withinMs (FRIES TRAILS wait: never in a hand-off's way). */
+  zoneSoon(timeMs: number, withinMs: number): boolean {
+    const R = RUSH_DELIVERY;
+    return (
+      this.zone !== null ||
+      this.orders.some((o) => (o.state === 'waiting' || o.state === 'active') && timeMs >= R.dueMs[o.index] - R.leadMs - withinMs)
+    );
+  }
+
   /** A hit spoils the order on board. */
   hit(): void {
     const cur = this.current;

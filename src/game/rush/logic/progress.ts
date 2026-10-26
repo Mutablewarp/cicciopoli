@@ -4,7 +4,7 @@
  * defaults, storage failures are swallowed (the game never blocks on storage).
  */
 import type { RushAchievementCard, RushDriverId, RushSettings, RushSetupInfo, SwipeSetting } from '../../../contracts';
-import { RUSH_DEFAULT_DRIVER, RUSH_STORE } from '../../../config/rush';
+import { RUSH_DEFAULT_DRIVER, RUSH_FEATS, RUSH_STORE } from '../../../config/rush';
 import { dailyKey, dailySeed } from './rng';
 import { recordEligible, starsFor } from './score';
 import { ACHIEVEMENT_TEXT, DRIVER_TEXT, SECRET_TEXT, dailyLabel, type AchievementId } from './strings';
@@ -137,6 +137,9 @@ export class RushProgress {
       re: s.completed,
       tris: s.perfect >= 3,
       maestro: s.bestCombo >= 3,
+      pelo: s.nearMisses >= RUSH_FEATS.nearMisses,
+      catena: s.chains >= RUSH_FEATS.chains,
+      febbre: s.fevers >= RUSH_FEATS.fevers,
       vola: s.flew,
     };
     const fresh = ACHIEVEMENTS.filter((a) => earned[a] && !d.achievements.includes(a));

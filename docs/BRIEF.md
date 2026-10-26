@@ -336,7 +336,7 @@ fake QR codes that scan; no prizes, discounts or real rewards; no claims of offi
   standard driver, own daily best.
 - Freshness 0..100 per order; bonus 0-500 at hand-off. Score: delivery 1000, freshness 0-500, clean
   pass (a vehicle passes below the truck without a hit) 15 x combo (deliveries stay the main source) (x1 -> x3 cap, +0.25 every 4 passes),
-  collision-free zone +300. Stars: 1 = >= 1 delivery; 2 = >= 2 deliveries and >= 2500 points;
+  collision-free zone +300. Stars: 1 = >= 1 delivery; 2 = >= 2 deliveries and >= 6000 points (v9; 2500 before the v9 scoring);
   3 = 3 deliveries, average freshness >= 80, no hits. All numbers in src/config/rush.ts.
 - Results (DOM): CONSEGNA COMPLETATA! / CORSA TERMINATA!, breakdown, stars, best, new achievements
   (PRIMA CONSEGNA, ZERO URTI, RE DI PALERMO, TRIS PERFETTO, MAESTRO DEL TRAFFICO, secret IL TRUCK
@@ -362,6 +362,88 @@ UI lane         src/ui/**, src/input/** (driver controls, swipe sensitivity, HUD
 AUDIO lane      src/audio/** (9 sfx, 'rush' music: Palermo street-food tarantella energy + engine pulse,
                 setMusicMuted)
 integrator      src/contracts.ts, src/art/rush/keys.ts, src/game/save.ts, docs/**, scripts/e2e.mjs
+```
+
+
+### v9 — owner feedback on level 6 (2026-10-25) — overrides §8 where they differ
+Owner, after playing the live level on his phone: "sistema il livello 6, ampliando la strada quando si gioca in
+orizzontale e rendendo gli stacchi di visione un pochino più sistemati … curi ancora di più i dettagli e rendi il gioco
+ancora più piacevole, ancora più interattivo. Deve essere qualcosa che ti tiene incollato allo schermo."
+
+Measured on the live build (844x390 landscape phone): the road + kerbs take ~13% of the screen width (~105 CSS px),
+the truck is ~30 CSS px wide, and ~85% of the screen is filler scenery with hard vertical seams where one strip ends
+and the next begins (stands → park, palazzi → roof tiles). The view is limited by the height: 1.2 s of road ahead
+(RUSH_ROAD.viewAheadPx.min 270 world px) must fit in ~340 CSS px, so a bigger zoom is impossible while the road runs
+up the screen.
+
+1. **LANDSCAPE = SIDE VIEW (the road fills the screen).** When the screen is held sideways (landscape window) and the
+   canvas aspect is > 1.15 (held while > 1.05, so a browser bar cannot flip it; any device, desktop too), the main camera is rotated -90°: the truck drives to the RIGHT, the three lanes are stacked
+   top / middle / bottom, the road spans the full width and fills most of the free height. The world, the logic,
+   the validator and every rule stay the same (world "ahead" = up; only the camera turns). Targets at 844x390
+   (HUD top band unchanged): road + kerbs >= 230 CSS px tall (was 105 wide), truck >= 60 CSS px long, road ahead
+   of the truck in [viewAheadPx.min, max] (the spawn line stays off screen; extra width goes BEHIND the truck,
+   where the controls live). Portrait is unchanged.
+   - Everything that must read upright is counter-rotated in side view: the truck roof lettering (a side-view
+     variant of the 'rush-truck' sheet whose "Ciccio's" lettering runs along the truck's length so it reads
+     left-to-right on screen), the ZONA gantry labels, storefront signs, customer speech bubbles, popups (+25,
+     COMBO, SFIORATO!), top-edge warnings (become RIGHT-edge warnings), the delivery arrow, radar chevrons
+     (they point right).
+   - Input in side view: ▲ / ▼ change lane (▲ = the lane drawn above = world lane - 1), swipes up / down, keyboard
+     ↑ W / ↓ S lanes, ← A Space brake (FRENA). Portrait keeps ◀ ▶ / swipes left-right / ←→ A D, ↓ S Space brake.
+     Hints and COME SI GIOCA show the keys / buttons of the current orientation.
+   - Controls in side view (UI): ▲ and ▼ stacked on the LEFT edge, FRENA at the bottom right but semi-transparent
+     and no taller than the bottom sidewalk + kerb + 40% of the bottom lane; nothing covers the road ahead of the
+     truck in the top / middle lanes. A rotate mid-run re-frames without a jump (see 2).
+   - The finale and the setup / results screens are unchanged (camera rotation reset for the finale).
+2. **TIDY CUTS ("stacchi").** No hard seams in the scenery in either orientation: strips end with a proper edge
+   (kerb, hedge, wall, shadow, a transition tile), never a straight cut between two textures. Zone changes blend:
+   a 2-3 s transition band (mixed buildings of both zones, a cross street with the ZONA gantry) and a smooth grade
+   of the sky / light colour (Centro daylight → Stadio late afternoon → Terrasini sunset) instead of a switch.
+   Re-framing (rotation, resize, HUD inset change) eases the camera over ~250 ms instead of jumping. The finale
+   cut (white flash) stays.
+3. **MORE INTERACTIVE, GLUED TO THE SCREEN** (all fair, all in the validator's safe routes, all in src/config/rush.ts):
+   - FRIES TRAILS: lines of 5-8 fries along a safe route (+25 each); collecting the whole line = "CATENA x8!" bonus
+     (+150) with a rising pitch per fry. They teach the line through traffic.
+   - SFIORATO! (near miss): passing a vehicle in the adjacent lane within a few px at speed = +50 x combo, white
+     streak, whoosh sfx, a tiny 120 ms slow-down pulse (no slow-down with reduced motion).
+   - CICCIO FEVER: combo x3 held → 6 s FEVER: gold trail behind the truck, all points x2, music layer / tempo up,
+     HUD flames; ends on a hit or time.
+   - Small details: customers wave and cheer as you pass the shop, horns / people react to near misses, scooters
+     wobble, the truck's brake lights and blinkers on lane change, dust / leaves / sea spray per zone.
+   - Results add rows SFIORATI, CATENE, FEVER; achievements MAESTRO DEL PELO (10 near misses), CATENA D'ORO (3
+     full trails), FEBBRE DA CICCIO (2 fevers).
+
+Interfaces fixed by the integrator (2026-10-26, already in the tree and compiling with stand-ins):
+- `ControlsLayout.side` (contracts.ts): the session sets it in the side view; the UI shows ▲ ▼ + FRENA for it and
+  input maps ▲ / ↑ W / swipe up to consumeDir 'left' (world lane - 1), ▼ / ↓ S / swipe down to 'right', and the
+  FRENA hold to ← A Space (Space too). `HudState.fever` 0..1. `SfxName` 'nearMiss' | 'trail' | 'chain' | 'fever'
+  (stand-in recipes in sfx-rush.ts). `GameAudio.intensity?(0 | 1)` (FEVER music lift).
+- src/art/rush/keys.ts v9 block: RUSH.truckX (side-view truck, roof lettering along the body), RUSH.fry,
+  RUSH.fever, RUSH.streak, RUSH.bits, zoneKey parts 'capL' | 'capR' | 'blendL' | 'blendR', shopSignKey(zone),
+  RUSH_ANIMS.driveX / flyX / fry / fever.
+- src/game/rush/logic/types.ts v9: PickupKind 'fry' + RushEntityView.trail; RushSnapshot.fever; events 'nearMiss',
+  'trail', 'chain', 'feverStart', 'feverEnd'; RushPoints.nearMiss / chains; RushRunSummary.nearMisses / chains /
+  fevers (stubbed to 0 in run.ts). Logic may ADD fields, never rename these.
+- Definitions: SFIORATO! = an obstacle that was in the truck's lane with ttc <= the near-miss window (~450 ms,
+  config) when the truck started to leave that lane, and that then passes without a hit (late dodge); CICCIO
+  FEVER = reaching combo x3 starts 6 s of points x2 (a hit ends it; the next one needs more clean passes at x3);
+  FRIES TRAILS are laid only on routes the validator proves safe (never forcing a risky move, never in a delivery
+  lane while its zone is up), in every zone, a few per run.
+
+### v9 ownership
+```
+RUSH-VIEW  src/game/rush/** EXCEPT logic/** (framing.ts side view + camera turn + eased re-frame, scenery seams /
+           zone blends / light grade, entityView + overlay + fx + truckView in the side view, react.ts for the new
+           events, session.ts setControls side flag + intensity, debug.ts: state().side, config.ts)
+RUSH-LOGIC src/game/rush/logic/**, src/config/rush.ts (trails in patterns + validator, near misses, FEVER, scoring,
+           hud().fever, results rows, achievements MAESTRO DEL PELO / CATENA D'ORO / FEBBRE DA CICCIO, strings, tests)
+RUSH-ART   src/art/rush/** EXCEPT keys.ts, src/art/rush.ts (truckX, fry, fever, streak, bits, caps, blends, shop sign
+           plates, registered in assets.ts with the v9 anims; tidier edges / more detail in the existing strips)
+UI         src/ui/rush/**, the driver parts of src/ui/controls.ts and src/ui/index.ts (setMode side wiring), the
+           rush parts of the HUD (FEVER cue), src/input/** (side mapping, vertical swipes), COME SI GIOCA per
+           orientation, src/ui/harness.ts rush samples
+AUDIO      src/audio/sfx-rush.ts (the 4 real recipes), src/audio/tracks/rush*.ts, src/audio/index.ts (intensity)
+integrator src/contracts.ts, src/art/rush/keys.ts, docs/**, scripts/e2e.mjs
 ```
 
 ---------------------------------------------------------------------------------------
